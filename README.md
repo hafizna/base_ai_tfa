@@ -92,9 +92,10 @@ Bila file berasal dari DFR eksternal (Qualitrol, Toshiba standalone) tanpa sinya
 
 ## Cara Menjalankan
 
-### Web app lokal
+### Quick start (clone fresh)
 ```bash
-cd pipeline
+git clone https://github.com/hafizna/base_ai_tfa.git
+cd base_ai_tfa
 pip install -r requirements.txt
 
 # Backend FastAPI (terminal 1)
@@ -106,6 +107,9 @@ npm install
 npm run dev
 # buka http://localhost:5173
 ```
+
+Frontend Vite dev server proxies `/api/*` → `http://localhost:8000`,
+so kedua proses harus berjalan bersamaan saat development.
 
 ### Ekstraksi arsip (ZIP/RAR)
 ```bash
@@ -397,7 +401,7 @@ Itu lebih dekat dengan praktik engineering PLN, lebih jujur terhadap keterbatasa
 ## Struktur Folder
 
 ```text
-pipeline/
+base_ai_tfa/                    ← repo root
   core/
     comtrade_parser.py
     channel_normalizer.py

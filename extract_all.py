@@ -8,7 +8,7 @@ Requirements:
     7-Zip must be installed.  Download: https://www.7-zip.org/
     Default install path: C:\\Program Files\\7-Zip\\7z.exe
 
-Usage (from the pipeline/ directory):
+Usage (from the repo root):
     python extract_all.py
     python extract_all.py --dry-run      # show what would be extracted, don't extract
     python extract_all.py --force        # re-extract even if folder already exists

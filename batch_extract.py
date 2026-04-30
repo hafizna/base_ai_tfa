@@ -19,7 +19,7 @@ Requirements for RAR support:
     # Windows: install WinRAR or UnRAR and ensure it's on PATH
     # Linux/Mac: sudo apt install unrar  OR  brew install rar
 
-Run from the pipeline/ directory:
+Run from the repo root:
     python batch_extract.py
 """
 

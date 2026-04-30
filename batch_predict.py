@@ -14,7 +14,7 @@ Kolom 'suspected_label' adalah label dugaan yang tidak bersifat fixed.
 Kolom 'predicted_label' adalah hasil model.
 Kolom 'correct' diisi kosong — untuk diisi stakeholder.
 
-Jalankan dari folder pipeline/:
+Jalankan dari repo root:
     python batch_predict.py
 """
 

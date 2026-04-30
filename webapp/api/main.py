@@ -1,7 +1,7 @@
 """
 COMTRADE Fault Analyser — FastAPI backend v2
 ============================================
-Run from pipeline/ directory:
+Run from the repo root:
     uvicorn webapp.api.main:app --reload --port 8000
 """
 

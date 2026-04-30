@@ -2,8 +2,8 @@
 Tests for Phase 2 Transformer Classification Pipeline
 ======================================================
 Tests for rule-based transformer event classifier and feature thresholds.
-Aligned with: pipeline/models/transformer_classifier.py
-              pipeline/core/transformer_feature_extractor.py
+Aligned with: models/transformer_classifier.py
+              core/transformer_feature_extractor.py
 """
 
 import pytest

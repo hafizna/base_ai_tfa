@@ -3,7 +3,6 @@
 ## 1. Klasifikasi File Tunggal
 
 ```bash
-cd pipeline/
 python models/predict.py path/to/file.cfg
 ```
 

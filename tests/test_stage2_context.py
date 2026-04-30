@@ -5,8 +5,8 @@ Validates routing decisions (87T vs 87L vs distance vs UNKNOWN) and
 vendor-specific channel name mapping for transformer differential relays.
 
 Aligned with:
-  pipeline/core/protection_router.py   (replaces misaligned stages.stage2_context)
-  pipeline/core/transformer_channel_mapper.py
+  core/protection_router.py   (replaces misaligned stages.stage2_context)
+  core/transformer_channel_mapper.py
 """
 
 import pytest

@@ -35,12 +35,12 @@ multiclass model while Random Forest remains the comparison baseline.
     angle), fault context (duration, ground ratio, zone, reclose), and
     protection metadata (trip type, phase count).
   - Stratified 5-fold cross-validation with per-class F1 report.
-  - Model is saved as pipeline/models/fault_classifier.pkl (joblib/pickle).
+  - Model is saved as models/fault_classifier.pkl (joblib/pickle).
 
 For ongoing RF vs LGBM comparison as data grows, run compare_models.py
 from the project root — it always benchmarks RF as a standalone baseline.
 
-Run from the pipeline/ directory:
+Run from the repo root:
     python models/train.py
 """
 
