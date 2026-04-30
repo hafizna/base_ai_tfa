@@ -1,0 +1,74 @@
+BATCH PROCESSOR RE-RUN SUMMARY
+================================================================================
+
+TOTAL EVENTS FOUND: 324 fault events
+  - Valid COMTRADE pairs (.cfg + .dat): YES ✓
+  - Processed successfully: 324 events
+
+LABELED VS UNLABELED:
+  - LABELED (has fault cause in folder name): 81 events
+  - UNLABELED (no fault cause in folder name): 243 events
+
+LABELED EVENT BREAKDOWN (81 total):
+  ├─ PETIR: 62 events (76%)
+  └─ NON-PETIR: 19 events (24%)
+      ├─ LAYANG: 11 events
+      ├─ CONDUCTOR_BROKEN: 3 events
+      ├─ BENDA_LAIN: 2 events
+      ├─ POHON: 2 events
+      └─ CT_BREAKDOWN: 1 event
+
+UNLABELED EVENTS BY UPT (243 total):
+  - UPT CIREBON: 39 events
+  - UPT SEMARANG: 22 events
+  - UPT BOGOR: 18 events
+  - UPT PURWOKERTO: 18 events
+  - UPT KARAWANG: 16 events
+  - UPT BANDUNG: 11 events
+  - UPT BEKASI: 9 events
+  - UPT SALATIGA: 2 events
+  - Others: 108 events
+
+EQUIPMENT TYPE (all 324 events):
+  - TRANSMISSION: 216 events
+  - TRANSFORMER: 18 events
+  - BUSBAR: 2 events
+  - UNKNOWN: 88 events
+
+TRANSMISSION LINE EVENTS ONLY (216 total):
+  - LABELED: 81 events (62 PETIR, 19 NON-PETIR)
+  - UNLABELED: 135 events
+
+================================================================================
+FINDINGS
+================================================================================
+
+1. VALID COMTRADE FILES:
+   ✓ All events have valid .cfg + .dat pairs
+   ✓ No missing or incomplete files
+
+2. LABEL EXTRACTION ISSUE:
+   ✗ 135 transmission events have NO labels in folder names
+   ✗ Folder names are generic (e.g., "DFR Internal Weleri - Ungaran 2")
+   ✗ No PETIR/POHON/LAYANG keywords in folder path at any level
+
+3. ACTUAL LABELED EVENTS:
+   - Found: 81 transmission events with labels
+   - Expected (user estimate): ~180 events
+   - Gap: ~99 events
+
+POSSIBLE EXPLANATIONS:
+A) Many folders genuinely don't have labels
+B) Labels are stored elsewhere (Excel file, database, etc.)
+C) Different naming convention per UPT
+D) Parent folders might have labels but extraction logic doesn't check them
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+Need user input:
+1. Where are the labels for the 135 unlabeled events?
+2. Is there an Excel file or database with fault causes?
+3. Should we manually label them?
+4. Or proceed with the 81 labeled events we have?
