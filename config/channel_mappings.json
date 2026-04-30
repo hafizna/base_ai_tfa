@@ -1,0 +1,124 @@
+{
+  "manufacturers": {
+    "SEL": {
+      "channel_patterns": {
+        "IA": ["IA", "IA_SEC", "IA_PRI", "APHSCUR"],
+        "IB": ["IB", "IB_SEC", "IB_PRI", "BPHSCUR"],
+        "IC": ["IC", "IC_SEC", "IC_PRI", "CPHSCUR"],
+        "IN": ["IN", "IG", "3I0", "3IO", "RESCUR"],
+        "VA": ["VA", "VA_SEC", "VA_PRI", "APHSVOL"],
+        "VB": ["VB", "VB_SEC", "VB_PRI", "BPHSVOL"],
+        "VC": ["VC", "VC_SEC", "VC_PRI", "CPHSVOL"],
+        "VN": ["VN", "VG", "3V0", "3VO", "RESVOL"]
+      }
+    },
+    "ABB": {
+      "channel_patterns": {
+        "IA": ["IL1", "I_A", "IA", "I_L1"],
+        "IB": ["IL2", "I_B", "IB", "I_L2"],
+        "IC": ["IL3", "I_C", "IC", "I_L3"],
+        "IN": ["I0", "IN", "I_N", "I_E", "IE"],
+        "VA": ["UL1", "V_A", "VA", "U_L1", "UL1E"],
+        "VB": ["UL2", "V_B", "VB", "U_L2", "UL2E"],
+        "VC": ["UL3", "V_C", "VC", "U_L3", "UL3E"],
+        "VN": ["U0", "VN", "V_N", "U_E", "UE", "3U0", "UN"]
+      }
+    },
+    "SIEMENS": {
+      "channel_patterns": {
+        "IA": ["IA", "I PHASE A", "IL1", "I_PH_A", "I A"],
+        "IB": ["IB", "I PHASE B", "IL2", "I_PH_B", "I B"],
+        "IC": ["IC", "I PHASE C", "IL3", "I_PH_C", "I C"],
+        "IN": ["IE", "IN", "3I0", "I_E"],
+        "VA": ["UA", "VA", "V PHASE A", "UL1", "V A"],
+        "VB": ["UB", "VB", "V PHASE B", "UL2", "V B"],
+        "VC": ["UC", "VC", "V PHASE C", "UL3", "V C"],
+        "VN": ["UE", "VN", "3U0", "U_E"]
+      }
+    },
+    "GE": {
+      "channel_patterns": {
+        "IA": ["IA", "IAPH", "IA_MAG"],
+        "IB": ["IB", "IBPH", "IB_MAG"],
+        "IC": ["IC", "ICPH", "IC_MAG"],
+        "IN": ["IG", "IN", "3I0", "IGND"],
+        "VA": ["VA", "VAPH", "VA_MAG"],
+        "VB": ["VB", "VBPH", "VB_MAG"],
+        "VC": ["VC", "VCPH", "VC_MAG"],
+        "VN": ["VG", "VN", "3V0", "VGND"]
+      }
+    },
+    "QUALITROL": {
+      "channel_patterns": {
+        "IA": ["IA", "I-A", "CURR A", "CURRENT A"],
+        "IB": ["IB", "I-B", "CURR B", "CURRENT B"],
+        "IC": ["IC", "I-C", "CURR C", "CURRENT C"],
+        "IN": ["IN", "I-N", "CURR N", "3I0"],
+        "VA": ["VA", "V-A", "VOLT A", "VOLTAGE A"],
+        "VB": ["VB", "V-B", "VOLT B", "VOLTAGE B"],
+        "VC": ["VC", "V-C", "VOLT C", "VOLTAGE C"],
+        "VN": ["VN", "V-N", "VOLT N", "3V0"]
+      }
+    },
+    "NARI": {
+      "channel_patterns": {
+        "IA": ["ia", "Ia", "CB1.ia", "CB1.Ia", "Prot.CB1.Ia", "CB2.ia", "CB2.Ia",
+               "87L.FO1.ia_loc_syn", "87L.FO1.ia_rmt_syn"],
+        "IB": ["ib", "Ib", "CB1.ib", "CB1.Ib", "Prot.CB1.Ib", "CB2.ib", "CB2.Ib",
+               "87L.FO1.ib_loc_syn", "87L.FO1.ib_rmt_syn"],
+        "IC": ["ic", "Ic", "CB1.ic", "CB1.Ic", "Prot.CB1.Ic", "CB2.ic", "CB2.Ic",
+               "87L.FO1.ic_loc_syn", "87L.FO1.ic_rmt_syn"],
+        "IN": ["3i0", "3I0", "CB1.3i0", "CB1.3I0", "Prot.CB1.3I0_Cal", "CB2.3i0",
+               "3i0adj"],
+        "VA": ["ua", "Ua", "Prot.Ua"],
+        "VB": ["ub", "Ub", "Prot.Ub"],
+        "VC": ["uc", "Uc", "Prot.Uc"],
+        "VN": ["3u0", "3U0", "Prot.3U0_Cal"]
+      }
+    },
+    "TOSHIBA": {
+      "channel_patterns": {
+        "IA": ["Ia", "IA", "I_A", "IPhA", "IL1"],
+        "IB": ["Ib", "IB", "I_B", "IPhB", "IL2"],
+        "IC": ["Ic", "IC", "I_C", "IPhC", "IL3"],
+        "IN": ["In", "IN", "I0", "3I0", "IE", "IG"],
+        "VA": ["Ua", "UA", "Va", "VA", "U_A", "UL1"],
+        "VB": ["Ub", "UB", "Vb", "VB", "U_B", "UL2"],
+        "VC": ["Uc", "UC", "Vc", "VC", "U_C", "UL3"],
+        "VN": ["Un", "UN", "Vn", "VN", "U0", "3U0", "UE"]
+      }
+    },
+    "CSC": {
+      "channel_patterns": {
+        "IA": ["Ia", "IA", "IaR", "I_A", "IL1"],
+        "IB": ["Ib", "IB", "IbS", "I_B", "IL2"],
+        "IC": ["Ic", "IC", "IcT", "I_C", "IL3"],
+        "IN": ["IN", "3I0", "I0", "IE", "IG"],
+        "VA": ["Ua", "UA", "Va", "VA", "U_A", "UL1"],
+        "VB": ["Ub", "UB", "Vb", "VB", "U_B", "UL2"],
+        "VC": ["Uc", "UC", "Vc", "VC", "U_C", "UL3"],
+        "VN": ["Ux", "UX", "UN", "VN", "U0", "3U0", "UE"]
+      }
+    }
+  },
+  "manufacturer_detection": {
+    "SEL": ["SEL-", "SEL_", "SCHWEITZER"],
+    "ABB": ["ABB", "REL670", "RED670", "REB670", "REF615", "REL650", "REL630",
+            "RED615", "RET615", "RET670", "REF611"],
+    "SIEMENS": ["SIEMENS", "7SA", "7SD", "7SJ", "7UT", "7SS",
+                "DIGSI", "SIPROTEC", "MPI3P", "MPV3P", "LN1:"],
+    "GE": ["GE", "ALSTOM", "P441", "P442", "P443", "P444",
+           "P141", "P142", "P143", "P144", "P145",
+           "P545", "P546", "P643", "P64", "P14", "P44",
+           "MICOM", "D60", "D90", "D30", "L90", "T60", "F60"],
+    "QUALITROL": ["QUALITROL", "QUALITROL LLC"],
+    "NARI": ["NARI", "NR ELECTRIC", "PCS-902", "PCS-931", "PCS-933",
+             "PCS-985", "PCS-978", "PCS-9685", "PCS900",
+             "LINE_DISTANCE_RELAY", "LINE_DIFFERENTIAL_RELAY",
+             "LINE DISTANCE RELAY", "LINE DIFFERENTIAL RELAY"],
+    "TOSHIBA": ["TOSHIBA", "GRL100", "GRL200", "GRL1000", "GRB100", "GRT100",
+                "GRD100"],
+    "CSC": ["CSC-", "SIFANG", "XIFANG", "CSC101", "CSC103", "CSC150",
+            "CSC326", "CSC321"]
+  }
+}

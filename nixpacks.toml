@@ -1,0 +1,16 @@
+providers = ["...", "node"]
+
+[phases.install]
+cmds = [
+  "...",
+  "cd webapp/frontend && npm ci"
+]
+
+[phases.build]
+cmds = [
+  "...",
+  "cd webapp/frontend && npm run build"
+]
+
+[start]
+cmd = "uvicorn webapp.api.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 120"

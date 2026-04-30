@@ -1,0 +1,54 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --bg: #f4efe7;
+  --bg-soft: #fbf7f1;
+  --surface: rgba(255, 252, 247, 0.88);
+  --surface-strong: #fffdf9;
+  --ink: #1f2a37;
+  --muted: #5e6a79;
+  --line: rgba(48, 62, 79, 0.12);
+  --line-strong: rgba(35, 57, 84, 0.22);
+  --brand: #1f6feb;
+  --brand-deep: #174ea6;
+  --brand-soft: rgba(31, 111, 235, 0.12);
+  --accent: #d97706;
+  --success: #15803d;
+  --success-soft: rgba(21, 128, 61, 0.12);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --shadow-lg: 0 24px 80px rgba(31, 42, 55, 0.12);
+  --shadow-md: 0 14px 36px rgba(31, 42, 55, 0.1);
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(217, 119, 6, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(31, 111, 235, 0.15), transparent 30%),
+    linear-gradient(180deg, #f7f1e7 0%, #eef3f9 55%, #edf2f7 100%);
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+
+h1, h2, h3, h4 { margin: 0; }
+p { margin: 0; }
+ul, ol { margin: 0; padding: 0; }
+code {
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.95em;
+}

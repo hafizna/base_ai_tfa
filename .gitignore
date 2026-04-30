@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Generated output — not needed for running the app
+data/predictions/
+data/features/
+data/labels/
+
+# Temp / debug files
+temp_labeled_paths.txt
+extraction_summary.txt
+test_batch_results.csv
+test_retraining_labels.csv
+*.png
+
+# Docs (not needed for deployment)
+*.md
+
+# OS
+.DS_Store
+Thumbs.db
+webapp/history.csv

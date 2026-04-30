@@ -1,0 +1,15 @@
+.git
+.gitignore
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+venv
+archive
+cases
+raw_data
+webapp/frontend/node_modules
+webapp/frontend/dist

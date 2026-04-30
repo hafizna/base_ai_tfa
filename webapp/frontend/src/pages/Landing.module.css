@@ -1,0 +1,208 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 24px 42px;
+  overflow: hidden;
+}
+
+.orbLeft,
+.orbRight {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.orbLeft {
+  width: 320px;
+  height: 320px;
+  left: -110px;
+  top: -40px;
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.18), transparent 70%);
+}
+
+.orbRight {
+  width: 420px;
+  height: 420px;
+  right: -120px;
+  top: 40px;
+  background: radial-gradient(circle, rgba(31, 111, 235, 0.16), transparent 72%);
+}
+
+.header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 36px;
+  z-index: 1;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 14px;
+  border: 1px solid rgba(217, 119, 6, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 250, 242, 0.82);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.logo {
+  font-size: clamp(2.3rem, 4vw, 3.6rem);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.04em;
+}
+
+.subtitle {
+  max-width: 700px;
+  margin-top: 14px;
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 22px;
+  width: 100%;
+  max-width: 1120px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  min-height: 208px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 26px 24px 24px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 245, 238, 0.92)),
+    var(--surface);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  overflow: hidden;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: auto -24px -40px auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(31, 111, 235, 0.14), transparent 72%);
+  transition: transform 0.18s ease, opacity 0.18s ease;
+  opacity: 0.7;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(23, 78, 166, 0.32);
+  box-shadow: 0 22px 46px rgba(21, 32, 48, 0.16);
+}
+
+.card:hover::after {
+  transform: scale(1.08);
+  opacity: 1;
+}
+
+.card:hover .cardTooltip {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(31, 111, 235, 0.14), rgba(23, 78, 166, 0.08));
+  color: var(--brand-deep);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cardLabel {
+  max-width: 16ch;
+  font-size: 1.2rem;
+  line-height: 1.3;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.cardSub {
+  max-width: 26ch;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.cardTooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  width: 290px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(24, 34, 48, 0.95);
+  color: #f5f7fa;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.24);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  z-index: 10;
+}
+
+.footer {
+  position: relative;
+  z-index: 1;
+  margin-top: 38px;
+  padding: 16px 20px;
+  border: 1px solid rgba(31, 111, 235, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 32px 18px 28px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    min-height: 180px;
+  }
+
+  .cardTooltip {
+    display: none;
+  }
+}

@@ -1,0 +1,730 @@
+.panel {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panelTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+
+.toggle {
+  font-size: 0.82rem;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.channelToggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.chBtn {
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.chBtnOn {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.warnings {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.warning {
+  font-size: 0.78rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+/* Table styles used by COMTRADEExplorer */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.table th {
+  text-align: left;
+  color: #64748b;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-bottom: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: #f8fafc; }
+
+/* SOE timeline */
+.soeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.soeLabel {
+  width: 160px;
+  font-size: 0.78rem;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.soeBar {
+  flex: 1;
+  height: 14px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.soeSegment {
+  position: absolute;
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+/* CT/VT ratio inputs */
+.ratioGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ratioRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ratioName {
+  flex: 1;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.ratioInput {
+  width: 72px;
+  padding: 4px 8px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.ratioInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.applyBtn {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 7px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.applyBtn:hover { background: #2563eb; }
+
+.emptyText {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Status badge */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.statusOperated {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+}
+
+.statusFast {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1.5px solid #dc2626;
+}
+
+.statusNot {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1.5px solid #86efac;
+}
+
+/* Select & label common */
+.selectField {
+  padding: 5px 10px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  background: #fff;
+  color: #1e293b;
+}
+
+.inputField {
+  padding: 5px 10px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  width: 100px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.label {
+  font-size: 0.82rem;
+  color: #475569;
+  white-space: nowrap;
+}
+
+/* Evidence list for AI panel */
+.evidenceList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evidenceItem {
+  font-size: 0.82rem;
+  color: #475569;
+  background: #f8fafc;
+  border-left: 3px solid #3b82f6;
+  padding: 6px 12px;
+  border-radius: 0 6px 6px 0;
+}
+
+.rankingBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.rankLabel {
+  width: 180px;
+  font-size: 0.82rem;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.rankFill {
+  height: 10px;
+  border-radius: 5px;
+  background: #3b82f6;
+  transition: width 0.3s;
+}
+
+.rankPct {
+  font-size: 0.78rem;
+  color: #64748b;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Zone editor */
+.zoneEditorRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.zoneLabel {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.waveShell {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.waveHead {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.waveTitle {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1e293b;
+}
+
+.waveSub {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.waveToolbar {
+  padding: 10px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.waveBadges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.waveBadge {
+  font-size: 0.72rem;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.waveDigitalToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.waveToolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.waveGhostBtn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.waveGhostBtn:hover {
+  background: #f8fafc;
+}
+
+.waveModeBtn {
+  min-width: 150px;
+  text-align: center;
+}
+
+.waveGrid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+.waveChannelList {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px;
+  max-height: 760px;
+  overflow: auto;
+}
+
+.waveGroupTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 10px 6px 6px;
+}
+
+.waveGroupTitle:first-child {
+  margin-top: 2px;
+}
+
+.waveChannel {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 6px;
+  text-align: left;
+}
+
+.waveChannel:hover {
+  background: rgba(59,130,246,0.07);
+  border-color: rgba(59,130,246,0.25);
+}
+
+.waveChannelActive {
+  background: rgba(59,130,246,0.08);
+  border-color: rgba(59,130,246,0.35);
+}
+
+.waveDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.waveMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.waveName {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waveStats {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.wavePlotStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.waveSubplot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.waveSubplotTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0 4px;
+}
+
+.waveHint {
+  font-size: 0.72rem;
+  color: #64748b;
+  padding: 0 18px 16px;
+}
+
+.soeFull {
+  margin-bottom: 20px;
+}
+
+.soeCols {
+  column-count: 1;
+  column-gap: 24px;
+}
+
+.soeEventRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.8rem;
+  break-inside: avoid;
+}
+
+.locusPlotStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.locusPlotCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px 10px;
+  background: #fff;
+}
+
+.locusPlotTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.locusTimebar {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  margin-bottom: 14px;
+}
+
+.locusTimeControls {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.locusTimeSlider {
+  width: 100%;
+  accent-color: #2563eb;
+}
+
+.locusTimeReadout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.locusTimeReadout strong {
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.locusEditorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.locusEditorSection {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+}
+
+.locusEditorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.locusEditorTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #1e293b;
+}
+
+.locusZoneCard {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.locusZoneCard:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1100px) {
+  .waveGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .waveChannelList {
+    max-height: 320px;
+  }
+
+  .locusEditorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.soeEventRow:last-child {
+  border-bottom: none;
+}
+
+.soeNum {
+  color: #475569;
+  width: 22px;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.soeTime {
+  color: #3b82f6;
+  font-family: monospace;
+  width: 84px;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+}
+
+.soeCh {
+  color: #1e293b;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soeStateOn {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #16a34a;
+  width: 42px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.soeStateOff {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #dc2626;
+  width: 46px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.soeEventRow[data-cat="trip"] .soeCh {
+  color: #dc2626;
+}
+
+.soeEventRow[data-cat="ar"] .soeCh {
+  color: #d97706;
+}
+
+.soeEventRow[data-cat="pickup"] .soeCh {
+  color: #2563eb;
+}
+
+@media (max-width: 1100px) {
+  .waveGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .waveChannelList {
+    max-height: 280px;
+  }
+}
+

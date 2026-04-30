@@ -1,0 +1,6 @@
+filepath,event_class,source,confirmed
+C:\Users\hafizna.fadhli\Downloads\36. DFR GANGGUAN UIT JBT\pipeline\data\synthetic\transformer\INRUSH\GI_TAMBUN_150KV_INRUSH_20260408_114808_667.cfg,INRUSH,SYNTHETIC,True
+C:\Users\hafizna.fadhli\Downloads\36. DFR GANGGUAN UIT JBT\pipeline\data\synthetic\transformer\INTERNAL_FAULT\GI_CIBATU_150KV_INTERNAL_FAULT_20260408_114808_694.cfg,INTERNAL_FAULT,SYNTHETIC,True
+C:\Users\hafizna.fadhli\Downloads\36. DFR GANGGUAN UIT JBT\pipeline\data\synthetic\transformer\THROUGH_FAULT\GIS_CAWANG_150KV_THROUGH_FAULT_20260408_114808_715.cfg,THROUGH_FAULT,SYNTHETIC,True
+C:\Users\hafizna.fadhli\Downloads\36. DFR GANGGUAN UIT JBT\pipeline\data\synthetic\transformer\OVEREXCITATION\GI_BEKASI_150KV_OVEREXCITATION_20260408_114808_735.cfg,OVEREXCITATION,SYNTHETIC,True
+C:\Users\hafizna.fadhli\Downloads\36. DFR GANGGUAN UIT JBT\pipeline\data\synthetic\transformer\MAL_OPERATE\GIS_CAWANG_150KV_MAL_OPERATE_20260408_114808_747.cfg,MAL_OPERATE,SYNTHETIC,True

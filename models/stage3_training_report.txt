@@ -1,0 +1,46 @@
+================================================================================
+STAGE 3: PETIR vs NON-PETIR CLASSIFIER - TRAINING REPORT
+================================================================================
+
+
+RF_no_SMOTE
+--------------------------------------------------------------------------------
+Accuracy: 0.890 ± 0.073
+PETIR Precision: 0.909 ± 0.057
+PETIR Recall: 0.951 ± 0.066
+NON-PETIR Precision: 0.860 ± 0.196
+NON-PETIR Recall: 0.700 ± 0.187
+
+Confusion Matrix:
+[[20  0]
+ [ 1 61]]
+[[TN=20, FP=0]
+ [FN=1, TP=61]]
+
+RF_SMOTE
+--------------------------------------------------------------------------------
+Accuracy: 0.829 ± 0.099
+PETIR Precision: 0.899 ± 0.064
+PETIR Recall: 0.871 ± 0.085
+NON-PETIR Precision: 0.660 ± 0.215
+NON-PETIR Recall: 0.700 ± 0.187
+
+Confusion Matrix:
+[[17  3]
+ [ 0 62]]
+[[TN=17, FP=3]
+ [FN=0, TP=62]]
+
+XGBoost
+--------------------------------------------------------------------------------
+Accuracy: 0.804 ± 0.100
+PETIR Precision: 0.911 ± 0.052
+PETIR Recall: 0.822 ± 0.123
+NON-PETIR Precision: 0.608 ± 0.148
+NON-PETIR Recall: 0.750 ± 0.158
+
+Confusion Matrix:
+[[20  0]
+ [ 2 60]]
+[[TN=20, FP=0]
+ [FN=2, TP=60]]

@@ -1,0 +1,134 @@
+{
+  "relay_models": {
+    "SEL-421": {
+      "manufacturer": "SEL",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "SEL-311L": {
+      "manufacturer": "SEL",
+      "function": "distance_differential",
+      "equipment": "transmission_line"
+    },
+    "SEL-321": {
+      "manufacturer": "SEL",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "SEL-451": {
+      "manufacturer": "SEL",
+      "function": "bay_control",
+      "equipment": "bay"
+    },
+    "SEL-751": {
+      "manufacturer": "SEL",
+      "function": "feeder_protection",
+      "equipment": "feeder_20kv"
+    },
+    "SEL-387": {
+      "manufacturer": "SEL",
+      "function": "differential",
+      "equipment": "transformer_or_line"
+    },
+    "REL670": {
+      "manufacturer": "ABB",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "RED670": {
+      "manufacturer": "ABB",
+      "function": "differential",
+      "equipment": "transformer_or_line"
+    },
+    "REB670": {
+      "manufacturer": "ABB",
+      "function": "busbar_protection",
+      "equipment": "bus"
+    },
+    "RET670": {
+      "manufacturer": "ABB",
+      "function": "transformer_protection",
+      "equipment": "transformer"
+    },
+    "REL650": {
+      "manufacturer": "ABB",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "REL630": {
+      "manufacturer": "ABB",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "7SA6": {
+      "manufacturer": "Siemens",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "7SA522": {
+      "manufacturer": "Siemens",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "7SD6": {
+      "manufacturer": "Siemens",
+      "function": "differential",
+      "equipment": "transmission_line"
+    },
+    "7SJ6": {
+      "manufacturer": "Siemens",
+      "function": "overcurrent",
+      "equipment": "feeder_or_transformer"
+    },
+    "7UT6": {
+      "manufacturer": "Siemens",
+      "function": "transformer_protection",
+      "equipment": "transformer"
+    },
+    "7VK87": {
+      "manufacturer": "Siemens",
+      "function": "differential",
+      "equipment": "transmission_line"
+    },
+    "P443": {
+      "manufacturer": "GE",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "P643": {
+      "manufacturer": "GE",
+      "function": "transformer_protection",
+      "equipment": "transformer"
+    },
+    "D60": {
+      "manufacturer": "GE",
+      "function": "distance",
+      "equipment": "transmission_line"
+    },
+    "L90": {
+      "manufacturer": "GE",
+      "function": "differential",
+      "equipment": "transmission_line"
+    },
+    "UNKNOWN": {
+      "manufacturer": "unknown",
+      "function": "unknown",
+      "equipment": "unknown"
+    }
+  },
+  "manufacturer_patterns": {
+    "SEL": ["SEL-", "SELOGIC"],
+    "ABB": ["RE", "RET", "RED", "REB", "REL"],
+    "Siemens": ["7S", "7U", "7V"],
+    "GE": ["P4", "P6", "D6", "L9", "MULTILIN"],
+    "Schneider": ["VAMP", "MICOM", "P14", "P12"]
+  },
+  "function_keywords": {
+    "distance": ["21", "DISTANCE", "IMPEDANCE", "ZONE"],
+    "differential": ["87", "87L", "DIFF", "DIFFERENTIAL"],
+    "overcurrent": ["50", "51", "OC", "OVERCURRENT"],
+    "transformer": ["87T", "TRANSFORMER", "TRAFO"],
+    "busbar": ["87B", "BUSBAR"],
+    "breaker_failure": ["50BF", "BF", "BREAKER FAIL"]
+  }
+}
