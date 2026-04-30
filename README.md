@@ -37,8 +37,10 @@ INPUT: file .cfg + .dat (COMTRADE)
 2. determine_protection  →  ProtectionType (DISTANCE / 87T / 87L / OCR / REF / UNKNOWN)
 3. detect_fault          →  FaultEvent (inception time, duration, reclose outcome)
         │
-        ├── [87T] → Transformer classifier
-        │           inrush / internal / through / overexcitation / maloperate / unknown
+        ├── [87T] → Diff vs restraint plot + dual-slope evaluation
+        │           (operated / not_operated / fast_operated). Tanpa verdict AI;
+        │           klasifikasi event trafo (inrush/internal/through/dll.) ada
+        │           offline di models/transformer_classifier.py — belum di-wire ke UI.
         │
         ├── [87L] → Line-differential branch
         │           differential vs restraint, harmonic morphology, AI fault analysis
@@ -93,7 +95,7 @@ Bila file berasal dari DFR eksternal (Qualitrol, Toshiba standalone) tanpa sinya
 | `models/rules.py` | Tier 1: aturan deterministik KONDUKTOR/PERMANEN |
 | `models/train.py` | Training **LightGBM** 7-kelas (input: labeled_features.csv); CV report otomatis |
 | `models/predict.py` | Inference end-to-end + PETIR sub-mechanism (SF/BFO) classifier |
-| `models/transformer_classifier.py` | Klasifikasi event trafo berbasis pengetahuan (6 kelas) |
+| `models/transformer_classifier.py` | Klasifikasi event trafo berbasis pengetahuan (6 kelas) — **standalone / batch only**; belum dipanggil dari FastAPI router |
 | `models/fault_classifier.pkl` | Model LightGBM aktif (7 kelas line-fault) |
 | `webapp/api/main.py` | FastAPI backend root, mount semua router |
 | `webapp/api/routers/` | Router per-rele: `upload`, `relay_21`, `relay_87l`, `relay_87t`, `relay_ocr`, `relay_ref` |
@@ -194,13 +196,25 @@ Catatan: keputusan SF/BFO yang lebih akurat memerlukan integrasi data PI
 (tower footing resistance + BIL isolator) — saat ini sub-mechanism hanya
 heuristik dari waveform lokal.
 
-### Transformer differential (87T)
-- `INRUSH MAGNETISASI`
-- `GANGGUAN INTERNAL TRAFO`
-- `GANGGUAN EKSTERNAL (THROUGH)`
-- `TEGANGAN LEBIH / OVEREKSITASI`
-- `KEMUNGKINAN MALOPERATE`
-- `PERLU INVESTIGASI`
+### Transformer differential (87T) — saat ini
+
+Workspace 87T saat ini hanya menampilkan analisa rekaman COMTRADE,
+**tanpa verdict AI**:
+
+- Diagram **differential vs restraint** per fasa (L1, L2, L3)
+- Evaluasi terhadap karakteristik dual-slope (`idiff_pickup`, `slope1`/`intersection1`,
+  `slope2`/`intersection2`, `idiff_fast`)
+- Status operasi:
+  - `NOT_OPERATED`
+  - `IDIFF_OPERATED` — operating point melewati karakteristik
+  - `IDIFF_FAST_OPERATED` — Idiff melewati threshold fast (high-set)
+- Daftar fasa yang operated
+
+> **Catatan**: classifier 6-kelas (`INRUSH MAGNETISASI` / `GANGGUAN INTERNAL TRAFO` /
+> `GANGGUAN EKSTERNAL (THROUGH)` / `TEGANGAN LEBIH OVEREKSITASI` / `KEMUNGKINAN MALOPERATE`
+> / `PERLU INVESTIGASI`) tersedia di `models/transformer_classifier.py` untuk pemakaian
+> standalone (`models/predict.py path/to/file.cfg`), tetapi **belum diakses dari React
+> UI**. Lihat bagian "Filosofi Analisa Gangguan Trafo" untuk arah pengembangan.
 
 ### Distance (relay 21)
 - AI fault analysis (memakai line classifier + PETIR sub-mechanism)
@@ -242,7 +256,13 @@ Beberapa pekerjaan penting masih bisa dikerjakan **tanpa menunggu data baru**:
 
 ---
 
-## Filosofi Analisa Gangguan Trafo
+## Filosofi Analisa Gangguan Trafo (Roadmap)
+
+> **Status implementasi**: bagian ini adalah **arah desain**, bukan apa yang sudah jalan.
+> Saat ini workspace 87T hanya menampilkan diff/restraint plot dan operated status
+> dari rekaman COMTRADE — belum ada hierarchical evidence reasoning, multi-relay
+> evidence fusion, atau layered output. Section di bawah menjelaskan target
+> arsitektur untuk iterasi berikutnya.
 
 Untuk trafo PLN, filosofi identifikasi penyebab **tidak bisa disamakan** dengan line classifier multi-kelas biasa.
 
@@ -516,7 +536,8 @@ base_ai_tfa/                          ← repo root
 | Tier 1 rule engine | Selesai | 3 aturan deterministik KONDUKTOR/PERMANEN |
 | Multi-class fault classifier (line) | Selesai | **LightGBM 7-class**, F1-macro 0.407 / weighted 0.757; POHON butuh data lebih |
 | **PETIR sub-mechanism (SF / BFO)** | Selesai | Heuristik data-driven (fasa + kA puncak), reasoning ditampilkan di evidence |
-| Transformer differential (87T) | Selesai | H2/H5/slope/DC offset, 6 kelas event |
+| Transformer differential (87T) — diff/restraint visualisasi | Selesai | Dual-slope characteristic + operated/not_operated/fast_operated status per fasa |
+| Transformer event AI classifier (inrush / internal / through / dll.) | Belum di-wire ke UI | `models/transformer_classifier.py` jalan dari CLI saja; React 87T workspace belum memanggilnya. Perlu integrasi + filosofi layered (event → origin → root cause) |
 | Distance (relay 21) impedance locus | Selesai | DFT phasor R-X plane, k0 + CT/VT override, RIO/XRIO zone overlay |
 | Line differential (87L) | Selesai | Diff vs restraint, AI fault analysis, rise time + DWT energy ratio |
 | **Siemens 7UT side suffix (.a / .b / .c)** | Selesai | HV vs LV current panels terpisah di COMTRADE Explorer (bukan overlay per fasa) |
