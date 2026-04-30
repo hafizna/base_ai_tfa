@@ -85,6 +85,18 @@ const PHASE_ZONE_TEMPLATES: Zone[] = [
   { label: "Z3", shape: "mho", center_r: 0, center_x: 0, radius: 0, rf_fwd: 0, rf_rev: 0, xf: 0, xr: 0, line_angle_deg: 75, color: "#ef4444" },
 ];
 
+const MANUAL_ZONE_DEFAULTS = {
+  shape: "quad" as const,
+  center_r: 10,
+  center_x: 10,
+  radius: 10,
+  rf_fwd: 20,
+  rf_rev: 5,
+  xf: 20,
+  xr: 5,
+  line_angle_deg: 75,
+};
+
 function mhoCircleTrace(zone: Zone): Partial<Plotly.ScatterData> {
   const theta = Array.from({ length: 361 }, (_, i) => (i * Math.PI) / 180);
   return {
@@ -840,6 +852,29 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     updateZoneSet(family, (zones) => zones.map((zone) => ({ ...zone, shape })));
   }
 
+  function createManualZone(family: ZoneFamily, idx: number, shape?: Zone["shape"]): Zone {
+    const templates = family === "ground" ? GROUND_ZONE_TEMPLATES : PHASE_ZONE_TEMPLATES;
+    const template = templates[idx % templates.length];
+    return {
+      ...template,
+      ...MANUAL_ZONE_DEFAULTS,
+      label: `Z${idx + 1}`,
+      shape: shape ?? MANUAL_ZONE_DEFAULTS.shape,
+    };
+  }
+
+  function addManualZone(family: ZoneFamily) {
+    updateZoneSet(family, (zones) => {
+      if (zones.length > 0) return [...zones, createManualZone(family, zones.length, zones[0]?.shape)];
+      return [0, 1, 2].map((idx) => createManualZone(family, idx));
+    });
+    setRelayStatus("Zona manual Z1-Z3 aktif. Isi parameter zona lalu gunakan Refresh All Loci bila diperlukan.");
+  }
+
+  function removeZone(family: ZoneFamily, idx: number) {
+    updateZoneSet(family, (zones) => zones.filter((_, zoneIdx) => zoneIdx !== idx));
+  }
+
   async function handleRelayFile(file: File) {
     try {
       const text = await file.text();
@@ -952,6 +987,8 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ? timing.tripMs
       : (timing.inceptionMs !== null && timing.durationMs !== null ? timing.inceptionMs + timing.durationMs : null);
   const hasRelayZones = groundZones.length > 0 || phaseZones.length > 0;
+  const shouldShowEventMarker = (eventMs: number | null): eventMs is number =>
+    eventMs !== null && eventMs >= activeTimeRange[0] && eventMs <= activeTimeRange[1] && currentPlayMs >= eventMs;
 
   const groundTraces = useMemo(() => {
     const loci = GROUND_LOOPS.filter((loop) => (visiblePointsByLoop[loop] ?? []).length > 0).map((loop) =>
@@ -961,10 +998,10 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     const heads = showPlayHead
       ? GROUND_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
-    const inception = timing.inceptionMs !== null
+    const inception = shouldShowEventMarker(timing.inceptionMs)
       ? eventTrace("Inception marker", GROUND_LOOPS, pointsByLoop, timing.inceptionMs, "#facc15")
       : null;
-    const trip = relayTripMs !== null
+    const trip = shouldShowEventMarker(relayTripMs)
       ? eventTrace("Relay trip marker", GROUND_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
       : null;
     const zoneTraces = groundZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
@@ -979,10 +1016,10 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     const heads = showPlayHead
       ? PHASE_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
-    const inception = timing.inceptionMs !== null
+    const inception = shouldShowEventMarker(timing.inceptionMs)
       ? eventTrace("Inception marker", PHASE_LOOPS, pointsByLoop, timing.inceptionMs, "#facc15")
       : null;
-    const trip = relayTripMs !== null
+    const trip = shouldShowEventMarker(relayTripMs)
       ? eventTrace("Relay trip marker", PHASE_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
       : null;
     const zoneTraces = phaseZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
@@ -1063,7 +1100,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
         </div>
 
         {zones.map((zone, idx) => (
-          <div key={`${family}-${zone.label}`} className={styles.locusZoneCard}>
+          <div key={`${family}-${zone.label}-${idx}`} className={styles.locusZoneCard}>
             <div className={styles.row}>
               <span className={styles.label} style={{ fontWeight: 700, width: 28 }}>{zone.label}</span>
               <input
@@ -1072,6 +1109,14 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
                 onChange={(e) => updateZone(family, idx, "color", e.target.value)}
                 style={{ width: 34, height: 28, border: "none", cursor: "pointer", background: "transparent" }}
               />
+              <button
+                type="button"
+                className={styles.waveGhostBtn}
+                onClick={() => removeZone(family, idx)}
+                style={{ marginLeft: "auto", padding: "4px 10px", fontSize: "0.72rem" }}
+              >
+                Remove
+              </button>
             </div>
 
             {familyShape === "mho" ? (
@@ -1159,6 +1204,19 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
             )}
           </div>
         ))}
+      </div>
+    );
+  }
+
+  function renderManualZoneActions() {
+    return (
+      <div className={styles.locusTimeControls} style={{ margin: "12px 0 0" }}>
+        <button type="button" className={styles.applyBtn} onClick={() => addManualZone("ground")}>
+          Add Ground Zone
+        </button>
+        <button type="button" className={styles.applyBtn} onClick={() => addManualZone("phase")}>
+          Add Phase-Phase Zone
+        </button>
       </div>
     );
   }
@@ -1324,14 +1382,20 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       </div>
 
       {hasRelayZones ? (
-        <div className={styles.locusEditorGrid}>
-          {groundZones.length > 0 && renderZoneEditor("Ground Zones", "ground", groundZones, groundShape)}
-          {phaseZones.length > 0 && renderZoneEditor("Phase-Phase Zones", "phase", phaseZones, phaseShape)}
-        </div>
+        <>
+          {renderManualZoneActions()}
+          <div className={styles.locusEditorGrid}>
+            {groundZones.length > 0 && renderZoneEditor("Ground Zones", "ground", groundZones, groundShape)}
+            {phaseZones.length > 0 && renderZoneEditor("Phase-Phase Zones", "phase", phaseZones, phaseShape)}
+          </div>
+        </>
       ) : (
-        <div className={styles.warning} style={{ marginTop: 12 }}>
-          Belum ada karakteristik zona relay. Upload file RIO/XRIO untuk menampilkan mho atau polygon protection zone.
-        </div>
+        <>
+          <div className={styles.warning} style={{ marginTop: 12 }}>
+            Belum ada karakteristik zona relay. Upload file RIO/XRIO atau tambahkan zona manual.
+          </div>
+          {renderManualZoneActions()}
+        </>
       )}
     </div>
   );

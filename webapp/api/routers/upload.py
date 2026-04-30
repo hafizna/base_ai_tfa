@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from core.comtrade_parser import ComtradeRecord, parse_comtrade
 from core.protection_router import ProtectionType, determine_protection
+from ..json_safety import replace_non_finite_numbers
 from ..schemas import AnalysisCreatedResponse, AnalysisSummaryOut, ComtradeOut, RecalcByIdRequest
 from ..storage import load_analysis, save_analysis, update_analysis
 
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/api", tags=["upload"])
 
 
 def _record_to_out(record: ComtradeRecord) -> dict:
-    return {
+    payload = {
         "station_name": record.station_name,
         "rec_dev_id": record.rec_dev_id,
         "rev_year": record.rev_year,
@@ -60,6 +61,7 @@ def _record_to_out(record: ComtradeRecord) -> dict:
         ],
         "warnings": record.warnings,
     }
+    return replace_non_finite_numbers(payload)
 
 
 def _status_transition_count(samples: list[int]) -> int:
@@ -182,7 +184,7 @@ async def get_analysis(analysis_id: str):
     payload = load_analysis(analysis_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
-    return payload
+    return replace_non_finite_numbers(payload)
 
 
 @router.get("/analysis/{analysis_id}/summary", response_model=AnalysisSummaryOut)
@@ -222,6 +224,6 @@ async def recalculate_ratio(body: RecalcByIdRequest):
         else:
             updated_channels.append(channel)
 
-    updated_payload = {**payload, "analog_channels": updated_channels}
+    updated_payload = replace_non_finite_numbers({**payload, "analog_channels": updated_channels})
     update_analysis(body.analysis_id, updated_payload)
     return updated_payload

@@ -82,12 +82,6 @@ function expandVtRatio(primary: number, secondary: number): { primary: number; s
   return { primary: Math.round(primary * detected.secV), secondary: detected.secV };
 }
 
-function formatRatio(primary: number, secondary: number) {
-  const ratio = secondary > 0 ? primary / secondary : primary;
-  if (!Number.isFinite(ratio)) return "-";
-  return ratio >= 100 ? ratio.toFixed(0) : ratio.toFixed(3).replace(/\.?0+$/, "");
-}
-
 function buildGroups(comtrade: ComtradeData): RatioGroup[] {
   const currChs = comtrade.analog_channels.filter((ch) => ch.measurement === "current");
   const voltChs = comtrade.analog_channels.filter((ch) => ch.measurement === "voltage");
@@ -203,8 +197,6 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
               return oldR > 0 ? newR / oldR : 1;
             })();
             const changed = Math.abs(factor - 1) > 0.001;
-            const ratioValue = formatRatio(g.newPrimary, g.newSecondary);
-
             return (
               <div key={g.type} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span
@@ -239,13 +231,6 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
                     </option>
                   ))}
                 </select>
-                <span
-                  className={styles.badge}
-                  title={`${g.type} ratio ${ratioValue}:1`}
-                  style={{ fontSize: "0.68rem", background: "#f8fafc", color: "#475569" }}
-                >
-                  {ratioValue}:1
-                </span>
                 {changed && (
                   <span style={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 700, whiteSpace: "nowrap" }}>
                     ×{factor.toFixed(3)}

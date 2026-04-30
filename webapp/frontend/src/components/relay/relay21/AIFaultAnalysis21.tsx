@@ -153,7 +153,7 @@ export default function AIFaultAnalysis21({ analysisId, dataRevision = 0 }: Prop
               {result.cause_ranking.map((item) => (
                 <div key={item.cause} className={styles.rankingBar}>
                   <span className={styles.rankLabel}>{item.label}</span>
-                  <div style={{ flex: 1, background: "#f1f5f9", height: 10, borderRadius: 5, overflow: "hidden" }}>
+                  <div className={styles.rankTrack}>
                     <div className={styles.rankFill} style={{ width: `${item.confidence * 100}%` }} />
                   </div>
                   <span className={styles.rankPct}>{(item.confidence * 100).toFixed(0)}%</span>

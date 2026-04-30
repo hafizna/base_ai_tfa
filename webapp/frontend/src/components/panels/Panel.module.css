@@ -294,6 +294,14 @@
   flex-shrink: 0;
 }
 
+.rankTrack {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
 .rankFill {
   height: 10px;
   border-radius: 5px;
@@ -306,6 +314,23 @@
   color: #64748b;
   min-width: 36px;
   text-align: right;
+}
+
+@media print {
+  .rankTrack,
+  .rankFill {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .rankTrack {
+    border: 1px solid #e2e8f0;
+  }
+
+  .rankFill {
+    height: 8px;
+    background: #2563eb !important;
+  }
 }
 
 /* Zone editor */

@@ -64,7 +64,7 @@ export default function AIFaultAnalysis87L({ analysisId }: Props) {
           {result.cause_ranking.map((r) => (
             <div key={r.cause} className={styles.rankingBar}>
               <span className={styles.rankLabel}>{r.label}</span>
-              <div style={{ flex: 1, background: "#f1f5f9", height: 10, borderRadius: 5, overflow: "hidden" }}>
+              <div className={styles.rankTrack}>
                 <div className={styles.rankFill} style={{ width: `${r.confidence * 100}%` }} />
               </div>
               <span className={styles.rankPct}>{(r.confidence * 100).toFixed(0)}%</span>
