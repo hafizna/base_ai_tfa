@@ -2,7 +2,7 @@
 
 Sistem klasifikasi penyebab gangguan transmisi berbasis COMTRADE IEEE C37.111.
 
-Update terakhir: April 2026
+Update terakhir: 30 April 2026
 
 ---
 
@@ -34,26 +34,38 @@ INPUT: file .cfg + .dat (COMTRADE)
         │
         ▼
 1. Parse COMTRADE  →  Record
-2. determine_protection  →  ProtectionType (DISTANCE / 87T / 87L / UNKNOWN)
+2. determine_protection  →  ProtectionType (DISTANCE / 87T / 87L / OCR / REF / UNKNOWN)
 3. detect_fault          →  FaultEvent (inception time, duration, reclose outcome)
         │
-        ├── [87T] → Transformer classifier (inrush, internal fault, through fault, dll.)
+        ├── [87T] → Transformer classifier
+        │           inrush / internal / through / overexcitation / maloperate / unknown
         │
-        └── [DISTANCE / generic trip / UNKNOWN] → Line classifier
+        ├── [87L] → Line-differential branch
+        │           differential vs restraint, harmonic morphology, AI fault analysis
+        │
+        ├── [21]  → Distance branch
+        │           impedance locus R-X plane (DFT phasor + k0/CT-VT overrides,
+        │           RIO/XRIO zone overlay) + line classifier
+        │
+        └── [OCR / REF / DFR generic] → Line classifier
                 │
                 ▼
-        4. extract_distance_features  →  feature dict
+        4. extract_distance_features  →  17-feature dict
         5. Tier 1 rules (rules.py)
            ├── fault_on_reclose_phase_change   → KONDUKTOR / TOWER (85%)
            ├── three_pole_failed_reclose        → GANGGUAN PERMANEN (75%)
            └── explicit_failed_reclose          → GANGGUAN PERMANEN (90%)
                 │ tidak cocok
                 ▼
-        6. Tier 2 Multi-class ML (LightGBM/RandomForest, 17 fitur)
+        6. Tier 2 Multi-class ML — LightGBM (class_weight='balanced')
            → PETIR / LAYANG-LAYANG / POHON / HEWAN / BENDA ASING / KONDUKTOR / PERALATAN
-           → probabilitas per kelas ditampilkan di UI
-                │ model tidak tersedia
-                ▼
+           → probabilitas per kelas + evidence narrative ditampilkan di UI
+                │
+                ├── jika kelas teratas = PETIR:
+                │   tambahkan PETIR sub-mechanism (Shielding Failure / Back-Flashover
+                │   / Belum Konklusif) dengan reasoning data-driven (jumlah fasa, kA puncak)
+                │
+                ▼ model tidak tersedia
         7. Fallback → PERLU INVESTIGASI
 ```
 
@@ -79,12 +91,14 @@ Bila file berasal dari DFR eksternal (Qualitrol, Toshiba standalone) tanpa sinya
 | `core/transformer_channel_mapper.py` | Pemetaan channel trafo HV/LV/diff/restraint |
 | `core/transformer_feature_extractor.py` | Ekstraksi fitur trafo (H2, H5, slope, DC offset) |
 | `models/rules.py` | Tier 1: aturan deterministik KONDUKTOR/PERMANEN |
-| `models/train.py` | Training RandomForest 7-kelas (input: labeled_features.csv) |
-| `models/predict.py` | Inference end-to-end untuk satu file .cfg |
-| `models/transformer_classifier.py` | Klasifikasi event trafo berbasis pengetahuan |
-| `models/fault_classifier.pkl` | Model terlatih aktif (jumlah kelas mengikuti data trainable) |
-| `webapp/api/main.py` | FastAPI backend: upload, analysis, relay-specific endpoints |
-| `webapp/frontend/` | React (Vite) UI yang terhubung ke FastAPI via `/api/*` |
+| `models/train.py` | Training **LightGBM** 7-kelas (input: labeled_features.csv); CV report otomatis |
+| `models/predict.py` | Inference end-to-end + PETIR sub-mechanism (SF/BFO) classifier |
+| `models/transformer_classifier.py` | Klasifikasi event trafo berbasis pengetahuan (6 kelas) |
+| `models/fault_classifier.pkl` | Model LightGBM aktif (7 kelas line-fault) |
+| `webapp/api/main.py` | FastAPI backend root, mount semua router |
+| `webapp/api/routers/` | Router per-rele: `upload`, `relay_21`, `relay_87l`, `relay_87t`, `relay_ocr`, `relay_ref` |
+| `webapp/api/ml_predict.py` | Builder fitur 17-dim + evidence narrative untuk React UI |
+| `webapp/frontend/` | React (Vite) UI yang terhubung ke FastAPI via `/api/*` (proxy `:5173 → :8000`) |
 | `batch_extract.py` | Ekstraksi fitur batch dari seluruh raw_data/ termasuk corpus kandidat 87L |
 | `extract_all.py` | Ekstraksi arsip ZIP/RAR menggunakan 7-Zip |
 
@@ -145,13 +159,16 @@ python models/predict.py path/to/file.cfg
 
 | Parameter | Nilai |
 |---|---|
-| Algoritma | RandomForestClassifier (300 trees) |
-| Kelas | PETIR, LAYANG, POHON, HEWAN, BENDA_ASING, KONDUKTOR, PERALATAN |
-| Sampel training | ~400 baris (setelah quality filter + Tier 1 exclusion) |
-| Fitur | 13 (lihat `models/train.py:FEATURE_COLS`) |
-| CV accuracy | 82.9% ± 2.6% (5-fold stratified) |
-| CV F1 weighted | 78.3% ± 3.5% |
-| Catatan | `POHON` dan `PERALATAN` tetap muncul di taksonomi, tetapi hanya menjadi kelas prediksi bila data latih usable sudah mencukupi |
+| Algoritma | **LGBMClassifier** (LightGBM, `class_weight='balanced'`) |
+| Kelas | PETIR, LAYANG, POHON, HEWAN, BENDA_ASING, KONDUKTOR, PERALATAN (7) |
+| Sampel training | ~450+ baris (setelah quality filter + Tier 1 exclusion) |
+| Fitur | **17** (lihat `models/train.py:FEATURE_COLS`) |
+| CV F1 macro | 0.407 (LGBM) vs 0.352 (RF) — primary metric karena class imbalance |
+| CV F1 weighted | 0.757 (LGBM) vs 0.738 (RF) |
+| CV accuracy | 0.778 (LGBM) — kurang relevan karena imbalance |
+| Kalibrasi | temperature scaling T=1.5; ceiling 92%; cap 0.65/0.72 saat voltage absent |
+| PETIR sub-mechanism | Shielding Failure / Back-Flashover / Belum Konklusif (rule-based, data-driven) |
+| Catatan | `POHON` dan `PERALATAN` tetap di taksonomi, tetapi hanya muncul sebagai prediksi bila data latih usable sudah mencukupi. Untuk RF vs LGBM benchmarking jalankan `compare_models.py`. |
 
 ---
 
@@ -163,6 +180,20 @@ python models/predict.py path/to/file.cfg
 - `KONDUKTOR / TOWER` (Tier 1 conductor fault rule)
 - `PERLU INVESTIGASI` (fallback)
 
+#### PETIR sub-mechanism (saat top-class = PETIR)
+Evidence panel menambahkan satu baris yang membedakan dua mekanisme petir,
+dengan reasoning data-driven (fasa terganggu + arus puncak kA):
+
+| Subtype | Indikator |
+|---|---|
+| **Shielding Failure (SF)** | satu fasa, peak < 8 kA → konsisten dengan distribusi EGM (sambaran lolos kawat tanah) |
+| **Back-Flashover (BFO)** | multi-fasa **atau** satu fasa dengan peak ≥ 30 kA → potensial tower naik melampaui BIL |
+| **Belum Konklusif** | satu fasa, peak 8–30 kA (rentang tumpang tindih) atau skala CT tak dipercaya |
+
+Catatan: keputusan SF/BFO yang lebih akurat memerlukan integrasi data PI
+(tower footing resistance + BIL isolator) — saat ini sub-mechanism hanya
+heuristik dari waveform lokal.
+
 ### Transformer differential (87T)
 - `INRUSH MAGNETISASI`
 - `GANGGUAN INTERNAL TRAFO`
@@ -170,6 +201,11 @@ python models/predict.py path/to/file.cfg
 - `TEGANGAN LEBIH / OVEREKSITASI`
 - `KEMUNGKINAN MALOPERATE`
 - `PERLU INVESTIGASI`
+
+### Distance (relay 21)
+- AI fault analysis (memakai line classifier + PETIR sub-mechanism)
+- Diagram R-X impedance locus (DFT phasor) dengan zone overlay dari RIO/XRIO
+- Override CT primary, VT primary, dan k0 (residual compensation) per analisis
 
 ---
 
@@ -401,35 +437,71 @@ Itu lebih dekat dengan praktik engineering PLN, lebih jujur terhadap keterbatasa
 ## Struktur Folder
 
 ```text
-base_ai_tfa/                    ← repo root
+base_ai_tfa/                          ← repo root
   core/
-    comtrade_parser.py
+    comtrade_parser.py                  ← parser COMTRADE multi-merk
     channel_normalizer.py
-    channel_mappings.json       ← pola channel per merk (NARI, ABB, Siemens, Toshiba, dll.)
-    protection_router.py
+    channel_mappings.json               ← pola channel per merk (NARI, ABB, Siemens, Toshiba, dll.)
+    protection_router.py                ← deteksi tipe rele + zona + trip type
     fault_detector.py
-    feature_extractor.py
+    feature_extractor.py                ← 17 fitur line/transmisi
+    differential_feature_extractor.py   ← fitur 87L (rise time, DWT energy, dll.)
     transformer_channel_mapper.py
     transformer_feature_extractor.py
     path_heuristics.py
+    rio_parser.py                       ← parser file proteksi RIO/XRIO untuk overlay zona
+  config/
+    channel_mappings.json
+    relay_lookup.json
   models/
-    rules.py
-    train.py
-    predict.py
+    rules.py                            ← Tier 1 deterministic rules
+    train.py                            ← LightGBM training (CV report)
+    predict.py                          ← inference + PETIR SF/BFO sub-classifier
     transformer_classifier.py
-    fault_classifier.pkl        ← model aktif (5-class RandomForest)
-    petir_tree.pkl              ← alias legacy (sama dengan fault_classifier.pkl)
+    fault_classifier.pkl                ← model aktif (LightGBM, 7 kelas)
+    petir_tree.pkl                      ← legacy alias
+    stage3_petir_classifier.pkl
+    stage3_feature_columns.pkl
   webapp/
-    app.py
-    templates/
-      index.html
-      results.html
-      history.html
-      browse.html
+    api/
+      main.py                           ← FastAPI app root
+      ml_predict.py                     ← evidence builder untuk React UI
+      schemas.py                        ← Pydantic request/response
+      storage.py                        ← session storage (CSV/Postgres fallback)
+      routers/
+        upload.py                       ← POST /api/upload
+        relay_21.py                     ← distance + impedance locus
+        relay_87l.py                    ← line differential
+        relay_87t.py                    ← transformer differential
+        relay_ocr.py
+        relay_ref.py
+    frontend/
+      package.json
+      vite.config.ts                    ← proxy /api/* → :8000
+      src/
+        App.tsx
+        main.tsx
+        pages/                          ← Landing, Upload, Workspace
+        components/
+          panels/                       ← COMTRADEExplorer (per-side waveform), SOETimeline, dll.
+          relay/relay21/                ← ImpedanceLocus, ElectricalParams21
+          relay/relay87l/               ← DiffRestraintPlot, AIFaultAnalysis87L
+          relay/relay87t/               ← FaultRecap87T
+        api/client.ts                   ← axios client; baseURL = VITE_API_URL || ""
+        context/AnalysisContext.tsx
   data/
-    features/                   ← di-gitignore; diisi oleh batch_extract.py
-  batch_extract.py
-  extract_all.py
+    features/                           ← labeled_features.csv (training set, ~314 KB)
+    labels/                             ← labels_from_folders.csv (folder-derived labels)
+    predictions/                        ← gitignored; output batch_predict.py
+  tests/                                ← pytest suite (78 tests)
+  batch_extract.py                      ← batch ekstraksi fitur dari raw_data/
+  batch_predict.py
+  extract_all.py                        ← unzip arsip via 7-Zip
+  Dockerfile                            ← multi-stage: vite build → python runtime
+  Procfile                              ← web: ./start.sh
+  start.sh                              ← uvicorn webapp.api.main:app --port $PORT
+  nixpacks.toml
+  railway.json
   requirements.txt
 ```
 
@@ -439,15 +511,18 @@ base_ai_tfa/                    ← repo root
 
 | Komponen | Status | Catatan |
 |---|---|---|
-| Parser COMTRADE multi-merk | Selesai | NARI, ABB, Siemens, GE, Alstom, Toshiba, Qualitrol |
+| Parser COMTRADE multi-merk | Selesai | NARI, ABB, Siemens, GE, Alstom, Toshiba, Qualitrol, Reyrolle |
 | Deteksi CB status (52A/52B, PMT) | Selesai | Digunakan untuk konfirmasi trip/reclose DFR tanpa sinyal rele |
 | Tier 1 rule engine | Selesai | 3 aturan deterministik KONDUKTOR/PERMANEN |
-| Multi-class fault classifier | Selesai | 5-class RF, accuracy 82.9%. POHON butuh data lebih |
-| Transformer differential support | Selesai | H2/H5/slope/DC offset, 6 kelas event |
-| Web app & browse | Selesai | Upload, browse raw_data, history |
+| Multi-class fault classifier (line) | Selesai | **LightGBM 7-class**, F1-macro 0.407 / weighted 0.757; POHON butuh data lebih |
+| **PETIR sub-mechanism (SF / BFO)** | Selesai | Heuristik data-driven (fasa + kA puncak), reasoning ditampilkan di evidence |
+| Transformer differential (87T) | Selesai | H2/H5/slope/DC offset, 6 kelas event |
+| Distance (relay 21) impedance locus | Selesai | DFT phasor R-X plane, k0 + CT/VT override, RIO/XRIO zone overlay |
+| Line differential (87L) | Selesai | Diff vs restraint, AI fault analysis, rise time + DWT energy ratio |
+| **Siemens 7UT side suffix (.a / .b / .c)** | Selesai | HV vs LV current panels terpisah di COMTRADE Explorer (bukan overlay per fasa) |
+| Backend FastAPI + frontend React/Vite | Selesai | Migrasi dari Flask + Jinja templates (legacy app dihapus April 2026) |
 | Batch extraction pipeline | Selesai | ZIP/RAR via 7-Zip, skip duplikat, error log, simpan corpus 87L |
-| Line differential (87L) dataset lane | Selesai | Rekaman berlabel 87L tidak lagi dibuang saat ekstraksi |
-| Kurasi data stakeholder | Berlanjut | Isi `correct`/`notes` di `labeled_features.csv` dan kurasi corpus `labeled_features_87l.csv` |
+| Kurasi data stakeholder | Berlanjut | Isi `correct`/`notes` di `labeled_features.csv` |
 | Data kelas POHON | Kurang | Perlu minimal 10+ rekaman berlabel POHON untuk training |
 
 Panduan labeling ringkas tersedia di [LABELING_GUIDELINES.md](LABELING_GUIDELINES.md).
