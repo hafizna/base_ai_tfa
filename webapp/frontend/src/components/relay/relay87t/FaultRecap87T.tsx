@@ -36,7 +36,14 @@ function phaseOf(ch: AnalogChannel): "A" | "B" | "C" | null {
 
 function isRelayDiff(ch: AnalogChannel): boolean {
   const u = ch.unit.toLowerCase();
-  return u === "pu" || u === "in";
+  const name = `${ch.name} ${ch.canonical_name}`.toUpperCase();
+  return (
+    u === "pu" ||
+    u === "in" ||
+    /\b(?:IDIFF|IDIF|IDL[123]?|IBIAS|IREST|IRESTR|BIAS|RESTRAINT|LDL)\b/.test(name) ||
+    /\bIL[123]\s*D\b/.test(name) ||
+    /\bIL[123]D\b/.test(name)
+  );
 }
 
 type DigType = "trip" | "ref" | "diff" | "trigger" | "alarm" | "other";
@@ -45,7 +52,7 @@ function classifyDig(name: string): DigType {
   const u = name.toUpperCase();
   if (/TRPOUT|TRP_OUT|TRP\d|TRIPOUT/.test(u)) return "trip";
   if (/64REF|REF\.OP|REF_OP|SBEF|GFR\.OP/.test(u)) return "ref";
-  if (/87[TL]\./.test(u)) return "diff";
+  if (/87[TL]\.|L3D|LT3D|LDL|DIFL|DIFF/.test(u)) return "diff";
   if (/TRIGDFR|TRIG\.DFR|DFR\.TRIG|TRIGDFR/.test(u)) return "trigger";
   if (/ALM|ALARM/.test(u)) return "alarm";
   return "other";
@@ -94,6 +101,29 @@ interface FaultAnalysis {
   tripDurationMs: number | null;
   refOperated: boolean;
   refWindings: string[];
+  inceptionMs: number | null;
+}
+
+interface LineDiffAnalog {
+  channel: string;
+  role: "Differential" | "Restraint";
+  phase: "A" | "B" | "C" | "N" | "-";
+  peak: number;
+  rms: number;
+  firstRiseMs: number | null;
+}
+
+interface LineDiffAnalysis {
+  analogs: LineDiffAnalog[];
+  diffAnalogs: LineDiffAnalog[];
+  restraintAnalogs: LineDiffAnalog[];
+  activePhases: ("A" | "B" | "C" | "N")[];
+  digEvents: DigEvent[];
+  diffEvents: DigEvent[];
+  tripEvents: DigEvent[];
+  localTripMs: number | null;
+  remoteTripMs: number | null;
+  tripOutputMs: number | null;
   inceptionMs: number | null;
 }
 
@@ -257,6 +287,136 @@ function analyze(comtrade: ComtradeData): FaultAnalysis {
 
 // ─── sub-components ─────────────────────────────────────────────────────────
 
+function phaseOfLineDiff(ch: AnalogChannel): "A" | "B" | "C" | "N" | "-" {
+  const text = `${ch.name} ${ch.canonical_name}`.toUpperCase();
+  if (/\b(?:IDIFF_A|IDL1|IL1D|IL1\s+D)\b/.test(text)) return "A";
+  if (/\b(?:IDIFF_B|IDL2|IL2D|IL2\s+D)\b/.test(text)) return "B";
+  if (/\b(?:IDIFF_C|IDL3|IL3D|IL3\s+D)\b/.test(text)) return "C";
+  if (/\b(?:IDIFF_N|IDNS|IN\s+D)\b/.test(text)) return "N";
+  return "-";
+}
+
+function isLineDiffAnalog(ch: AnalogChannel): boolean {
+  const text = `${ch.name} ${ch.canonical_name}`.toUpperCase();
+  return (
+    /\b(?:IDIFF|IDIF|IDL[123]?|LDL)\b/.test(text) ||
+    /\bIL[123]\s*D\b/.test(text) ||
+    /\bIL[123]D\b/.test(text) ||
+    /\bIDNS(?:MAG)?\b/.test(text)
+  );
+}
+
+function isRestraintAnalog(ch: AnalogChannel): boolean {
+  const text = `${ch.name} ${ch.canonical_name}`.toUpperCase();
+  return /\b(?:IREST|IRESTR|IBIAS|BIAS|RESTRAINT|RSTR)\b/.test(text);
+}
+
+function firstRiseMs(samples: number[], timeMs: number[]): number | null {
+  if (!samples.length || !timeMs.length) return null;
+  const preEnd = Math.max(4, Math.floor(samples.length * 0.2));
+  const pre = samples.slice(0, preEnd);
+  const preRms = rmsOf(pre);
+  const peak = peakOf(samples);
+  const threshold = Math.max(preRms * 2, peak * 0.15, 0.001);
+  for (let i = preEnd; i < samples.length; i++) {
+    if (Math.abs(samples[i]) >= threshold) return timeMs[i] ?? null;
+  }
+  return null;
+}
+
+function lineDiffEventTag(name: string) {
+  const upper = name.toUpperCase();
+  if (/TRLOCAL|LOCAL/.test(upper)) return "LOCAL";
+  if (/TRREMOTE|REMOTE/.test(upper)) return "REMOTE";
+  if (/TRL[123]|LT3D|LDL|DIFF|DIFL/.test(upper)) return "DIFF";
+  if (/TRIP|TRP/.test(upper)) return "TRIP";
+  if (/AR|RECLOS|RECLOSE/.test(upper)) return "AR";
+  return "INFO";
+}
+
+function analyzeLineDiff(comtrade: ComtradeData): LineDiffAnalysis {
+  const timeMs = comtrade.time.map((t) => t * 1000);
+  const analogs: LineDiffAnalog[] = comtrade.analog_channels
+    .filter((ch) => isLineDiffAnalog(ch) || isRestraintAnalog(ch))
+    .map((ch) => {
+      const role: LineDiffAnalog["role"] = isRestraintAnalog(ch) ? "Restraint" : "Differential";
+      return {
+        channel: ch.name,
+        role,
+        phase: phaseOfLineDiff(ch),
+        peak: peakOf(ch.samples),
+        rms: rmsOf(ch.samples),
+        firstRiseMs: firstRiseMs(ch.samples, timeMs),
+      };
+    })
+    .sort((a, b) => {
+      const roleRank = a.role === b.role ? 0 : a.role === "Differential" ? -1 : 1;
+      if (roleRank !== 0) return roleRank;
+      return a.channel.localeCompare(b.channel);
+    });
+
+  const diffAnalogs = analogs.filter((item) => item.role === "Differential");
+  const restraintAnalogs = analogs.filter((item) => item.role === "Restraint");
+  const maxDiffPeak = Math.max(0, ...diffAnalogs.map((item) => item.peak));
+  const activePhases = [
+    ...new Set(
+      diffAnalogs
+        .filter((item) => item.phase !== "-" && item.peak >= Math.max(maxDiffPeak * 0.2, 0.001))
+        .map((item) => item.phase as "A" | "B" | "C" | "N")
+    ),
+  ];
+
+  const digEvents: DigEvent[] = comtrade.status_channels
+    .filter((ch) => ch.samples.some((s) => s === 1))
+    .map((ch) => {
+      let activateMs: number | null = null;
+      let deactivateMs: number | null = null;
+      for (let i = 0; i < ch.samples.length; i++) {
+        if (ch.samples[i] === 1 && activateMs === null) activateMs = timeMs[i] ?? null;
+        if (ch.samples[i] === 0 && activateMs !== null && deactivateMs === null) {
+          deactivateMs = timeMs[i] ?? null;
+        }
+      }
+      return {
+        name: ch.name,
+        type: classifyDig(ch.name),
+        activateMs,
+        durationMs: activateMs !== null && deactivateMs !== null ? deactivateMs - activateMs : null,
+      };
+    });
+
+  const diffEvents = digEvents
+    .filter((event) => /L3D|LT3D|LDL|DIFL|DIFF|87L/i.test(event.name))
+    .sort((a, b) => (a.activateMs ?? Infinity) - (b.activateMs ?? Infinity));
+  const tripEvents = digEvents
+    .filter((event) => /TRIP|TRP|TRL|TRLOCAL|TRREMOTE/i.test(event.name))
+    .sort((a, b) => (a.activateMs ?? Infinity) - (b.activateMs ?? Infinity));
+
+  const localTripMs = diffEvents.find((event) => /TRLOCAL|LOCAL/i.test(event.name))?.activateMs ?? null;
+  const remoteTripMs = diffEvents.find((event) => /TRREMOTE|REMOTE/i.test(event.name))?.activateMs ?? null;
+  const tripOutputMs = tripEvents.find((event) => /^TRIP|TRIP\s|TRIP[123LP]|CB\s/i.test(event.name))?.activateMs
+    ?? tripEvents[0]?.activateMs
+    ?? null;
+  const inceptionMs = diffAnalogs
+    .map((item) => item.firstRiseMs)
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b)[0] ?? null;
+
+  return {
+    analogs,
+    diffAnalogs,
+    restraintAnalogs,
+    activePhases,
+    digEvents,
+    diffEvents,
+    tripEvents,
+    localTripMs,
+    remoteTripMs,
+    tripOutputMs,
+    inceptionMs,
+  };
+}
+
 function MetricCard({
   label,
   value,
@@ -325,8 +485,160 @@ const TD: React.CSSProperties = {
 
 // ─── main component ─────────────────────────────────────────────────────────
 
+function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
+  const r = useMemo(() => analyzeLineDiff(comtrade), [comtrade]);
+  const operated = r.diffEvents.length > 0 || r.tripEvents.length > 0;
+  const firstOperateMs = r.diffEvents[0]?.activateMs ?? r.tripOutputMs;
+  const inceptionToTrip =
+    r.inceptionMs !== null && firstOperateMs !== null ? firstOperateMs - r.inceptionMs : null;
+  const sequenceEvents = [...r.diffEvents, ...r.tripEvents]
+    .filter((event, index, arr) => arr.findIndex((item) => item.name === event.name) === index)
+    .sort((a, b) => (a.activateMs ?? Infinity) - (b.activateMs ?? Infinity))
+    .slice(0, 12);
+
+  return (
+    <div className={styles.panel}>
+      <div className={styles.panelHeader}>
+        <h2 className={styles.panelTitle}>87L Operation Recap</h2>
+      </div>
+
+      <div className={styles.row} style={{ alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span
+          className={styles.statusBadge}
+          style={
+            operated
+              ? { background: "#eff6ff", color: "#1d4ed8", border: "1.5px solid #93c5fd" }
+              : { background: "#f8fafc", color: "#64748b", border: "1.5px solid #cbd5e1" }
+          }
+        >
+          {operated ? "Differential trip observed" : "No differential trip signal found"}
+        </span>
+        {(["A", "B", "C", "N"] as const).map((ph) => {
+          const active = r.activePhases.includes(ph);
+          return (
+            <span
+              key={ph}
+              title={`Differential phase ${ph}`}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                border: "2px solid",
+                borderColor: active ? "#2563eb" : "#e2e8f0",
+                background: active ? "#eff6ff" : "#f8fafc",
+                color: active ? "#1d4ed8" : "#94a3b8",
+                fontWeight: 800,
+                fontSize: "0.78rem",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {ph}
+            </span>
+          );
+        })}
+      </div>
+
+      <p style={{ fontSize: "0.82rem", color: "#475569", margin: "8px 0 16px", lineHeight: 1.5 }}>
+        Ringkasan ini membaca sinyal 87L sebagai operasi diferensial: arus differential/operate,
+        arus restraint/bias, serta urutan trip lokal dan remote. Ini bukan klasifikasi OCR berbasis
+        puncak arus fasa biasa.
+      </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8, marginBottom: 16 }}>
+        {r.inceptionMs !== null && <MetricCard label="Diff Inception" value={r.inceptionMs.toFixed(1)} unit="ms" />}
+        {r.localTripMs !== null && <MetricCard label="Local Trip" value={r.localTripMs.toFixed(1)} unit="ms" highlight />}
+        {r.remoteTripMs !== null && <MetricCard label="Remote Trip" value={r.remoteTripMs.toFixed(1)} unit="ms" />}
+        {r.tripOutputMs !== null && <MetricCard label="Trip Output" value={r.tripOutputMs.toFixed(1)} unit="ms" highlight />}
+        {inceptionToTrip !== null && <MetricCard label="Operate Time" value={inceptionToTrip.toFixed(1)} unit="ms" />}
+      </div>
+
+      {r.analogs.length > 0 && (
+        <>
+          <h3 style={{ fontSize: "0.75rem", color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>
+            Differential / Restraint Analog Channels
+          </h3>
+          <div style={{ overflowX: "auto", marginBottom: 16 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={TH}>Channel</th>
+                  <th style={TH}>Role</th>
+                  <th style={TH}>Phase</th>
+                  <th style={TH}>Peak</th>
+                  <th style={TH}>RMS</th>
+                  <th style={TH}>First Rise</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.analogs.map((item) => (
+                  <tr key={`${item.role}-${item.channel}`}>
+                    <td style={{ ...TD, fontWeight: 700, color: "#1e293b" }}>{item.channel}</td>
+                    <td style={TD}>
+                      <span style={{ color: item.role === "Differential" ? "#1d4ed8" : "#7c3aed", fontWeight: 700 }}>
+                        {item.role}
+                      </span>
+                    </td>
+                    <td style={TD}>{item.phase}</td>
+                    <td style={TD}><strong>{item.peak.toFixed(item.peak >= 100 ? 1 : 2)}</strong></td>
+                    <td style={TD}>{item.rms.toFixed(item.rms >= 100 ? 1 : 2)}</td>
+                    <td style={TD}>{item.firstRiseMs !== null ? `${item.firstRiseMs.toFixed(1)} ms` : "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {sequenceEvents.length > 0 && (
+        <>
+          <h3 style={{ fontSize: "0.75rem", color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>
+            Protection Sequence
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {sequenceEvents.map((event) => {
+              const tag = lineDiffEventTag(event.name);
+              return (
+                <div
+                  key={event.name}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "72px minmax(0, 1fr) auto auto",
+                    gap: 8,
+                    alignItems: "center",
+                    padding: "7px 10px",
+                    background: tag === "DIFF" || tag === "LOCAL" ? "#eff6ff" : "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 7,
+                  }}
+                >
+                  <span style={{ color: "#1d4ed8", fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.08em" }}>{tag}</span>
+                  <span style={{ color: "#1e293b", fontSize: "0.82rem", fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {event.name}
+                  </span>
+                  <span style={{ color: "#64748b", fontSize: "0.75rem", fontVariantNumeric: "tabular-nums" }}>
+                    {event.activateMs !== null ? `${event.activateMs.toFixed(1)} ms` : "-"}
+                  </span>
+                  <span style={{ color: "#94a3b8", fontSize: "0.72rem", fontVariantNumeric: "tabular-nums" }}>
+                    {event.durationMs !== null ? `${event.durationMs.toFixed(0)} ms` : ""}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function FaultRecap87T({ comtrade, relayLabel = "Transformer 87T / REF" }: Props) {
   const r = useMemo(() => analyze(comtrade), [comtrade]);
+  if (/87L|LINE DIFFERENTIAL/i.test(relayLabel)) {
+    return <LineDifferentialRecap comtrade={comtrade} />;
+  }
 
   const faultColors: Record<string, { bg: string; border: string; text: string }> = {
     "?": { bg: "#f8fafc", border: "#e2e8f0", text: "#64748b" },

@@ -45,6 +45,7 @@ from core.comtrade_parser import parse_comtrade
 from core.protection_router import determine_protection, ProtectionType
 from core.fault_detector import detect_fault, extract_soe
 from core.feature_extractor import extract_distance_features
+from core.current_anomaly import detect_ct_measurement_anomaly_record
 from core.differential_feature_extractor import extract_87l_features
 from core.transformer_channel_mapper import map_transformer_channels
 from core.transformer_feature_extractor import extract_transformer_features, features_to_dict
@@ -1029,6 +1030,10 @@ def classify_file(cfg_path: str) -> ClassificationResult:
         # ── Step 5: flatten features ──────────────────────────────────────────
         row = _augment_row_with_soe_context(_flatten(feat, fault), _soe)
         row["protection_type"] = prot.primary_protection.value  # e.g. "21", "67N", "50/51"
+        _ct_anomaly = detect_ct_measurement_anomaly_record(record, fault)
+        row["ct_anomaly_detected"] = bool(_ct_anomaly.get("detected"))
+        row["ct_anomaly_phase"] = str(_ct_anomaly.get("phase", "") or "")
+        row["ct_anomaly_evidence"] = str(_ct_anomaly.get("evidence", "") or "")
 
         # Detect whether voltage channels were actually present.
         # If absent (common for OCR, external DFR), inception_angle and

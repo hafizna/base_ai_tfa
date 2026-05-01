@@ -19,6 +19,13 @@ _CHANNEL_MAPPINGS: Optional[dict] = None
 
 def _extract_protection_phase(raw_upper: str) -> Optional[str]:
     """Extract phase tags from protection-analog labels such as IDA or phs A."""
+    line_diff_match = re.search(r"\b(?:IDL|IL|ID)([123])(?:D|MAG)?\b|\bIL([123])\s*D\b", raw_upper)
+    if line_diff_match:
+        phase_no = line_diff_match.group(1) or line_diff_match.group(2)
+        return {"1": "A", "2": "B", "3": "C"}.get(phase_no)
+    if re.search(r"\bIDNS(?:MAG)?\b", raw_upper):
+        return "N"
+
     patterns = (
         r"\bPHS\s*([ABCN])\b",
         r"\bPHASE\s*([ABCN])\b",
@@ -46,16 +53,19 @@ def _normalize_protection_analog_channel(raw_name: str, raw_upper: str) -> Optio
     if re.search(r"\b(?:HM2|H2|HM5|H5|HARM(?:ONIC)?)\b", text):
         return None
 
-    if re.search(r"\b(?:IREST|IRESTR|I RESTR|I RESTRAINT|RSTR|RESTRAINT|BIAS)\b", text):
+    if re.search(r"\b(?:IREST|IRESTR|I RESTR|I RESTRAINT|RSTR|RESTRAINT|BIAS|IBIAS)\b", text):
         return {
-            "canonical_name": f"IREST_{phase}" if phase else raw_name,
+            "canonical_name": f"IREST_{phase}" if phase else "IREST",
             "phase": phase,
             "measurement": "current",
         }
 
-    if re.search(r"\b(?:IDIFF|IDIF|I DIFF|I DIFF OPERATE|I DIFF PHS|87L I DIFF)\b", text):
+    if (
+        re.search(r"\b(?:IDIFF|IDIF|I DIFF|I DIFF OPERATE|I DIFF PHS|87L I DIFF)\b", text)
+        or re.search(r"\b(?:IDL[123]?(?:MAG)?|IL[123]\s*D|IL[123]D|LT3D IDL[123]?(?:MAG)?|IDNSMAG|LDL)\b", text)
+    ):
         return {
-            "canonical_name": f"IDIFF_{phase}" if phase else raw_name,
+            "canonical_name": f"IDIFF_{phase}" if phase else "IDIFF",
             "phase": phase,
             "measurement": "current",
         }

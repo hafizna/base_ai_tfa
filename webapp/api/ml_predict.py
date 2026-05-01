@@ -18,6 +18,7 @@ if str(_PIPELINE_DIR) not in sys.path:
     sys.path.insert(0, str(_PIPELINE_DIR))
 
 from models.predict import _petir_subtype_description  # noqa: E402
+from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
 
@@ -394,6 +395,16 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
     if len(digital.get("digital_startup_phases") or []) == 1:
         faulted_phases_str = digital["digital_startup_phases"][0]
 
+    ct_anomaly = detect_ct_measurement_anomaly(
+        {"A": ia, "B": ib, "C": ic},
+        {"A": va, "B": vb, "C": vc},
+        sr,
+        freq,
+        inception_idx,
+        extinction_idx,
+        fault_duration_ms,
+    )
+
     # Zone from status channels
     zone_str = ""
     for sch in status_channels:
@@ -423,6 +434,9 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
         "trip_type": trip_type_str,
         "faulted_phases": faulted_phases_str,
         "zone_operated": zone_str,
+        "ct_anomaly_detected": bool(ct_anomaly.get("detected")),
+        "ct_anomaly_phase": str(ct_anomaly.get("phase", "") or ""),
+        "ct_anomaly_evidence": str(ct_anomaly.get("evidence", "") or ""),
     }
     result.update(digital)
     return result
@@ -488,6 +502,28 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
         "KONDUKTOR":   "Konduktor / Tower",
         "PERALATAN":   "Peralatan / Proteksi",
     }
+
+    if row.get("ct_anomaly_detected"):
+        ranking = [
+            {"cause": "PERALATAN", "label": LABEL_MAP["PERALATAN"], "confidence": 0.82},
+            {"cause": "KONDUKTOR", "label": LABEL_MAP["KONDUKTOR"], "confidence": 0.07},
+            {"cause": "PETIR", "label": LABEL_MAP["PETIR"], "confidence": 0.05},
+            {"cause": "POHON", "label": LABEL_MAP["POHON"], "confidence": 0.03},
+            {"cause": "LAYANG", "label": LABEL_MAP["LAYANG"], "confidence": 0.02},
+            {"cause": "HEWAN", "label": LABEL_MAP["HEWAN"], "confidence": 0.01},
+            {"cause": "BENDA_ASING", "label": LABEL_MAP["BENDA_ASING"], "confidence": 0.0},
+        ]
+        return {
+            "fault_type": "permanent",
+            "cause_ranking": ranking,
+            "overall_confidence": 0.82,
+            "evidence": [
+                "Indikasi anomali CT/pengukuran terdeteksi dari pola arus.",
+                f"Detail: {row.get('ct_anomaly_evidence', '')}.",
+                "Arus yang naik stabil pada fasa dengan tegangan tetap sehat lebih konsisten dengan masalah rangkaian CT/peralatan daripada sambaran petir impulsif.",
+                "Rekomendasi: periksa CT secondary, wiring, terminal block, burden, dan rekaman relay pembanding sebelum menyimpulkan gangguan lapangan.",
+            ],
+        }
 
     if model_bundle is None:
         n = len(LABEL_MAP)

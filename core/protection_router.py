@@ -388,6 +388,8 @@ def _check_differential_operate(status_names: List[str], status_dict: dict) -> b
     # DFR: "DIFF TRIP", "87 TRIP", "MAIN PROT" (if from differential relay)
     patterns = ['87L', '87 ', 'DIFF', 'DIFFERENTIAL',
                 'L3D',        # ABB REL: "L3D-TRL1", "L3D-TRIPRES" (line 3-terminal diff)
+                'LT3D',       # ABB/DFR exports: "LT3D-TRL1", "LT3D-IDL1MAG"
+                'LDL',        # Line differential local/remote trip: "LDL-TRLOCAL"
                 'DIFL',       # ABB: "DIFL:OPERATE"
                 ]
     operate_keywords = ['OPERATE', 'TRIP',

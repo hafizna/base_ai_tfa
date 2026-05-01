@@ -10,6 +10,7 @@ interface Props {
 
 const MAX_PLOT_POINTS = 5000;
 const PLOT_LEFT_MARGIN = 120; // shared margin keeps analog & digital x-axes aligned
+type AnalogViewMode = "stacked" | "grouped";
 
 /** Find intervals where digital channel is active (state=1). */
 function findActiveIntervals(timeMs: number[], samples: number[]): [number, number][] {
@@ -99,8 +100,94 @@ function inferChannelColor(name: string, measurement: string) {
   return "#64748b";
 }
 
-function channelLabel(name: string, canonical: string) {
-  return canonical || name;
+function phaseFromNameOrCanonical(ch: Pick<AnalogChannel, "name" | "canonical_name" | "phase">): string | null {
+  if (ch.phase) return ch.phase;
+  const text = `${ch.canonical_name} ${ch.name}`.toUpperCase();
+  if (/\b(?:IA|IL1|I1|IDL1|IDIFF_A)\b|\bIL1\s*D\b/.test(text)) return "A";
+  if (/\b(?:IB|IL2|I2|IDL2|IDIFF_B)\b|\bIL2\s*D\b/.test(text)) return "B";
+  if (/\b(?:IC|IL3|I3|IDL3|IDIFF_C)\b|\bIL3\s*D\b/.test(text)) return "C";
+  if (/\b(?:IN|I0|3I0|IDNS)\b/.test(text)) return "N";
+  return null;
+}
+
+type ChannelRole = "lineCurrent" | "remoteCurrent" | "differential" | "restraint" | "voltage" | "neutralCurrent" | "unknown";
+
+function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" | "measurement" | "phase">): ChannelRole {
+  const text = `${ch.name} ${ch.canonical_name}`.toUpperCase();
+  const unit = ch.unit.toLowerCase();
+
+  if (/\b(?:IBIAS|IREST|IRESTR|RESTRAINT|RSTR|BIAS)\b/.test(text)) return "restraint";
+  if (/\b(?:IDIFF|IDIF|IDL[123]?|LDL)\b/.test(text) || /\bIL[123]\s*D\b/.test(text) || /\bIL[123]D\b/.test(text)) {
+    return "differential";
+  }
+  if (unit === "pu" || unit === "in") return "differential";
+  if (ch.measurement === "voltage") return "voltage";
+  if (/\b(?:IN|I0|3I0|IDNS)\b/.test(text)) return "neutralCurrent";
+  if (/\bREM(?:OTE)?\b|\bREM\s+L\b/.test(text)) return "remoteCurrent";
+  if (ch.measurement === "current") return "lineCurrent";
+  return "unknown";
+}
+
+function channelDisplay(ch: AnalogChannel) {
+  const role = channelRole(ch);
+  const phase = phaseFromNameOrCanonical(ch);
+  const phaseText = phase ? `Ph ${phase}` : null;
+  const raw = ch.name.trim();
+  const canonical = (ch.canonical_name || "").trim();
+
+  if (role === "differential") {
+    return {
+      title: phase && phase !== "N" ? `I Diff ${phase}` : raw,
+      detail: `Differential current${phaseText ? ` / ${phaseText}` : ""}`,
+      raw,
+    };
+  }
+
+  if (role === "restraint") {
+    return {
+      title: phase && phase !== "N" ? `I Restraint ${phase}` : "I Restraint / Bias",
+      detail: `Restraint or bias current${phaseText ? ` / ${phaseText}` : ""}`,
+      raw,
+    };
+  }
+
+  if (role === "remoteCurrent") {
+    return {
+      title: canonical && canonical !== raw ? `${canonical} Remote` : raw,
+      detail: `Remote-end line current${phaseText ? ` / ${phaseText}` : ""}`,
+      raw,
+    };
+  }
+
+  if (role === "lineCurrent") {
+    return {
+      title: canonical && canonical !== raw ? canonical : raw,
+      detail: `Local line current${phaseText ? ` / ${phaseText}` : ""}`,
+      raw,
+    };
+  }
+
+  if (role === "neutralCurrent") {
+    return {
+      title: canonical && canonical !== raw ? canonical : raw,
+      detail: "Neutral / residual current",
+      raw,
+    };
+  }
+
+  if (role === "voltage") {
+    return {
+      title: canonical && canonical !== raw ? canonical : raw,
+      detail: `Voltage${phaseText ? ` / ${phaseText}` : ""}`,
+      raw,
+    };
+  }
+
+  return {
+    title: canonical || raw,
+    detail: ch.measurement,
+    raw,
+  };
 }
 
 function parseRelayoutRange(event: Record<string, unknown>) {
@@ -235,6 +322,30 @@ function channelPeak(samples: number[]): number {
   return max;
 }
 
+function channelRange(samples: number[]): [number, number] | undefined {
+  if (!samples.length) return undefined;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const value of samples) {
+    if (!Number.isFinite(value)) continue;
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return undefined;
+  if (min === max) {
+    const pad = Math.max(Math.abs(max) * 0.12, 1);
+    return [min - pad, max + pad];
+  }
+  const pad = Math.max((max - min) * 0.12, Math.max(Math.abs(min), Math.abs(max)) * 0.04, 1e-6);
+  return [min - pad, max + pad];
+}
+
+function formatStat(value: number, unit: string) {
+  const abs = Math.abs(value);
+  const text = abs >= 1000 ? value.toFixed(0) : abs >= 10 ? value.toFixed(2) : value.toFixed(3);
+  return `${text} ${unit}`;
+}
+
 /**
  * Compute a symmetric y-axis range that fits all channels.
  * Returns undefined when there are no channels or all values are zero.
@@ -318,13 +429,13 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       })
       .map((ch) => ch.id);
 
-    // Include relay-computed diff/REF channels (pu / In) so they auto-show in their subplot
+    // Include relay-computed differential/restraint channels so 87L/87T files show their
+    // operate quantities without the user having to know vendor-specific names.
     const diffIds = visibleAnalog
       .filter((ch) => {
-        const u = ch.unit.toLowerCase();
-        return u === "pu" || u === "in";
+        const role = channelRole(ch);
+        return role === "differential" || role === "restraint";
       })
-      .filter((ch) => /87[TL]\.i/i.test(ch.name) || /64ref\.i/i.test(ch.name))
       .map((ch) => ch.id);
 
     return new Set([...phaseIds, ...diffIds]);
@@ -346,6 +457,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const [sharedRange, setSharedRange] = useState<[number, number] | null>(null);
   const [normalizeToInception, setNormalizeToInception] = useState(false);
   const [displayMode, setDisplayMode] = useState<"instantaneous" | "rms">("instantaneous");
+  const [analogViewMode, setAnalogViewMode] = useState<AnalogViewMode>("stacked");
   const [digitalHoverMs, setDigitalHoverMs] = useState<number | null>(null);
 
   // One electrical cycle in samples — used for RMS window
@@ -408,10 +520,18 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     const nextChannels =
       groupIdx === -1 ? analogChannels : channelGroups?.[groupIdx]?.channels ?? analogChannels;
     const nextIds = new Set(
-      nextChannels
+      [
+        ...nextChannels
         .filter((ch) => ["VA", "VB", "VC", "IA", "IB", "IC", "IN", "I0"].includes(ch.canonical_name || ch.name))
         .slice(0, 8)
-        .map((ch) => ch.id)
+        .map((ch) => ch.id),
+        ...nextChannels
+          .filter((ch) => {
+            const role = channelRole(ch);
+            return role === "differential" || role === "restraint";
+          })
+          .map((ch) => ch.id),
+      ]
     );
     setSelectedAnalog(nextIds.size > 0 ? nextIds : new Set(nextChannels.slice(0, 6).map((ch) => ch.id)));
   }
@@ -440,9 +560,9 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   }
 
   /** Channels whose unit is pu or In (relay-computed diff / REF) — shown in own subplot. */
-  function isDiffChannel(ch: { name: string; unit: string }): boolean {
-    const u = ch.unit.toLowerCase();
-    return u === "pu" || u === "in";
+  function isDiffChannel(ch: AnalogChannel): boolean {
+    const role = channelRole(ch);
+    return role === "differential" || role === "restraint";
   }
 
   const selectedVoltage = analogChannels.filter(
@@ -454,6 +574,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const selectedDiff = analogChannels.filter(
     (ch) => isDiffChannel(ch) && selectedAnalog.has(ch.id)
   );
+  const selectedAnalogStrips = visibleAnalog.filter((ch) => selectedAnalog.has(ch.id));
   const selectedStatus = statusChannels.filter((ch) => selectedDigital.has(ch.id));
 
   const xAxisLabel = normalizeToInception ? "Waktu relatif inception (ms)" : "Waktu (ms)";
@@ -466,7 +587,8 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     measurement: string,
   ): Plotly.Data[] {
     return channels.map((ch) => {
-      const lbl = channelLabel(ch.name, ch.canonical_name);
+      const info = channelDisplay(ch);
+      const lbl = info.title;
       const rawSamples =
         displayMode === "rms" && measurement !== "voltage"
           ? computeRms(ch.samples, cycleN)
@@ -479,7 +601,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
         mode: "lines",
         name: lbl,
         line: { color: inferChannelColor(lbl, measurement), width: 1.3 },
-        hovertemplate: `${lbl}<br>%{y:.3f} ${ch.unit}<br>%{x:.2f} ms<extra></extra>`,
+        hovertemplate: `<b>${lbl}</b><br>${info.detail}<br>${info.raw}<br>%{y:.3f} ${ch.unit}<br>%{x:.2f} ms<extra></extra>`,
       } as Plotly.Data;
     });
   }
@@ -487,6 +609,27 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const currentTraces = buildTraces(selectedCurrent, "current");
 
   const diffTraces = buildTraces(selectedDiff, "current");
+
+  function samplesForDisplay(ch: AnalogChannel) {
+    return displayMode === "rms" && ch.measurement !== "voltage"
+      ? computeRms(ch.samples, cycleN)
+      : ch.samples;
+  }
+
+  function channelStats(ch: AnalogChannel) {
+    const samples = samplesForDisplay(ch);
+    const range = activeRange;
+    const values = samples.filter((_, idx) => {
+      if (!range) return true;
+      const t = displayTimeMs[idx];
+      return t >= range[0] && t <= range[1];
+    });
+    const source = values.length > 0 ? values : samples;
+    const max = Math.max(...source);
+    const min = Math.min(...source);
+    const rms = Math.sqrt(source.reduce((sum, value) => sum + value * value, 0) / Math.max(source.length, 1));
+    return { max, min, rms };
+  }
 
   // Explicit y-ranges so they update correctly on mode/channel changes
   // while remaining locked against user drag/scroll (fixedrange: true)
@@ -559,6 +702,55 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   } as Plotly.Shape : null;
 
   const activeRange = sharedRange ?? defaultRange;
+
+  const channelStripLayout = (ch: AnalogChannel, yRange?: [number, number]): Partial<Plotly.Layout> => ({
+    height: 170,
+    margin: { l: PLOT_LEFT_MARGIN, r: 20, t: 8, b: 24 },
+    paper_bgcolor: "#ffffff",
+    plot_bgcolor: "#ffffff",
+    hovermode: "x unified",
+    dragmode: "pan",
+    showlegend: false,
+    uirevision: "comtrade-sync",
+    xaxis: {
+      tickfont: { size: 9 },
+      autorange: activeRange ? undefined : true,
+      range: activeRange ?? undefined,
+      showgrid: true,
+      gridcolor: "#e2e8f0",
+      zeroline: normalizeToInception,
+      zerolinecolor: "#f97316",
+      zerolinewidth: 1.5,
+    },
+    yaxis: {
+      title: { text: ch.unit },
+      tickfont: { size: 9 },
+      tickformat: "~s",
+      exponentformat: "SI",
+      separatethousands: true,
+      fixedrange: true,
+      ...(yRange ? { range: yRange, autorange: false } : { autorange: true }),
+    },
+    shapes: [
+      ...(inceptionShape && !normalizeToInception ? [inceptionShape] : []),
+      ...(triggerShape ? [triggerShape] : []),
+    ],
+  });
+
+  function buildChannelTrace(ch: AnalogChannel): Plotly.Data {
+    const info = channelDisplay(ch);
+    const lbl = info.title;
+    const series = buildSampledSeries(displayTimeMs, samplesForDisplay(ch), MAX_PLOT_POINTS);
+    return {
+      x: series.x,
+      y: series.y,
+      type: "scatter",
+      mode: "lines",
+      name: lbl,
+      line: { color: inferChannelColor(lbl, ch.measurement), width: 1.2 },
+      hovertemplate: `<b>${lbl}</b><br>${info.detail}<br>${info.raw}<br>%{y:.3f} ${ch.unit}<br>%{x:.2f} ms<extra></extra>`,
+    } as Plotly.Data;
+  }
 
   const analogLayout = (yTitle: string, yRange?: [number, number]): Partial<Plotly.Layout> => ({
     height: 260,
@@ -674,6 +866,14 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
           >
             {displayMode === "instantaneous" ? "Instantaneous Chart" : "RMS Chart"}
           </button>
+          <button
+            type="button"
+            className={`${styles.waveGhostBtn} ${styles.waveModeBtn}`}
+            onClick={() => setAnalogViewMode((mode) => mode === "stacked" ? "grouped" : "stacked")}
+            style={analogViewMode === "stacked" ? { background: "#f0fdf4", borderColor: "#22c55e", color: "#15803d" } : undefined}
+          >
+            {analogViewMode === "stacked" ? "Stacked Channels" : "Grouped Overlay"}
+          </button>
           {inceptionTimeMs !== null && (
             <button
               type="button"
@@ -725,7 +925,8 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
           )}
           <div className={styles.waveGroupTitle}>Analog Channels</div>
           {visibleAnalog.map((ch) => {
-            const label = channelLabel(ch.name, ch.canonical_name);
+            const info = channelDisplay(ch);
+            const label = info.title;
             const prefix = extractPrefix(ch.name);
             const windingSide = prefix ? windingLabel(prefix) : null;
             const peak = channelPeak(ch.samples);
@@ -746,7 +947,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
                 <span className={styles.waveMeta}>
                   <span className={styles.waveName}>{label}</span>
                   <span className={styles.waveStats}>
-                    {windingSide ?? (ch.phase ? `Ph ${ch.phase}` : ch.measurement)}
+                    {windingSide ?? info.detail}
                     {peakStr && <> · {peakStr}</>}
                   </span>
                 </span>
@@ -776,6 +977,37 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
         </div>
 
         <div className={styles.wavePlotStack}>
+          {analogViewMode === "stacked" && selectedAnalogStrips.map((ch) => {
+            const info = channelDisplay(ch);
+            const label = info.title;
+            const stats = channelStats(ch);
+            const yRange = channelRange(samplesForDisplay(ch));
+            return (
+              <div key={ch.id} className={styles.waveSubplot}>
+                <div className={styles.waveSubplotTitle} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <span className={styles.waveDot} style={{ background: inferChannelColor(label, ch.measurement) }} />
+                    <span>{label}</span>
+                    <span style={{ color: "#64748b", fontWeight: 600 }}>{info.detail}</span>
+                    <span style={{ color: "#94a3b8", fontWeight: 500 }}>{ch.unit}</span>
+                  </span>
+                  <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    Max: {formatStat(stats.max, ch.unit)} | Min: {formatStat(stats.min, ch.unit)} | RMS: {formatStat(stats.rms, ch.unit)}
+                  </span>
+                </div>
+                <Plot
+                  data={[buildChannelTrace(ch)]}
+                  layout={channelStripLayout(ch, yRange)}
+                  config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: "reset" }}
+                  style={{ width: "100%" }}
+                  onRelayout={(event) => syncRange(event as Record<string, unknown>)}
+                />
+              </div>
+            );
+          })}
+
+          {analogViewMode === "grouped" && (
+            <>
           {voltageTraces.length > 0 && (
             <div className={styles.waveSubplot}>
               <div className={styles.waveSubplotTitle}>Tegangan</div>
@@ -828,10 +1060,10 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
             )
           )}
 
-          {/* Differential / REF subplot (pu / In channels) */}
+          {/* Differential / restraint subplot */}
           {diffTraces.length > 0 && (
             <div className={styles.waveSubplot}>
-              <div className={styles.waveSubplotTitle}>Differential / REF</div>
+              <div className={styles.waveSubplotTitle}>Differential / Restraint</div>
               <Plot
                 data={diffTraces}
                 layout={analogLayout("p.u. / In", diffYRange)}
@@ -840,6 +1072,8 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
                 onRelayout={(event) => syncRange(event as Record<string, unknown>)}
               />
             </div>
+          )}
+            </>
           )}
 
           {showDigital && selectedStatus.length > 0 && (

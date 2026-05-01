@@ -7,6 +7,31 @@ from models.rules import apply_rules
 from models.predict import _augment_row_with_soe_context
 
 
+def test_ct_measurement_anomaly_routes_to_peralatan():
+    row = {
+        "fault_count": 1,
+        "faulted_phases": "A+B",
+        "fault_type": "DLG",
+        "fault_duration_ms": 448.5,
+        "reclose_successful": None,
+        "trip_type": "unknown",
+        "zone_operated": "UNKNOWN",
+        "peak_fault_current_a": 560.0,
+        "ct_anomaly_detected": True,
+        "ct_anomaly_evidence": (
+            "arus fase A naik stabil (277 A RMS, gain 4.6x, CV 0.014) "
+            "sementara tegangan fase tersebut tetap 0.85 pu"
+        ),
+    }
+
+    result = apply_rules(row)
+
+    assert result is not None
+    assert result.label == "PERALATAN / PROTEKSI"
+    assert result.rule_name == "ct_measurement_anomaly"
+    assert "daripada sambaran petir" in result.evidence
+
+
 def test_soe_waveform_phase_mismatch_routes_to_peralatan():
     row = {
         "fault_count": 1,

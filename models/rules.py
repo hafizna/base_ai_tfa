@@ -45,6 +45,26 @@ def apply_rules(row: dict) -> Optional[RuleResult]:
     v_ratio_spread   = float(row.get("voltage_phase_ratio_spread_pu", 0) or 0)
     healthy_v_ratio  = float(row.get("healthy_phase_voltage_ratio", 0) or 0)
     v2_v1_ratio      = float(row.get("v2_v1_ratio", 0) or 0)
+    ct_anomaly       = bool(row.get("ct_anomaly_detected", False))
+    ct_anomaly_note  = str(row.get("ct_anomaly_evidence", "") or "")
+
+    # ------------------------------------------------------------------
+    # Rule 0 - CT / measurement anomaly
+    #   Sustained, nearly flat current elevation on a phase whose voltage
+    #   remains healthy is not a lightning impulse signature. It points to
+    #   CT secondary / wiring / measurement trouble and must override PETIR.
+    # ------------------------------------------------------------------
+    if ct_anomaly:
+        return RuleResult(
+            label="PERALATAN / PROTEKSI",
+            confidence=0.82,
+            rule_name="ct_measurement_anomaly",
+            evidence=(
+                f"Indikasi anomali CT/pengukuran: {ct_anomaly_note}. "
+                "Pola ini lebih konsisten dengan gangguan rangkaian CT/peralatan "
+                "daripada sambaran petir impulsif."
+            ),
+        )
 
     # ------------------------------------------------------------------
     # Rule 1 - KONDUKTOR: Fault On Reclose with phase change

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { aiFaultAnalysis21, extractFeatures21 } from "../../../api/client";
 import styles from "../../panels/Panel.module.css";
+import AIFaultResultView from "../shared/AIFaultResultView";
 
 interface Props {
   analysisId: string;
@@ -120,57 +121,11 @@ export default function AIFaultAnalysis21({ analysisId, dataRevision = 0 }: Prop
       )}
 
       {result && (
-        <>
-          <div className={styles.row}>
-            {result.cause_ranking.length > 0 && (
-              <span
-                className={styles.statusBadge}
-                style={
-                  result.fault_type === "permanent"
-                    ? { background: "#fef2f2", color: "#b91c1c", border: "1.5px solid #fca5a5" }
-                    : { background: "#f0fdf4", color: "#15803d", border: "1.5px solid #86efac" }
-                }
-              >
-                {result.cause_ranking[0].label}
-              </span>
-            )}
-            <span
-              className={styles.badge}
-              style={
-                result.fault_type === "permanent"
-                  ? { background: "#fef2f2", color: "#dc2626" }
-                  : { background: "#f0fdf4", color: "#16a34a" }
-              }
-            >
-              {result.fault_type === "permanent" ? "Permanen" : "Transien"}
-            </span>
-            <span className={styles.badge}>Keyakinan: {(result.overall_confidence * 100).toFixed(0)}%</span>
-          </div>
-
-          {result.cause_ranking.length > 0 && (
-            <>
-              <h3 style={{ fontSize: "0.85rem", color: "#475569", margin: "14px 0 8px" }}>Cause Ranking</h3>
-              {result.cause_ranking.map((item) => (
-                <div key={item.cause} className={styles.rankingBar}>
-                  <span className={styles.rankLabel}>{item.label}</span>
-                  <div className={styles.rankTrack}>
-                    <div className={styles.rankFill} style={{ width: `${item.confidence * 100}%` }} />
-                  </div>
-                  <span className={styles.rankPct}>{(item.confidence * 100).toFixed(0)}%</span>
-                </div>
-              ))}
-            </>
-          )}
-
-          <h3 style={{ fontSize: "0.85rem", color: "#475569", margin: "16px 0 8px" }}>Evidence</h3>
-          <ul className={styles.evidenceList}>
-            {result.evidence.map((item, index) => (
-              <li key={index} className={styles.evidenceItem}>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </>
+        <AIFaultResultView
+          result={result}
+          permanentLabel="Permanen"
+          transientLabel="Transien"
+        />
       )}
     </div>
   );
