@@ -55,6 +55,7 @@ class PanelErrorBoundary extends Component<{ label: string; children: ReactNode 
 const RELAY_LABELS: Record<string, string> = {
   "21": "21 - Distance",
   "87L": "87L - Differential Line",
+  CCP: "CCP / Stub Differential",
   "87T": "87T / Transformer Differential",
   OCR: "50/51 - Overcurrent",
   REF: "REF / GFR / SBEF",
@@ -119,15 +120,20 @@ export default function Workspace() {
       );
     }
 
-    if (relayType === "87L") {
+    if (relayType === "87L" || relayType === "CCP") {
       return (
         <>
-          <PanelErrorBoundary label="Fault Recap 87L">
-            <FaultRecap87T comtrade={comtrade!} relayLabel="Line Differential (87L)" />
+          <PanelErrorBoundary label={relayType === "CCP" ? "CCP / Stub Differential Recap" : "Fault Recap 87L"}>
+            <FaultRecap87T
+              comtrade={comtrade!}
+              relayLabel={relayType === "CCP" ? "CCP / Stub Differential" : "Line Differential (87L)"}
+            />
           </PanelErrorBoundary>
-          <PanelErrorBoundary label="AI Fault Analysis 87L">
-            <AIFaultAnalysis87L analysisId={currentAnalysisId} />
-          </PanelErrorBoundary>
+          {relayType === "87L" && (
+            <PanelErrorBoundary label="AI Fault Analysis 87L">
+              <AIFaultAnalysis87L analysisId={currentAnalysisId} />
+            </PanelErrorBoundary>
+          )}
         </>
       );
     }
@@ -172,6 +178,14 @@ export default function Workspace() {
         <PanelErrorBoundary label="Diff/Restraint">
           <DiffRestraintPlot analysisId={currentAnalysisId} relayType="87L" />
         </PanelErrorBoundary>
+      );
+    }
+
+    if (relayType === "CCP") {
+      return (
+        <div className={styles.pendingNote}>
+          CCP-specific CT group comparison is pending. Use the operation recap and COMTRADE Explorer for now.
+        </div>
       );
     }
 

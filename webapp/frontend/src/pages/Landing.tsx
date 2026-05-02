@@ -29,6 +29,14 @@ const RELAY_OPTIONS: RelayOption[] = [
     icon: "87L",
   },
   {
+    id: "CCP",
+    label: "CCP / Stub Differential",
+    subtitle: "CT group and stub differential anomaly review",
+    tooltip:
+      "Use this category for CCP or stub differential records with multiple CT groups, 87STB signals, relay faulty indications, or unstable current readings.",
+    icon: "CCP",
+  },
+  {
     id: "87T",
     label: "87T / REF",
     subtitle: "Transformer differential and restricted earth fault",

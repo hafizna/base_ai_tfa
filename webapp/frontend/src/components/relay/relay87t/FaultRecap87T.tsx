@@ -636,7 +636,7 @@ function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
 
 export default function FaultRecap87T({ comtrade, relayLabel = "Transformer 87T / REF" }: Props) {
   const r = useMemo(() => analyze(comtrade), [comtrade]);
-  if (/87L|LINE DIFFERENTIAL/i.test(relayLabel)) {
+  if (/87L|LINE DIFFERENTIAL|CCP|STUB DIFFERENTIAL/i.test(relayLabel)) {
     return <LineDifferentialRecap comtrade={comtrade} />;
   }
 

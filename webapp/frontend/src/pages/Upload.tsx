@@ -7,6 +7,7 @@ import styles from "./Upload.module.css";
 const RELAY_LABELS: Record<string, string> = {
   "21": "21 - Distance",
   "87L": "87L - Differential Line",
+  CCP: "CCP / Stub Differential",
   "87T": "87T / REF",
   OCR: "50/51 / GFR",
   REF: "REF",
