@@ -27,7 +27,7 @@ def test_ct_measurement_anomaly_routes_to_peralatan():
     result = apply_rules(row)
 
     assert result is not None
-    assert result.label == "PERALATAN / PROTEKSI"
+    assert result.label == "PERALATAN RUSAK / ANOMALI PROTEKSI"
     assert result.rule_name == "ct_measurement_anomaly"
     assert "daripada sambaran petir" in result.evidence
 
@@ -53,7 +53,7 @@ def test_soe_waveform_phase_mismatch_routes_to_peralatan():
     result = apply_rules(row)
 
     assert result is not None
-    assert result.label == "PERALATAN / PROTEKSI"
+    assert result.label == "PERALATAN RUSAK / ANOMALI PROTEKSI"
     assert result.rule_name == "soe_waveform_phase_mismatch"
     assert "jangan terima label PETIR" in result.evidence
 

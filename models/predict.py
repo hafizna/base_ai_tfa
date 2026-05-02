@@ -1053,7 +1053,7 @@ def classify_file(cfg_path: str) -> ClassificationResult:
                 "Lakukan inspeksi mekanik pada tower dan konduktor di zona operasi rele. "
                 "Periksa kondisi joint, klem, dan struktur tower."
             ),
-            "PERALATAN / PROTEKSI": (
+                "PERALATAN RUSAK / ANOMALI PROTEKSI": (
                 "Periksa rangkaian VT/CVT, isolator, teleproteksi, dan logika rele. "
                 "Cocokkan SOE dengan waveform sebelum menyimpulkan penyebab lapangan."
             ),
@@ -1163,7 +1163,7 @@ def classify_file(cfg_path: str) -> ClassificationResult:
                 "HEWAN":       "HEWAN / BINATANG",
                 "BENDA_ASING": "BENDA ASING",
                 "KONDUKTOR":   "KONDUKTOR / TOWER",
-                "PERALATAN":   "PERALATAN / PROTEKSI",
+                "PERALATAN":   "PERALATAN RUSAK / ANOMALI PROTEKSI",
             }
             cause_pcts_ml = [
                 {"name": _label_id_map.get(cls, cls), "pct": round(float(p) * 100, 1)}

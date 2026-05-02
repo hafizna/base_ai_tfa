@@ -56,7 +56,7 @@ def apply_rules(row: dict) -> Optional[RuleResult]:
     # ------------------------------------------------------------------
     if ct_anomaly:
         return RuleResult(
-            label="PERALATAN / PROTEKSI",
+            label="PERALATAN RUSAK / ANOMALI PROTEKSI",
             confidence=0.82,
             rule_name="ct_measurement_anomaly",
             evidence=(
@@ -112,7 +112,7 @@ def apply_rules(row: dict) -> Optional[RuleResult]:
         and (v_ratio_spread >= 0.15 or healthy_v_ratio >= 0.92 or v2_v1_ratio >= 0.15)
     ):
         return RuleResult(
-            label="PERALATAN / PROTEKSI",
+            label="PERALATAN RUSAK / ANOMALI PROTEKSI",
             confidence=0.78,
             rule_name="soe_waveform_phase_mismatch",
             evidence=(

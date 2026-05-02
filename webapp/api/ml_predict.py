@@ -29,7 +29,7 @@ _LABEL_DISPLAY = {
     "HEWAN":       "Hewan / Binatang",
     "BENDA_ASING": "Benda Asing",
     "KONDUKTOR":   "Konduktor / Tower",
-    "PERALATAN":   "Peralatan / Proteksi",
+    "PERALATAN":   "Peralatan Rusak / Anomali Proteksi",
 }
 
 _TRANSIENT = {"PETIR", "LAYANG", "HEWAN", "BENDA_ASING"}
@@ -109,6 +109,29 @@ def _first_on_ms(samples: list, time: np.ndarray, start_idx: int = 0) -> Optiona
     return None
 
 
+def _first_off_ms_after(samples: list, time: np.ndarray, after_idx: int) -> Optional[float]:
+    """First 1→0 transition strictly after `after_idx` (in ms)."""
+    if len(time) == 0:
+        return None
+    n = min(len(samples), len(time))
+    start = max(0, min(after_idx + 1, n))
+    prev = int(samples[start - 1]) if start > 0 else 0
+    for idx in range(start, n):
+        val = int(samples[idx])
+        if val == 0 and prev == 1:
+            return float(time[idx] * 1000)
+        prev = val
+    return None
+
+
+def _index_for_ms(time: np.ndarray, ms: float) -> int:
+    if len(time) == 0:
+        return 0
+    target = ms / 1000.0
+    idx = int(np.searchsorted(time, target))
+    return max(0, min(idx, len(time) - 1))
+
+
 def _status_any_on(samples: list) -> bool:
     return any(int(v) == 1 for v in samples or [])
 
@@ -117,6 +140,8 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
     start_idx = max(0, inception_idx - 2)
     trip_phases: dict[str, float] = {}
     cb_open_phases: dict[str, float] = {}
+    cb_close_phases: dict[str, float] = {}
+    explicit_success_seen = False
     startup_phases: dict[str, float] = {}
     fault_phases: dict[str, float] = {}
     zone_times: dict[str, float] = {}
@@ -147,6 +172,11 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
                 trip_phases[phase] = min(first_ms, trip_phases.get(phase, first_ms))
             if is_cb_open:
                 cb_open_phases[phase] = min(first_ms, cb_open_phases.get(phase, first_ms))
+                # Detect when this same CB-open channel returns to 0 = CB reclosed
+                rise_idx = _index_for_ms(time, first_ms)
+                close_ms = _first_off_ms_after(samples, time, rise_idx)
+                if close_ms is not None:
+                    cb_close_phases[phase] = min(close_ms, cb_close_phases.get(phase, close_ms))
             if is_startup:
                 startup_phases[phase] = min(first_ms, startup_phases.get(phase, first_ms))
             if is_fault:
@@ -164,9 +194,20 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
             if "NOT READY" in name or "NOTREADY" in name or "BLOCK" in name:
                 ar_flags["not_ready" if "READY" in name else "block"] = True
                 ar_flags["failed"] = True
-            if "SUCCESS" in name or "CLOSE" in name or "RECLOS" in name:
-                if "LOCK" not in name and "NOT READY" not in name and "BLOCK" not in name:
-                    ar_flags["successful"] = True
+            # Bare "CLOSE" / "RECLOS" matches AR command/output pulses that fire even
+            # when the breaker fails to physically reclose (e.g. broken isolator). Only
+            # treat very specific verified-success tokens as positive evidence here;
+            # otherwise rely on the CB-OPEN falling edge captured in cb_close_phases.
+            has_success_token = (
+                "SUCCESS" in name
+                or "AR OK" in name or "AR_OK" in name
+                or "RECLOSE OK" in name or "RECLOSE_OK" in name
+                or "REC OK" in name or "REC_OK" in name
+            )
+            if has_success_token and not (
+                "LOCK" in name or "NOT READY" in name or "NOTREADY" in name or "BLOCK" in name
+            ):
+                explicit_success_seen = True
 
     def sorted_phases(data: dict[str, float]) -> list[str]:
         return sorted(data.keys(), key=lambda ph: data[ph])
@@ -176,6 +217,11 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
         trip_type = "three_pole"
     elif len(cb_open_phases) == 1 or len(trip_phases) == 1:
         trip_type = "single_pole"
+
+    # AR is only marked successful when we have hard evidence the breaker actually
+    # reclosed: CB-OPEN channel returning to 0, or an explicit "*_OK / SUCCESS" status.
+    if not ar_flags["failed"] and (cb_close_phases or explicit_success_seen):
+        ar_flags["successful"] = True
 
     ar_status = None
     if ar_flags["failed"]:
@@ -192,10 +238,26 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
         }
     first_startup_ms = min(startup_phases.values()) if startup_phases else None
 
+    # AR dead time: from first CB-open rising edge to first CB-open falling edge (CB reclosed).
+    # Without a verified falling edge we don't fabricate a value — better unknown than wrong.
+    first_cb_open_ms = min(cb_open_phases.values()) if cb_open_phases else None
+    first_cb_close_ms = min(cb_close_phases.values()) if cb_close_phases else None
+    ar_dead_time_ms = None
+    if first_cb_open_ms is not None and first_cb_close_ms is not None and first_cb_close_ms > first_cb_open_ms:
+        ar_dead_time_ms = first_cb_close_ms - first_cb_open_ms
+
+    if len(cb_close_phases) >= 3:
+        reclose_mode = "three_pole"
+    elif len(cb_close_phases) == 1:
+        reclose_mode = "single_pole"
+    else:
+        reclose_mode = None
+
     return {
         "digital_trip_type": trip_type,
         "digital_trip_phases": sorted_phases(trip_phases),
         "digital_cb_open_phases": sorted_phases(cb_open_phases),
+        "digital_cb_close_phases": sorted_phases(cb_close_phases),
         "digital_startup_phases": sorted_phases(startup_phases),
         "digital_fault_phases": sorted_phases(fault_phases),
         "digital_zone": min(zone_times, key=zone_times.get) if zone_times else "",
@@ -206,6 +268,10 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
         "digital_first_trip_ms": round(first_trip_ms, 2) if first_trip_ms is not None else None,
         "digital_startup_to_trip_ms": round(first_trip_ms - first_startup_ms, 2)
         if first_startup_ms is not None and first_trip_ms is not None else None,
+        "digital_first_cb_open_ms": round(first_cb_open_ms, 2) if first_cb_open_ms is not None else None,
+        "digital_first_cb_close_ms": round(first_cb_close_ms, 2) if first_cb_close_ms is not None else None,
+        "digital_ar_dead_time_ms": round(ar_dead_time_ms, 1) if ar_dead_time_ms is not None else None,
+        "digital_reclose_mode": reclose_mode,
     }
 
 
@@ -349,18 +415,12 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
 
     digital = _digital_sequence_features(status_channels, time, inception_idx)
 
-    # AR result
-    ar_result = None
-    for sch in status_channels:
-        name = sch.get("name", "").upper()
-        if any(k in name for k in ("AR", "RECLOSE", "RECLUSE", "RECLOS")):
-            if 1 in (sch.get("samples") or []):
-                ar_result = True
-            else:
-                ar_result = False
-            break
-    if digital.get("digital_ar_status") is not None:
-        ar_result = digital["digital_ar_status"]
+    # AR result — trust only the tightened detection in _digital_sequence_features.
+    # The previous fallback (any AR-named channel containing a `1` ⇒ success) was
+    # firing on AR CLOSE command / AR-ready / CB-position channels that are already
+    # HIGH before fault inception (or polarity-inverted), producing false "berhasil"
+    # verdicts even when the breaker never physically reclosed.
+    ar_result = digital.get("digital_ar_status")
 
     # Ground fault detection (I0 > 20% of I1)
     is_ground = i0_i1_ratio > 0.2
@@ -454,6 +514,7 @@ def _empty_features() -> dict:
         "digital_trip_type": None,
         "digital_trip_phases": [],
         "digital_cb_open_phases": [],
+        "digital_cb_close_phases": [],
         "digital_startup_phases": [],
         "digital_fault_phases": [],
         "digital_zone": "",
@@ -463,6 +524,10 @@ def _empty_features() -> dict:
         "digital_first_startup_ms": None,
         "digital_first_trip_ms": None,
         "digital_startup_to_trip_ms": None,
+        "digital_first_cb_open_ms": None,
+        "digital_first_cb_close_ms": None,
+        "digital_ar_dead_time_ms": None,
+        "digital_reclose_mode": None,
     })
     return row
 
@@ -500,7 +565,7 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
         "HEWAN":       "Hewan / Binatang",
         "BENDA_ASING": "Benda Asing",
         "KONDUKTOR":   "Konduktor / Tower",
-        "PERALATAN":   "Peralatan / Proteksi",
+        "PERALATAN":   "Peralatan Rusak / Anomali Proteksi",
     }
 
     if row.get("ct_anomaly_detected"):
@@ -638,31 +703,45 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
 
     phases_label = "+".join(phases) + ("-N" if is_ground and n_phases < 3 else "")
 
-    if peak_a > 0 and sag_pct > 0:
-        evidence.append(
-            f"Terdeteksi Gangguan Fasa {phases_label} ({type_name}) "
-            f"dengan kenaikan arus puncak mencapai {peak_a:.2f} A "
-            f"dan penurunan tegangan (voltage sag) sebesar {sag_pct:.1f}%."
-        )
-    elif peak_a > 0:
-        evidence.append(
-            f"Terdeteksi Gangguan Fasa {phases_label} ({type_name}) "
-            f"dengan kenaikan arus puncak mencapai {peak_a:.2f} A."
-        )
-
-    # 2. Protection operation
+    # 1+2. Combined fault detection + protection-trip narrative.
     zone = row.get("zone_operated", "")
     trip = row.get("trip_type", "")
     dur = row.get("fault_duration_ms", 0.0)
-    if zone or (trip and trip != "unknown"):
-        zone_str = f"Zona {zone}" if zone else "zona tidak teridentifikasi"
-        trip_str = trip.replace("_", " ") if trip and trip != "unknown" else "tidak teridentifikasi"
-        evidence.append(
-            f"Fungsi proteksi {zone_str} bekerja mentrigger TRIP ({trip_str}) "
-            f"dengan Fault Clearing Time (FCT) {dur:.0f} ms."
-        )
+    trip_label = trip.replace("_", " ") if trip and trip != "unknown" else ""
+
+    fault_clauses = []
+    if peak_a > 0:
+        fault_clauses.append(f"kenaikan arus puncak mencapai {peak_a:.2f} A")
+    if sag_pct > 0:
+        fault_clauses.append(f"penurunan tegangan (voltage sag) sebesar {sag_pct:.1f}%")
+
+    fault_sentence = f"Terdeteksi Gangguan Fasa {phases_label} ({type_name})"
+    if fault_clauses:
+        fault_sentence += " dengan " + " dan ".join(fault_clauses)
+    fault_sentence += "."
+
+    prot_bits = []
+    if zone:
+        prot_bits.append(f"Proteksi Zona {zone} bekerja mentrigger TRIP")
+        if trip_label:
+            prot_bits[-1] += f" ({trip_label})"
+    elif trip_label:
+        prot_bits.append(f"Proteksi mentrigger TRIP ({trip_label}) namun zona proteksi tidak dapat diidentifikasi dari rekaman")
     elif dur > 0:
-        evidence.append(f"Fault Clearing Time (FCT) {dur:.0f} ms.")
+        prot_bits.append("Zona dan tipe trip proteksi tidak dapat diidentifikasi dari rekaman")
+
+    prot_sentence = ""
+    if prot_bits:
+        prot_sentence = prot_bits[0]
+        if dur > 0:
+            prot_sentence += f", dengan Fault Clearing Time (FCT) {dur:.0f} ms pada fasa terganggu {phases_label}"
+        prot_sentence += "."
+    elif dur > 0:
+        prot_sentence = f"Fault Clearing Time (FCT) {dur:.0f} ms pada fasa terganggu {phases_label}."
+
+    evidence.append(fault_sentence)
+    if prot_sentence:
+        evidence.append(prot_sentence)
 
     trip_phases = row.get("digital_trip_phases") or []
     cb_open_phases = row.get("digital_cb_open_phases") or []
@@ -687,10 +766,33 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
         )
 
     # 3. AR status
+    ar_dead_ms = row.get("digital_ar_dead_time_ms")
+    reclose_mode = row.get("digital_reclose_mode")
+    cb_close_phases = row.get("digital_cb_close_phases") or []
+    mode_label = {
+        "single_pole": "single-pole reclose",
+        "three_pole": "three-pole reclose",
+    }.get(reclose_mode or "", "")
+
+    def _ar_recap_suffix() -> str:
+        parts = []
+        if ar_dead_ms is not None:
+            parts.append(f"dead time ≈ {ar_dead_ms:.0f} ms")
+        if mode_label:
+            phase_str = "+".join(cb_close_phases) if cb_close_phases else ""
+            parts.append(f"{mode_label}{f' (fase {phase_str})' if phase_str else ''}")
+        return f" ({'; '.join(parts)})" if parts else ""
+
     if ar_ok is True:
-        evidence.append("Auto Reclose (AR) berhasil — gangguan terkonfirmasi bersifat transien.")
+        evidence.append(
+            "Auto Reclose (AR) berhasil — gangguan terkonfirmasi bersifat transien"
+            f"{_ar_recap_suffix()}."
+        )
     elif ar_ok is False:
-        evidence.append("Auto Reclose (AR) gagal — gangguan kemungkinan bersifat permanen.")
+        evidence.append(
+            "Auto Reclose (AR) gagal — gangguan kemungkinan bersifat permanen"
+            f"{_ar_recap_suffix()}."
+        )
     else:
         evidence.append("Status Auto Reclose (AR) tidak teridentifikasi dari rekaman digital.")
 
