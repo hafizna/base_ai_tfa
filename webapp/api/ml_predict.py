@@ -155,6 +155,40 @@ def _first_edge_ms_after(samples: list, time: np.ndarray, after_idx: int, from_s
     return None
 
 
+def _first_stable_edge_ms_after(
+    samples: list,
+    time: np.ndarray,
+    after_idx: int,
+    from_state: int,
+    to_state: int,
+    min_stable_ms: float = 20.0,
+) -> Optional[float]:
+    """First edge that remains in the target state long enough to reject contact bounce."""
+    if len(time) == 0:
+        return None
+    n = min(len(samples), len(time))
+    start = max(0, min(after_idx + 1, n))
+    prev = int(samples[start - 1]) if start > 0 else 0
+    for idx in range(start, n):
+        val = int(samples[idx])
+        if prev == from_state and val == to_state:
+            edge_ms = float(time[idx] * 1000)
+            stable_until_ms = edge_ms + min_stable_ms
+            stable = True
+            reached_window = False
+            for probe in range(idx, n):
+                if int(samples[probe]) != to_state:
+                    stable = False
+                    break
+                if float(time[probe] * 1000) >= stable_until_ms:
+                    reached_window = True
+                    break
+            if stable and reached_window:
+                return edge_ms
+        prev = val
+    return None
+
+
 def _index_for_ms(time: np.ndarray, ms: float) -> int:
     if len(time) == 0:
         return 0
@@ -224,22 +258,24 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
             if is_cb_open:
                 ar_attempt_seen = True
                 cb_open_phases[phase] = min(first_ms, cb_open_phases.get(phase, first_ms))
-                # Detect when this same CB-open channel returns to 0 = CB reclosed
+                # Detect when this same CB-open channel returns stably to 0 = CB reclosed.
+                # Breaker auxiliary contacts often bounce for a few milliseconds; those
+                # flickers must not become AR-success evidence or fake dead-time values.
                 rise_idx = _index_for_ms(time, first_ms)
-                close_ms = _first_off_ms_after(samples, time, rise_idx)
+                close_ms = _first_stable_edge_ms_after(samples, time, rise_idx, 1, 0)
                 if close_ms is not None:
                     cb_close_phases[phase] = min(close_ms, cb_close_phases.get(phase, close_ms))
             if is_cb_closed_contact:
                 # Closed-contact channels (e.g. CB1.CONT.A): 1=CB closed,
                 # 1->0=open/trip, 0->1=reclose. This is common in 1.5 breaker bays
                 # where no explicit AR/CB-open bit is recorded.
-                open_ms = _first_edge_ms_after(samples, time, start_idx - 1, 1, 0)
+                open_ms = _first_stable_edge_ms_after(samples, time, start_idx - 1, 1, 0)
                 if open_ms is not None:
                     cb_contact_breakers.add(breaker_id)
                     cb_open_phases[phase] = min(open_ms, cb_open_phases.get(phase, open_ms))
                     cb_contact_open_phases[phase] = min(open_ms, cb_contact_open_phases.get(phase, open_ms))
                     open_idx = _index_for_ms(time, open_ms)
-                    close_ms = _first_edge_ms_after(samples, time, open_idx, 0, 1)
+                    close_ms = _first_stable_edge_ms_after(samples, time, open_idx, 0, 1)
                     if close_ms is not None:
                         cb_close_phases[phase] = min(close_ms, cb_close_phases.get(phase, close_ms))
                         cb_contact_close_phases[phase] = min(close_ms, cb_contact_close_phases.get(phase, close_ms))

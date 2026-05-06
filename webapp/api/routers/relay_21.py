@@ -16,7 +16,7 @@ from ..schemas import (
     AIFaultFeatures, AIFaultResult,
 )
 from ..storage import load_analysis
-from ..ml_predict import run_ml_prediction, extract_ml_features
+from ..ml_predict import run_ml_prediction, extract_ml_features, _digital_sequence_features
 
 router = APIRouter(prefix="/api/analyze/21", tags=["relay-21"])
 
@@ -523,15 +523,8 @@ def _compute_electrical_params(payload: dict) -> dict:
     elif "z_at_inception_ohm" in result:
         result["z_min_ohm"] = result["z_at_inception_ohm"]
 
-    ar_dead_ms = None
-    for sch in payload.get("status_channels", []):
-        name = sch.get("name", "").upper()
-        if any(key in name for key in ("AR", "RECLOSE", "RECLOS")):
-            samples = sch.get("samples", [])
-            close_idx = next((idx for idx in range(extinction_idx, len(samples)) if samples[idx] == 1), None)
-            if close_idx is not None and close_idx < len(time):
-                ar_dead_ms = round((time[close_idx] - time[extinction_idx]) * 1000, 1)
-            break
+    digital = _digital_sequence_features(payload.get("status_channels", []), time, inception_idx)
+    ar_dead_ms = digital.get("digital_ar_dead_time_ms")
     if ar_dead_ms is not None:
         result["ar_dead_time_ms"] = ar_dead_ms
 
