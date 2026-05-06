@@ -1011,7 +1011,34 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #f8fafc;
-  padding: 10px 12px;
+  padding: 10px 12px 12px;
+  margin-top: 2px;
+}
+
+.digitalEventBottom {
+  margin: 12px 18px 16px;
+}
+
+.digitalEventPosition {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.digitalEventPosition select {
+  height: 26px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.72rem;
+  padding: 2px 8px;
 }
 
 .digitalEventHeader {
@@ -1052,7 +1079,7 @@
   display: grid;
   grid-template-columns: 96px 54px 82px minmax(140px, 1fr);
   align-items: center;
-  max-height: 260px;
+  max-height: 236px;
   overflow: auto;
   border: 1px solid #e2e8f0;
   border-radius: 6px;

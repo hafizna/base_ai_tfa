@@ -11,6 +11,7 @@ interface Props {
 const MAX_PLOT_POINTS = 5000;
 const PLOT_LEFT_MARGIN = 120; // shared margin keeps analog & digital x-axes aligned
 type AnalogViewMode = "stacked" | "grouped";
+type SOEPosition = "belowDigital" | "bottom";
 
 interface DigitalEventRow {
   channel: string;
@@ -20,16 +21,16 @@ interface DigitalEventRow {
 }
 
 /** Find intervals where digital channel is active (state=1). */
-function findActiveIntervals(timeMs: number[], samples: number[]): [number, number][] {
-  const intervals: [number, number][] = [];
+function findActiveIntervals(timeMs: number[], samples: number[]): Array<{ startMs: number; endMs: number; hasOffEdge: boolean }> {
+  const intervals: Array<{ startMs: number; endMs: number; hasOffEdge: boolean }> = [];
   let inActive = false;
   let startT = 0;
   const len = Math.min(timeMs.length, samples.length);
   for (let i = 0; i < len; i++) {
     if (samples[i] === 1 && !inActive) { startT = timeMs[i]; inActive = true; }
-    else if (samples[i] === 0 && inActive) { intervals.push([startT, timeMs[i]]); inActive = false; }
+    else if (samples[i] === 0 && inActive) { intervals.push({ startMs: startT, endMs: timeMs[i], hasOffEdge: true }); inActive = false; }
   }
-  if (inActive && len > 0) intervals.push([startT, timeMs[len - 1]]);
+  if (inActive && len > 0) intervals.push({ startMs: startT, endMs: timeMs[len - 1], hasOffEdge: false });
   return intervals;
 }
 
@@ -45,7 +46,7 @@ function buildDigitalBarTraces(
     const rowY = n - 1 - idx;
     const intervals = findActiveIntervals(timeMs, ch.samples);
 
-    intervals.forEach(([t0, t1]) => {
+    intervals.forEach(({ startMs: t0, endMs: t1 }) => {
       traces.push({
         x: [t0, t0, t1, t1, t0],
         y: [rowY - 0.38, rowY + 0.38, rowY + 0.38, rowY - 0.38, rowY - 0.38],
@@ -77,17 +78,22 @@ function buildDigitalEdgeTrace(
 
   channels.forEach((ch, idx) => {
     const rowY = n - 1 - idx;
-    const len = Math.min(timeMs.length, ch.samples.length);
-    for (let i = 1; i < len; i += 1) {
-      const prev = ch.samples[i - 1] ? 1 : 0;
-      const next = ch.samples[i] ? 1 : 0;
-      if (prev === next) continue;
-      x.push(timeMs[i]);
+    const intervals = findActiveIntervals(timeMs, ch.samples);
+    intervals.forEach((interval) => {
+      x.push(interval.startMs);
       y.push(rowY);
-      customdata.push([ch.name, next ? "ON" : "OFF", timeMs[i].toFixed(2)]);
-      symbols.push(next ? "triangle-right" : "triangle-left");
-      colors.push(next ? "#16a34a" : "#dc2626");
-    }
+      customdata.push([ch.name, "ON", interval.startMs.toFixed(2)]);
+      symbols.push("triangle-right");
+      colors.push("#10b981");
+
+      if (interval.hasOffEdge) {
+        x.push(interval.endMs);
+        y.push(rowY);
+        customdata.push([ch.name, "OFF", interval.endMs.toFixed(2)]);
+        symbols.push("triangle-left");
+        colors.push("#ef4444");
+      }
+    });
   });
 
   if (!x.length) return null;
@@ -101,9 +107,10 @@ function buildDigitalEdgeTrace(
     marker: {
       color: colors,
       symbol: symbols,
-      size: 9,
+      size: 11,
       line: { color: "#ffffff", width: 1 },
     },
+    cliponaxis: false,
     showlegend: false,
     hovertemplate: `<b>%{customdata[0]}</b><br>%{customdata[1]} @ %{customdata[2]} ms<extra></extra>`,
   } as Plotly.Data;
@@ -597,6 +604,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const [analogViewMode, setAnalogViewMode] = useState<AnalogViewMode>("stacked");
   const [digitalHoverMs, setDigitalHoverMs] = useState<number | null>(null);
   const [showDigitalSOE, setShowDigitalSOE] = useState(true);
+  const [soePosition, setSoePosition] = useState<SOEPosition>("belowDigital");
 
   // One electrical cycle in samples — used for RMS window
   const cycleN = useMemo(() => {
@@ -977,6 +985,52 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     ],
   };
 
+  function renderDigitalSOE() {
+    return (
+      <div className={styles.digitalEventPanel}>
+        <button
+          type="button"
+          className={styles.digitalEventToggle}
+          onClick={() => setShowDigitalSOE((value) => !value)}
+        >
+          <div className={styles.digitalEventHeader}>
+            <span>SOE Digital</span>
+            <span>
+              {digitalSOERows.length} events
+              {digitalSOERows.length > visibleDigitalSOERows.length ? `, showing ${visibleDigitalSOERows.length}` : ""}
+              {" | "}
+              {showDigitalSOE ? "Hide" : "Show"}
+            </span>
+          </div>
+        </button>
+        <div className={`${styles.digitalEventBody} ${showDigitalSOE ? "" : styles.digitalEventBodyCollapsed}`}>
+          {visibleDigitalSOERows.length > 0 ? (
+            <div className={styles.digitalEventTable}>
+              <div className={styles.digitalEventHead}>Time</div>
+              <div className={styles.digitalEventHead}>State</div>
+              <div className={styles.digitalEventHead}>Duration</div>
+              <div className={styles.digitalEventHead}>Channel</div>
+              {visibleDigitalSOERows.map((event, idx) => (
+                <div className={styles.digitalEventRow} key={`${event.channel}-${event.timeMs}-${event.state}-${idx}`}>
+                  <span className={styles.digitalEventTime}>{event.timeMs.toFixed(2)} ms</span>
+                  <span className={event.state ? styles.digitalEventOn : styles.digitalEventOff}>
+                    {event.state ? "ON" : "OFF"}
+                  </span>
+                  <span className={styles.digitalEventDuration}>
+                    {event.durationMs !== null ? `${event.durationMs.toFixed(2)} ms` : "-"}
+                  </span>
+                  <span className={styles.digitalEventChannel} title={event.channel}>{event.channel}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.digitalEventEmpty}>Tidak ada perubahan status digital pada kanal/waktu yang sedang ditampilkan.</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.waveShell}>
       <div className={styles.waveHead}>
@@ -1240,6 +1294,16 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
                   Active: {digitalHoverReadout ? (digitalHoverReadout.active.length ? digitalHoverReadout.active.slice(0, 5).join(", ") : "None") : "-"}
                   {digitalHoverReadout && digitalHoverReadout.active.length > 5 ? ` +${digitalHoverReadout.active.length - 5}` : ""}
                 </span>
+                <label className={styles.digitalEventPosition}>
+                  SOE
+                  <select
+                    value={soePosition}
+                    onChange={(event) => setSoePosition(event.target.value as SOEPosition)}
+                  >
+                    <option value="belowDigital">Below digital</option>
+                    <option value="bottom">Bottom</option>
+                  </select>
+                </label>
               </div>
               <Plot
                 data={[...digitalBarTraces, ...(digitalEdgeTrace ? [digitalEdgeTrace] : [])]}
@@ -1249,51 +1313,17 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
                 onRelayout={(event) => syncRange(event as Record<string, unknown>)}
                 onHover={(event) => updateDigitalHover(event as Readonly<Plotly.PlotMouseEvent>)}
               />
-              <div className={styles.digitalEventPanel}>
-                <button
-                  type="button"
-                  className={styles.digitalEventToggle}
-                  onClick={() => setShowDigitalSOE((value) => !value)}
-                >
-                  <div className={styles.digitalEventHeader}>
-                    <span>SOE Digital</span>
-                    <span>
-                      {digitalSOERows.length} events
-                      {digitalSOERows.length > visibleDigitalSOERows.length ? `, showing ${visibleDigitalSOERows.length}` : ""}
-                      {" | "}
-                      {showDigitalSOE ? "Hide" : "Show"}
-                    </span>
-                  </div>
-                </button>
-                <div className={`${styles.digitalEventBody} ${showDigitalSOE ? "" : styles.digitalEventBodyCollapsed}`}>
-                  {visibleDigitalSOERows.length > 0 ? (
-                      <div className={styles.digitalEventTable}>
-                        <div className={styles.digitalEventHead}>Time</div>
-                        <div className={styles.digitalEventHead}>State</div>
-                        <div className={styles.digitalEventHead}>Duration</div>
-                        <div className={styles.digitalEventHead}>Channel</div>
-                        {visibleDigitalSOERows.map((event, idx) => (
-                          <div className={styles.digitalEventRow} key={`${event.channel}-${event.timeMs}-${event.state}-${idx}`}>
-                            <span className={styles.digitalEventTime}>{event.timeMs.toFixed(2)} ms</span>
-                            <span className={event.state ? styles.digitalEventOn : styles.digitalEventOff}>
-                              {event.state ? "ON" : "OFF"}
-                            </span>
-                            <span className={styles.digitalEventDuration}>
-                              {event.durationMs !== null ? `${event.durationMs.toFixed(2)} ms` : "-"}
-                            </span>
-                            <span className={styles.digitalEventChannel} title={event.channel}>{event.channel}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={styles.digitalEventEmpty}>Tidak ada perubahan status digital pada kanal/waktu yang sedang ditampilkan.</div>
-                    )}
-                </div>
-              </div>
+              {soePosition === "belowDigital" && renderDigitalSOE()}
             </div>
           )}
         </div>
       </div>
+
+      {showDigital && selectedStatus.length > 0 && soePosition === "bottom" && (
+        <div className={styles.digitalEventBottom}>
+          {renderDigitalSOE()}
+        </div>
+      )}
 
       {comtrade.warnings.length > 0 && (
         <div className={styles.waveHint}>
