@@ -7,6 +7,7 @@ import styles from "../../panels/Panel.module.css";
 interface Zone {
   label: string;
   shape: "mho" | "quad";
+  reach_mode?: "rx" | "z";
   center_r: number;
   center_x: number;
   radius: number;
@@ -14,6 +15,8 @@ interface Zone {
   rf_rev: number;
   xf: number;
   xr: number;
+  z_fwd?: number;
+  z_rev?: number;
   line_angle_deg: number;
   color: string;
   /** Direct polygon vertices (R, X) — when set, rendered as-is instead of via quadVertices() */
@@ -60,6 +63,8 @@ type ZoneFamily = "ground" | "phase";
 type TimeMode = "fault" | "all";
 type PlotFamily = "ground" | "phase";
 type PlotRange = { x?: [number, number]; y?: [number, number] };
+type DetailMode = "standard" | "detailed";
+type ZoneShapeChoice = "mho" | "quad_rx" | "quad_z";
 
 const GROUND_LOOPS: LoopName[] = ["ZA", "ZB", "ZC"];
 const PHASE_LOOPS: LoopName[] = ["ZAB", "ZBC", "ZCA"];
@@ -85,18 +90,6 @@ const PHASE_ZONE_TEMPLATES: Zone[] = [
   { label: "Z3", shape: "mho", center_r: 0, center_x: 0, radius: 0, rf_fwd: 0, rf_rev: 0, xf: 0, xr: 0, line_angle_deg: 75, color: "#ef4444" },
 ];
 
-const MANUAL_ZONE_DEFAULTS = {
-  shape: "quad" as const,
-  center_r: 10,
-  center_x: 10,
-  radius: 10,
-  rf_fwd: 20,
-  rf_rev: 5,
-  xf: 20,
-  xr: 5,
-  line_angle_deg: 75,
-};
-
 function mhoCircleTrace(zone: Zone): Partial<Plotly.ScatterData> {
   const theta = Array.from({ length: 361 }, (_, i) => (i * Math.PI) / 180);
   return {
@@ -110,7 +103,43 @@ function mhoCircleTrace(zone: Zone): Partial<Plotly.ScatterData> {
   };
 }
 
+function reachFromReactance(xReach: number, angleDeg: number) {
+  const sinA = Math.sin((angleDeg * Math.PI) / 180);
+  return Math.abs(sinA) > 0.01 ? xReach / sinA : xReach;
+}
+
+function reactanceFromReach(zReach: number, angleDeg: number) {
+  return zReach * Math.sin((angleDeg * Math.PI) / 180);
+}
+
+function zReachQuadVertices(zone: Zone) {
+  const angleRad = (zone.line_angle_deg * Math.PI) / 180;
+  const sinA = Math.sin(angleRad);
+  const cosA = Math.cos(angleRad);
+  const slope = Math.abs(sinA) > 0.01 ? cosA / sinA : 0;
+  const zFwd = zone.z_fwd ?? reachFromReactance(zone.xf, zone.line_angle_deg);
+  const zRev = zone.z_rev ?? Math.max(0, reachFromReactance(zone.xr, zone.line_angle_deg));
+  const rReachFwd = zFwd * cosA;
+  const xReachFwd = zFwd * sinA;
+  const rReachRev = zRev * cosA;
+  const xReachRev = zRev * sinA;
+  const leftR = -Math.max(0, zone.rf_rev);
+  const rightR = Math.max(0, zone.rf_fwd);
+  const topXAt = (r: number) => xReachFwd + (r - rReachFwd) * slope;
+  const bottomXAt = (r: number) => -xReachRev + (r + rReachRev) * slope;
+
+  return [
+    [leftR, bottomXAt(leftR)],
+    [rightR, bottomXAt(rightR)],
+    [rightR, topXAt(rightR)],
+    [leftR, topXAt(leftR)],
+    [leftR, bottomXAt(leftR)],
+  ];
+}
+
 function quadVertices(zone: Zone) {
+  if (zone.reach_mode === "z") return zReachQuadVertices(zone);
+
   const ang = (zone.line_angle_deg * Math.PI) / 180;
   const cos = Math.cos(ang);
   const sin = Math.sin(ang);
@@ -525,7 +554,7 @@ function isRenderableImportedZone(zone: ImportedZone) {
   return zone.shapeType === "circle" || zone.shapeType === "mho";
 }
 
-function loopTrace(loop: LoopName, points: LocusPoint[]): Partial<Plotly.ScatterData> {
+function loopTrace(loop: LoopName, points: LocusPoint[], detailMode: DetailMode): Partial<Plotly.ScatterData> {
   const xVals: Array<number | null> = [];
   const yVals: Array<number | null> = [];
   const tVals: Array<number | null> = [];
@@ -557,10 +586,87 @@ function loopTrace(loop: LoopName, points: LocusPoint[]): Partial<Plotly.Scatter
     type: "scatter",
     mode: "lines+markers",
     name: loop,
-    line: { color: LOOP_COLORS[loop], width: 1.5, shape: "spline", smoothing: 0.8 },
-    marker: { color: LOOP_COLORS[loop], size: 5, symbol: "square" },
+    line: {
+      color: LOOP_COLORS[loop],
+      width: detailMode === "detailed" ? 1.35 : 1.5,
+      shape: detailMode === "detailed" ? "linear" : "spline",
+      smoothing: detailMode === "detailed" ? 0 : 0.8,
+    },
+    marker: { color: LOOP_COLORS[loop], size: detailMode === "detailed" ? 3 : 5, symbol: "square" },
     connectgaps: false,
     hovertemplate: `${loop}<br>t=%{customdata:.2f} ms<br>R=%{x:.2f} Ω<br>X=%{y:.2f} Ω<extra></extra>`,
+  };
+}
+
+function directionTrace(loop: LoopName, points: LocusPoint[]): Partial<Plotly.ScatterData> | null {
+  if (points.length < 6) return null;
+  const step = Math.max(3, Math.floor(points.length / 9));
+  const picked = points.filter((_, idx) => idx > 0 && idx < points.length - 1 && idx % step === 0).slice(0, 10);
+  if (!picked.length) return null;
+  return {
+    x: picked.map((point) => point.r),
+    y: picked.map((point) => point.x),
+    customdata: picked.map((point) => point.t * 1000),
+    type: "scatter",
+    mode: "markers",
+    name: `${loop} direction`,
+    marker: {
+      color: LOOP_COLORS[loop],
+      size: 8,
+      symbol: "triangle-right",
+      line: { color: "#ffffff", width: 0.8 },
+    },
+    showlegend: false,
+    hovertemplate: `${loop} direction<br>t=%{customdata:.2f} ms<br>R=%{x:.2f} ohm<br>X=%{y:.2f} ohm<extra></extra>`,
+  };
+}
+
+function measuredTrace(loops: LoopName[], pointsByLoop: Partial<Record<LoopName, LocusPoint[]>>): Partial<Plotly.ScatterData> | null {
+  const hits = loops.flatMap((loop) => {
+    const points = pointsByLoop[loop] ?? [];
+    const point = points[points.length - 1];
+    return point ? [{ loop, point }] : [];
+  });
+  if (!hits.length) return null;
+  return {
+    x: hits.map((hit) => hit.point.r),
+    y: hits.map((hit) => hit.point.x),
+    customdata: hits.map((hit) => [hit.loop, hit.point.t * 1000]),
+    type: "scatter",
+    mode: "text+markers",
+    name: "Measured impedance",
+    text: hits.map((hit) => hit.loop),
+    textposition: "top center",
+    marker: { color: "#111827", size: 9, symbol: "diamond", line: { color: "#ffffff", width: 1.2 } },
+    showlegend: true,
+    hovertemplate: `%{customdata[0]} measured<br>t=%{customdata[1]:.2f} ms<br>R=%{x:.2f} ohm<br>X=%{y:.2f} ohm<extra></extra>`,
+  };
+}
+
+function lineImpedanceTrace(zones: Zone[]): Partial<Plotly.ScatterData> | null {
+  const source = zones.find((zone) => Number.isFinite(zone.line_angle_deg)) ?? zones[0];
+  if (!source) return null;
+  const angle = (source.line_angle_deg * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  if (Math.abs(cos) < 1e-6 && Math.abs(sin) < 1e-6) return null;
+  const bounds = boundsFromZones(zones);
+  const reach = Math.max(
+    10,
+    Math.abs(bounds.xMin),
+    Math.abs(bounds.xMax),
+    Math.abs(bounds.yMin),
+    Math.abs(bounds.yMax),
+  ) * 1.5;
+  if (!Number.isFinite(reach) || reach <= 0) return null;
+  return {
+    x: [0, reach * cos],
+    y: [0, reach * sin],
+    type: "scatter",
+    mode: "lines",
+    name: "Line impedance",
+    line: { color: "#334155", width: 1.2, dash: "dashdot" },
+    hovertemplate: `Line impedance<br>angle=${source.line_angle_deg.toFixed(1)} deg<extra></extra>`,
   };
 }
 
@@ -710,18 +816,80 @@ function rangeFromRelayout(event: Readonly<Record<string, unknown>>): PlotRange 
   return next.x || next.y ? next : null;
 }
 
-function familyLayout(title: string, xRange: [number, number], yRange: [number, number], currentMs?: number): Partial<Plotly.Layout> {
+function zoneLabelAnnotations(zones: Zone[]): Partial<Plotly.Annotations>[] {
+  return zones.flatMap((zone) => {
+    let xs: number[] = [];
+    let ys: number[] = [];
+    if (zone.shape === "mho") {
+      xs = [zone.center_r];
+      ys = [zone.center_x + zone.radius * 0.55];
+    } else if (zone.poly_r && zone.poly_x) {
+      xs = zone.poly_r;
+      ys = zone.poly_x;
+    } else {
+      const points = quadVertices(zone);
+      xs = points.map(([r]) => r);
+      ys = points.map(([, x]) => x);
+    }
+    const finite = xs.map((r, idx) => ({ r, x: ys[idx] })).filter((point) => Number.isFinite(point.r) && Number.isFinite(point.x));
+    if (!finite.length) return [];
+    const r = finite.reduce((sum, point) => sum + point.r, 0) / finite.length;
+    const x = finite.reduce((sum, point) => sum + point.x, 0) / finite.length;
+    return [{
+      x: r,
+      y: x,
+      text: zone.label,
+      showarrow: false,
+      font: { size: 11, color: zone.color },
+      bgcolor: "rgba(255,255,255,0.82)",
+      bordercolor: zone.color,
+      borderpad: 2,
+    }];
+  });
+}
+
+function familyLayout(
+  title: string,
+  xRange: [number, number],
+  yRange: [number, number],
+  currentMs?: number,
+  detailMode: DetailMode = "standard",
+  zones: Zone[] = [],
+): Partial<Plotly.Layout> {
+  const detailed = detailMode === "detailed";
+  const spanX = Math.max(1, xRange[1] - xRange[0]);
+  const spanY = Math.max(1, yRange[1] - yRange[0]);
+  const majorDtick = Math.max(1, Math.round(Math.max(spanX, spanY) / 10 / 2) * 2);
   return {
     uirevision: title,
-    height: 460,
+    height: detailed ? 560 : 460,
     margin: { t: 36, b: 56, l: 64, r: 20 },
     autosize: true,
-    xaxis: { title: { text: "R (secondary ohm)" }, range: xRange, zeroline: false, tickfont: { size: 10 } },
+    xaxis: {
+      title: { text: "R (secondary ohm)" },
+      range: xRange,
+      zeroline: false,
+      tickfont: { size: detailed ? 11 : 10 },
+      showgrid: detailed,
+      gridcolor: "#e2e8f0",
+      dtick: detailed ? majorDtick : undefined,
+      ticks: detailed ? "outside" : undefined,
+      mirror: detailed,
+      showline: detailed,
+      linecolor: detailed ? "#475569" : undefined,
+    },
     yaxis: {
       title: { text: "X (secondary ohm)" },
       range: yRange,
       zeroline: false,
-      tickfont: { size: 10 },
+      tickfont: { size: detailed ? 11 : 10 },
+      showgrid: detailed,
+      gridcolor: "#e2e8f0",
+      dtick: detailed ? majorDtick : undefined,
+      ticks: detailed ? "outside" : undefined,
+      mirror: detailed,
+      showline: detailed,
+      linecolor: detailed ? "#475569" : undefined,
       scaleanchor: "x",
       scaleratio: 1,
       constrain: "domain",
@@ -732,22 +900,25 @@ function familyLayout(title: string, xRange: [number, number], yRange: [number, 
     title: { text: title, font: { size: 12 } },
     legend: { orientation: "h", y: -0.14, font: { size: 10 } },
     shapes: [
-      { type: "line", x0: xRange[0], x1: xRange[1], y0: 0, y1: 0, line: { color: "#cbd5e1", width: 1 } },
-      { type: "line", x0: 0, x1: 0, y0: yRange[0], y1: yRange[1], line: { color: "#cbd5e1", width: 1 } },
+      { type: "line", x0: xRange[0], x1: xRange[1], y0: 0, y1: 0, line: { color: detailed ? "#334155" : "#cbd5e1", width: detailed ? 1.3 : 1 } },
+      { type: "line", x0: 0, x1: 0, y0: yRange[0], y1: yRange[1], line: { color: detailed ? "#334155" : "#cbd5e1", width: detailed ? 1.3 : 1 } },
     ] as Plotly.Shape[],
-    annotations: currentMs !== undefined ? [{
-      xref: "paper",
-      yref: "paper",
+    annotations: [
+      ...(detailed ? zoneLabelAnnotations(zones) : []),
+      ...(currentMs !== undefined ? [{
+      xref: "paper" as const,
+      yref: "paper" as const,
       x: 1,
       y: 1.08,
-      xanchor: "right",
+      xanchor: "right" as const,
       text: `t <= ${currentMs.toFixed(2)} ms`,
       showarrow: false,
       font: { size: 10, color: "#475569" },
       bgcolor: "rgba(255,255,255,0.9)",
       bordercolor: "#cbd5e1",
       borderpad: 3,
-    }] : [],
+    }] : []),
+    ],
   };
 }
 
@@ -768,6 +939,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   const [playMs, setPlayMs] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(0.5);
+  const [detailMode, setDetailMode] = useState<DetailMode>("standard");
   const [plotRanges, setPlotRanges] = useState<Record<PlotFamily, PlotRange>>({ ground: {}, phase: {} });
   const [ctRatioOverride, setCtRatioOverride] = useState<number | null>(null);
   const [vtRatioOverride, setVtRatioOverride] = useState<number | null>(null);
@@ -815,7 +987,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   useEffect(() => {
     void fetchAllLoci();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataRevision]);
+  }, [dataRevision, detailMode]);
 
   useEffect(() => {
     let alive = true;
@@ -848,31 +1020,49 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     );
   }
 
-  function updateFamilyShape(family: ZoneFamily, shape: Zone["shape"]) {
-    updateZoneSet(family, (zones) => zones.map((zone) => ({ ...zone, shape })));
+  function shapeChoiceFor(zone?: Zone): ZoneShapeChoice {
+    if (!zone || zone.shape === "mho") return "mho";
+    return zone.reach_mode === "z" ? "quad_z" : "quad_rx";
   }
 
-  function createManualZone(family: ZoneFamily, idx: number, shape?: Zone["shape"]): Zone {
-    const templates = family === "ground" ? GROUND_ZONE_TEMPLATES : PHASE_ZONE_TEMPLATES;
-    const template = templates[idx % templates.length];
+  function zoneForShapeChoice(zone: Zone, choice: ZoneShapeChoice): Zone {
+    if (choice === "mho") {
+      return { ...zone, shape: "mho", poly_r: undefined, poly_x: undefined };
+    }
+
+    if (choice === "quad_z") {
+      const zFwd = zone.z_fwd ?? reachFromReactance(zone.xf, zone.line_angle_deg);
+      const zRev = zone.z_rev ?? reachFromReactance(zone.xr, zone.line_angle_deg);
+      return {
+        ...zone,
+        shape: "quad",
+        reach_mode: "z",
+        z_fwd: Number.isFinite(zFwd) ? zFwd : 0,
+        z_rev: Number.isFinite(zRev) ? zRev : 0,
+        poly_r: undefined,
+        poly_x: undefined,
+      };
+    }
+
+    const xf = zone.reach_mode === "z"
+      ? reactanceFromReach(zone.z_fwd ?? zone.xf, zone.line_angle_deg)
+      : zone.xf;
+    const xr = zone.reach_mode === "z"
+      ? reactanceFromReach(zone.z_rev ?? zone.xr, zone.line_angle_deg)
+      : zone.xr;
     return {
-      ...template,
-      ...MANUAL_ZONE_DEFAULTS,
-      label: `Z${idx + 1}`,
-      shape: shape ?? MANUAL_ZONE_DEFAULTS.shape,
+      ...zone,
+      shape: "quad",
+      reach_mode: "rx",
+      xf: Number.isFinite(xf) ? xf : 0,
+      xr: Number.isFinite(xr) ? xr : 0,
+      poly_r: undefined,
+      poly_x: undefined,
     };
   }
 
-  function addManualZone(family: ZoneFamily) {
-    updateZoneSet(family, (zones) => {
-      if (zones.length > 0) return [...zones, createManualZone(family, zones.length, zones[0]?.shape)];
-      return [0, 1, 2].map((idx) => createManualZone(family, idx));
-    });
-    setRelayStatus("Zona manual Z1-Z3 aktif. Isi parameter zona lalu gunakan Refresh All Loci bila diperlukan.");
-  }
-
-  function removeZone(family: ZoneFamily, idx: number) {
-    updateZoneSet(family, (zones) => zones.filter((_, zoneIdx) => zoneIdx !== idx));
+  function updateFamilyShape(family: ZoneFamily, choice: ZoneShapeChoice) {
+    updateZoneSet(family, (zones) => zones.map((zone) => zoneForShapeChoice(zone, choice)));
   }
 
   async function handleRelayFile(file: File) {
@@ -987,44 +1177,76 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ? timing.tripMs
       : (timing.inceptionMs !== null && timing.durationMs !== null ? timing.inceptionMs + timing.durationMs : null);
   const hasRelayZones = groundZones.length > 0 || phaseZones.length > 0;
-  const shouldShowEventMarker = (eventMs: number | null): eventMs is number =>
-    eventMs !== null && eventMs >= activeTimeRange[0] && eventMs <= activeTimeRange[1] && currentPlayMs >= eventMs;
 
   const groundTraces = useMemo(() => {
     const loci = GROUND_LOOPS.filter((loop) => (visiblePointsByLoop[loop] ?? []).length > 0).map((loop) =>
-      loopTrace(loop, visiblePointsByLoop[loop] ?? [])
+      loopTrace(loop, visiblePointsByLoop[loop] ?? [], detailMode)
     );
+    const directions = detailMode === "detailed"
+      ? GROUND_LOOPS.map((loop) => directionTrace(loop, visiblePointsByLoop[loop] ?? [])).filter(Boolean)
+      : [];
     const showPlayHead = currentPlayMs < activeTimeRange[1] - 0.01;
     const heads = showPlayHead
       ? GROUND_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
-    const inception = shouldShowEventMarker(timing.inceptionMs)
+    const inception = timing.inceptionMs !== null
       ? eventTrace("Inception marker", GROUND_LOOPS, pointsByLoop, timing.inceptionMs, "#facc15")
       : null;
-    const trip = shouldShowEventMarker(relayTripMs)
+    const trip = relayTripMs !== null
       ? eventTrace("Relay trip marker", GROUND_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
       : null;
     const zoneTraces = groundZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
-    return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, groundZones, pointsByLoop, relayTripMs, timing.inceptionMs, visiblePointsByLoop]);
+    const measured = detailMode === "detailed" ? measuredTrace(GROUND_LOOPS, visiblePointsByLoop) : null;
+    const line = detailMode === "detailed" ? lineImpedanceTrace(groundZones) : null;
+    if (detailMode !== "detailed") {
+      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
+    }
+    return [
+      ...zoneTraces,
+      ...(line ? [line as Plotly.Data] : []),
+      ...loci,
+      ...(directions as Plotly.Data[]),
+      ...(heads as Plotly.Data[]),
+      ...(measured ? [measured as Plotly.Data] : []),
+      ...(inception ? [inception as Plotly.Data] : []),
+      ...(trip ? [trip as Plotly.Data] : []),
+    ] as Plotly.Data[];
+  }, [activeTimeRange, currentPlayMs, detailMode, groundZones, pointsByLoop, relayTripMs, timing.inceptionMs, visiblePointsByLoop]);
 
   const phaseTraces = useMemo(() => {
     const loci = PHASE_LOOPS.filter((loop) => (visiblePointsByLoop[loop] ?? []).length > 0).map((loop) =>
-      loopTrace(loop, visiblePointsByLoop[loop] ?? [])
+      loopTrace(loop, visiblePointsByLoop[loop] ?? [], detailMode)
     );
+    const directions = detailMode === "detailed"
+      ? PHASE_LOOPS.map((loop) => directionTrace(loop, visiblePointsByLoop[loop] ?? [])).filter(Boolean)
+      : [];
     const showPlayHead = currentPlayMs < activeTimeRange[1] - 0.01;
     const heads = showPlayHead
       ? PHASE_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
-    const inception = shouldShowEventMarker(timing.inceptionMs)
+    const inception = timing.inceptionMs !== null
       ? eventTrace("Inception marker", PHASE_LOOPS, pointsByLoop, timing.inceptionMs, "#facc15")
       : null;
-    const trip = shouldShowEventMarker(relayTripMs)
+    const trip = relayTripMs !== null
       ? eventTrace("Relay trip marker", PHASE_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
       : null;
     const zoneTraces = phaseZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
-    return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, phaseZones, pointsByLoop, relayTripMs, timing.inceptionMs, visiblePointsByLoop]);
+    const measured = detailMode === "detailed" ? measuredTrace(PHASE_LOOPS, visiblePointsByLoop) : null;
+    const line = detailMode === "detailed" ? lineImpedanceTrace(phaseZones) : null;
+    if (detailMode !== "detailed") {
+      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
+    }
+    return [
+      ...zoneTraces,
+      ...(line ? [line as Plotly.Data] : []),
+      ...loci,
+      ...(directions as Plotly.Data[]),
+      ...(heads as Plotly.Data[]),
+      ...(measured ? [measured as Plotly.Data] : []),
+      ...(inception ? [inception as Plotly.Data] : []),
+      ...(trip ? [trip as Plotly.Data] : []),
+    ] as Plotly.Data[];
+  }, [activeTimeRange, currentPlayMs, detailMode, phaseZones, pointsByLoop, relayTripMs, timing.inceptionMs, visiblePointsByLoop]);
 
   // When zones are loaded, merge zone bounds with locus points but cap at 4× the
   // zone span so pre-fault load impedance (100-150 Ω away) doesn't crush the view.
@@ -1058,8 +1280,8 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     return finalizeRange(mergeBounds(zoneBounds, capped));
   }, [phaseZones, pointsByLoop]);
 
-  const groundShape = groundZones[0]?.shape ?? "mho";
-  const phaseShape = phaseZones[0]?.shape ?? "mho";
+  const groundShape = shapeChoiceFor(groundZones[0]);
+  const phaseShape = shapeChoiceFor(phaseZones[0]);
   const groundViewRange = {
     x: plotRanges.ground.x ?? groundRanges.x,
     y: plotRanges.ground.y ?? groundRanges.y,
@@ -1081,7 +1303,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     }));
   }
 
-  function renderZoneEditor(title: string, family: ZoneFamily, zones: Zone[], familyShape: Zone["shape"]) {
+  function renderZoneEditor(title: string, family: ZoneFamily, zones: Zone[], familyShape: ZoneShapeChoice) {
     return (
       <div className={styles.locusEditorSection}>
         <div className={styles.locusEditorHeader}>
@@ -1091,16 +1313,17 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
             <select
               className={styles.selectField}
               value={familyShape}
-              onChange={(e) => updateFamilyShape(family, e.target.value as Zone["shape"])}
+              onChange={(e) => updateFamilyShape(family, e.target.value as ZoneShapeChoice)}
             >
               <option value="mho">Mho</option>
-              <option value="quad">Quadrilateral</option>
+              <option value="quad_rx">Quadrilateral R/X</option>
+              <option value="quad_z">Quadrilateral Z reach</option>
             </select>
           </div>
         </div>
 
         {zones.map((zone, idx) => (
-          <div key={`${family}-${zone.label}-${idx}`} className={styles.locusZoneCard}>
+          <div key={`${family}-${zone.label}`} className={styles.locusZoneCard}>
             <div className={styles.row}>
               <span className={styles.label} style={{ fontWeight: 700, width: 28 }}>{zone.label}</span>
               <input
@@ -1109,14 +1332,6 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
                 onChange={(e) => updateZone(family, idx, "color", e.target.value)}
                 style={{ width: 34, height: 28, border: "none", cursor: "pointer", background: "transparent" }}
               />
-              <button
-                type="button"
-                className={styles.waveGhostBtn}
-                onClick={() => removeZone(family, idx)}
-                style={{ marginLeft: "auto", padding: "4px 10px", fontSize: "0.72rem" }}
-              >
-                Remove
-              </button>
             </div>
 
             {familyShape === "mho" ? (
@@ -1152,6 +1367,54 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
             ) : zone.poly_r ? (
               <div style={{ fontSize: "0.75rem", color: "#64748b", padding: "4px 0" }}>
                 Polygon ({zone.poly_r.length - 1} vertices) — dari file .rio
+              </div>
+            ) : familyShape === "quad_z" ? (
+              <div className={styles.zoneEditorRow}>
+                <label className={styles.zoneLabel}>
+                  Z Forward
+                  <input
+                    className={styles.inputField}
+                    type="number"
+                    value={zone.z_fwd ?? reachFromReactance(zone.xf, zone.line_angle_deg)}
+                    onChange={(e) => updateZone(family, idx, "z_fwd", Number.parseFloat(e.target.value))}
+                  />
+                </label>
+                <label className={styles.zoneLabel}>
+                  Z Reverse
+                  <input
+                    className={styles.inputField}
+                    type="number"
+                    value={zone.z_rev ?? reachFromReactance(zone.xr, zone.line_angle_deg)}
+                    onChange={(e) => updateZone(family, idx, "z_rev", Number.parseFloat(e.target.value))}
+                  />
+                </label>
+                <label className={styles.zoneLabel}>
+                  Rf Forward
+                  <input
+                    className={styles.inputField}
+                    type="number"
+                    value={zone.rf_fwd}
+                    onChange={(e) => updateZone(family, idx, "rf_fwd", Number.parseFloat(e.target.value))}
+                  />
+                </label>
+                <label className={styles.zoneLabel}>
+                  Rf Reverse
+                  <input
+                    className={styles.inputField}
+                    type="number"
+                    value={zone.rf_rev}
+                    onChange={(e) => updateZone(family, idx, "rf_rev", Number.parseFloat(e.target.value))}
+                  />
+                </label>
+                <label className={styles.zoneLabel}>
+                  Reach Angle
+                  <input
+                    className={styles.inputField}
+                    type="number"
+                    value={zone.line_angle_deg}
+                    onChange={(e) => updateZone(family, idx, "line_angle_deg", Number.parseFloat(e.target.value))}
+                  />
+                </label>
               </div>
             ) : (
               <div className={styles.zoneEditorRow}>
@@ -1204,19 +1467,6 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
             )}
           </div>
         ))}
-      </div>
-    );
-  }
-
-  function renderManualZoneActions() {
-    return (
-      <div className={styles.locusTimeControls} style={{ margin: "12px 0 0" }}>
-        <button type="button" className={styles.applyBtn} onClick={() => addManualZone("ground")}>
-          Add Ground Zone
-        </button>
-        <button type="button" className={styles.applyBtn} onClick={() => addManualZone("phase")}>
-          Add Phase-Phase Zone
-        </button>
       </div>
     );
   }
@@ -1299,6 +1549,17 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
               <option value="all">Full record</option>
             </select>
           </label>
+          <label className={styles.zoneLabel}>
+            Plot detail
+            <select
+              className={styles.selectField}
+              value={detailMode}
+              onChange={(event) => setDetailMode(event.target.value as DetailMode)}
+            >
+              <option value="standard">Standard</option>
+              <option value="detailed">Detailed</option>
+            </select>
+          </label>
           <button
             type="button"
             className={styles.applyBtn}
@@ -1362,8 +1623,8 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           <div className={styles.locusPlotTitle}>Phase-to-Ground | ZA, ZB, ZC</div>
           <Plot
             data={groundTraces}
-            layout={familyLayout("Phase-to-Ground", groundViewRange.x, groundViewRange.y, currentPlayMs)}
-            config={{ displayModeBar: true, responsive: true }}
+            layout={familyLayout("Phase-to-Ground", groundViewRange.x, groundViewRange.y, currentPlayMs, detailMode, groundZones)}
+            config={{ displayModeBar: true, responsive: true, displaylogo: false, toImageButtonOptions: { scale: detailMode === "detailed" ? 3 : 2 } }}
             style={{ width: "100%" }}
             onRelayout={(event) => rememberPlotRange("ground", event as Readonly<Record<string, unknown>>)}
           />
@@ -1373,8 +1634,8 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           <div className={styles.locusPlotTitle}>Phase-to-Phase | ZAB, ZBC, ZCA</div>
           <Plot
             data={phaseTraces}
-            layout={familyLayout("Phase-to-Phase", phaseViewRange.x, phaseViewRange.y, currentPlayMs)}
-            config={{ displayModeBar: true, responsive: true }}
+            layout={familyLayout("Phase-to-Phase", phaseViewRange.x, phaseViewRange.y, currentPlayMs, detailMode, phaseZones)}
+            config={{ displayModeBar: true, responsive: true, displaylogo: false, toImageButtonOptions: { scale: detailMode === "detailed" ? 3 : 2 } }}
             style={{ width: "100%" }}
             onRelayout={(event) => rememberPlotRange("phase", event as Readonly<Record<string, unknown>>)}
           />
@@ -1382,20 +1643,14 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       </div>
 
       {hasRelayZones ? (
-        <>
-          {renderManualZoneActions()}
-          <div className={styles.locusEditorGrid}>
-            {groundZones.length > 0 && renderZoneEditor("Ground Zones", "ground", groundZones, groundShape)}
-            {phaseZones.length > 0 && renderZoneEditor("Phase-Phase Zones", "phase", phaseZones, phaseShape)}
-          </div>
-        </>
+        <div className={styles.locusEditorGrid}>
+          {groundZones.length > 0 && renderZoneEditor("Ground Zones", "ground", groundZones, groundShape)}
+          {phaseZones.length > 0 && renderZoneEditor("Phase-Phase Zones", "phase", phaseZones, phaseShape)}
+        </div>
       ) : (
-        <>
-          <div className={styles.warning} style={{ marginTop: 12 }}>
-            Belum ada karakteristik zona relay. Upload file RIO/XRIO atau tambahkan zona manual.
-          </div>
-          {renderManualZoneActions()}
-        </>
+        <div className={styles.warning} style={{ marginTop: 12 }}>
+          Belum ada karakteristik zona relay. Upload file RIO/XRIO untuk menampilkan mho atau polygon protection zone.
+        </div>
       )}
     </div>
   );

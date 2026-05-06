@@ -130,6 +130,7 @@ export async function fetchElectricalParams21(analysisId: string) {
     i_neg_seq_a?: number;
     i_zero_seq_a?: number;
     z_at_inception_ohm?: number;
+    z_min_ohm?: number;
     r_at_fault_ohm?: number;
     x_at_fault_ohm?: number;
     rx_ratio?: number;

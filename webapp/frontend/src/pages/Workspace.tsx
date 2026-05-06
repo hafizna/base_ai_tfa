@@ -5,7 +5,6 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { fetchAnalysis } from "../api/client";
 import COMTRADEExplorer from "../components/panels/COMTRADEExplorer";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
-import SOETimeline from "../components/panels/SOETimeline";
 import AIFaultAnalysis21 from "../components/relay/relay21/AIFaultAnalysis21";
 import ElectricalParams21 from "../components/relay/relay21/ElectricalParams21";
 import FaultTypeBadge21 from "../components/relay/relay21/FaultTypeBadge21";
@@ -65,6 +64,13 @@ const RELAY_LABELS: Record<string, string> = {
 function formatDurationMs(time: number[]) {
   if (time.length < 2) return "-";
   return ((time[time.length - 1] - time[0]) * 1000).toFixed(1);
+}
+
+function formatPrintDate() {
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date());
 }
 
 export default function Workspace() {
@@ -244,6 +250,21 @@ export default function Workspace() {
 
         {!loading && !error && comtrade && (
           <div className={styles.workspaceShell}>
+            <section className={styles.printReportHeader}>
+              <div>
+                <div className={styles.printKicker}>COMTRADE Fault Analysis Report</div>
+                <h1>{comtrade.station_name || "Unknown Station"}</h1>
+                <p>{RELAY_LABELS[relayType] ?? relayType} | {comtrade.rec_dev_id || "Unknown Device"}</p>
+              </div>
+              <dl>
+                <div><dt>Analysis ID</dt><dd>{currentAnalysisId}</dd></div>
+                <div><dt>Printed</dt><dd>{formatPrintDate()}</dd></div>
+                <div><dt>Duration</dt><dd>{formatDurationMs(comtrade.time)} ms</dd></div>
+                <div><dt>Samples</dt><dd>{comtrade.total_samples}</dd></div>
+                <div><dt>Sampling</dt><dd>{comtrade.sampling_rates[0]?.[0] ?? "-"} Hz</dd></div>
+                <div><dt>Channels</dt><dd>{comtrade.analog_channels.length} analog / {comtrade.status_channels.length} digital</dd></div>
+              </dl>
+            </section>
             <div className={styles.resultsLayout}>
               <aside className={styles.leftPanel}>
                 {relayType === "21" && (
@@ -258,10 +279,6 @@ export default function Workspace() {
                   comtrade={comtrade}
                   onUpdate={(updated) => { setComtrade(updated); setDataRevision((r) => r + 1); }}
                 />
-                </PanelErrorBoundary>
-
-                <PanelErrorBoundary label="SOE Timeline">
-                  <SOETimeline comtrade={comtrade} />
                 </PanelErrorBoundary>
               </aside>
 

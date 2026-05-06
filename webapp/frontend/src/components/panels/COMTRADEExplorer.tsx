@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { AnalogChannel, ComtradeData } from "../../context/AnalysisContext";
+import type { AnalogChannel, ComtradeData, StatusChannel } from "../../context/AnalysisContext";
 import Plot from "../plot/PlotlyChart";
 import styles from "./Panel.module.css";
 
@@ -11,6 +11,13 @@ interface Props {
 const MAX_PLOT_POINTS = 5000;
 const PLOT_LEFT_MARGIN = 120; // shared margin keeps analog & digital x-axes aligned
 type AnalogViewMode = "stacked" | "grouped";
+
+interface DigitalEventRow {
+  channel: string;
+  timeMs: number;
+  state: 0 | 1;
+  durationMs: number | null;
+}
 
 /** Find intervals where digital channel is active (state=1). */
 function findActiveIntervals(timeMs: number[], samples: number[]): [number, number][] {
@@ -55,6 +62,87 @@ function buildDigitalBarTraces(
   });
 
   return traces;
+}
+
+function buildDigitalEdgeTrace(
+  channels: StatusChannel[],
+  timeMs: number[],
+): Plotly.Data | null {
+  const x: number[] = [];
+  const y: number[] = [];
+  const customdata: Array<[string, string, string]> = [];
+  const symbols: string[] = [];
+  const colors: string[] = [];
+  const n = channels.length;
+
+  channels.forEach((ch, idx) => {
+    const rowY = n - 1 - idx;
+    const len = Math.min(timeMs.length, ch.samples.length);
+    for (let i = 1; i < len; i += 1) {
+      const prev = ch.samples[i - 1] ? 1 : 0;
+      const next = ch.samples[i] ? 1 : 0;
+      if (prev === next) continue;
+      x.push(timeMs[i]);
+      y.push(rowY);
+      customdata.push([ch.name, next ? "ON" : "OFF", timeMs[i].toFixed(2)]);
+      symbols.push(next ? "triangle-right" : "triangle-left");
+      colors.push(next ? "#16a34a" : "#dc2626");
+    }
+  });
+
+  if (!x.length) return null;
+  return {
+    x,
+    y,
+    customdata,
+    type: "scatter",
+    mode: "markers",
+    name: "Digital edges",
+    marker: {
+      color: colors,
+      symbol: symbols,
+      size: 9,
+      line: { color: "#ffffff", width: 1 },
+    },
+    showlegend: false,
+    hovertemplate: `<b>%{customdata[0]}</b><br>%{customdata[1]} @ %{customdata[2]} ms<extra></extra>`,
+  } as Plotly.Data;
+}
+
+function buildDigitalEventRows(
+  channels: StatusChannel[],
+  timeMs: number[],
+  range: [number, number] | null,
+): DigitalEventRow[] {
+  const rows: DigitalEventRow[] = [];
+
+  channels.forEach((ch) => {
+    const len = Math.min(timeMs.length, ch.samples.length);
+    const offTimes: number[] = [];
+
+    for (let i = 1; i < len; i += 1) {
+      const prev = ch.samples[i - 1] ? 1 : 0;
+      const next = ch.samples[i] ? 1 : 0;
+      if (prev !== next && next === 0) offTimes.push(timeMs[i]);
+    }
+
+    for (let i = 1; i < len; i += 1) {
+      const prev = ch.samples[i - 1] ? 1 : 0;
+      const next = ch.samples[i] ? 1 : 0;
+      if (prev === next) continue;
+      if (range && (timeMs[i] < range[0] || timeMs[i] > range[1])) continue;
+
+      const offTime = next === 1 ? offTimes.find((t) => t > timeMs[i]) ?? null : null;
+      rows.push({
+        channel: ch.name,
+        timeMs: timeMs[i],
+        state: next as 0 | 1,
+        durationMs: offTime !== null ? offTime - timeMs[i] : null,
+      });
+    }
+  });
+
+  return rows.sort((a, b) => a.timeMs - b.timeMs || a.channel.localeCompare(b.channel));
 }
 
 function buildSampledSeries(time: number[], samples: number[], maxPoints: number) {
@@ -386,6 +474,55 @@ function computeRms(samples: number[], cycleN: number): number[] {
   return Array.from(result);
 }
 
+function firstSustainedIndex(flags: boolean[], startIdx: number, samplesNeeded: number) {
+  let run = 0;
+  for (let idx = startIdx; idx < flags.length; idx += 1) {
+    run = flags[idx] ? run + 1 : 0;
+    if (run >= samplesNeeded) return idx - samplesNeeded + 1;
+  }
+  return null;
+}
+
+function detectAnalogInceptionMs(comtrade: ComtradeData, cycleN: number): number | null {
+  const timeMs = comtrade.time.map((t) => t * 1000);
+  if (timeMs.length < Math.max(20, cycleN * 2)) return null;
+
+  const baselineEnd = Math.max(8, Math.min(cycleN * 3, Math.floor(timeMs.length * 0.12)));
+  const startIdx = Math.min(Math.max(baselineEnd, cycleN), timeMs.length - 2);
+  const candidates: number[] = [];
+
+  const currentChannels = comtrade.analog_channels.filter((ch) => ch.measurement === "current");
+  currentChannels.forEach((ch) => {
+    const baseline = ch.samples.slice(0, baselineEnd);
+    const preRms = Math.sqrt(baseline.reduce((sum, value) => sum + value * value, 0) / Math.max(baseline.length, 1));
+    const prePeak = Math.max(...baseline.map((value) => Math.abs(value)), 0);
+    const peak = Math.max(...ch.samples.map((value) => Math.abs(value)), 0);
+    const threshold = Math.max(preRms * 3.0, prePeak * 1.8, peak * 0.12, 0.05);
+    const idx = firstSustainedIndex(ch.samples.map((value) => Math.abs(value) > threshold), startIdx, 3);
+    if (idx !== null) candidates.push(idx);
+  });
+
+  const voltageChannels = comtrade.analog_channels.filter((ch) => ch.measurement === "voltage");
+  voltageChannels.forEach((ch) => {
+    const rms = computeRms(ch.samples, cycleN);
+    const baseline = rms.slice(0, baselineEnd).filter((value) => Number.isFinite(value) && value > 0);
+    if (!baseline.length) return;
+    const preRms = baseline.reduce((sum, value) => sum + value, 0) / baseline.length;
+    const sagLimit = preRms * 0.72;
+    const swellLimit = preRms * 1.35;
+    const idx = firstSustainedIndex(
+      rms.map((value) => value < sagLimit || value > swellLimit),
+      startIdx,
+      Math.max(3, Math.floor(cycleN / 5))
+    );
+    if (idx !== null) candidates.push(idx);
+  });
+
+  if (!candidates.length) return null;
+  const idx = Math.min(...candidates);
+  return Number.isFinite(timeMs[idx]) ? timeMs[idx] : null;
+}
+
 export default function COMTRADEExplorer({ comtrade }: Props) {
   const analogChannels = comtrade.analog_channels;
   const statusChannels = comtrade.status_channels;
@@ -459,6 +596,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const [displayMode, setDisplayMode] = useState<"instantaneous" | "rms">("instantaneous");
   const [analogViewMode, setAnalogViewMode] = useState<AnalogViewMode>("stacked");
   const [digitalHoverMs, setDigitalHoverMs] = useState<number | null>(null);
+  const [showDigitalSOE, setShowDigitalSOE] = useState(true);
 
   // One electrical cycle in samples — used for RMS window
   const cycleN = useMemo(() => {
@@ -467,23 +605,12 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     return Math.max(2, Math.round(fs / freq));
   }, [comtrade]);
 
-  // Detect fault inception time from the first available current channel
+  // Detect fault inception from the earliest sustained analog disturbance.
+  // Digital pickup/trip signals can legitimately lead the analogue fault, so they
+  // are not used for this marker.
   const inceptionTimeMs = useMemo((): number | null => {
-    const ch = comtrade.analog_channels.find(
-      (c) => c.measurement === "current" && ["IA", "IB", "IC"].includes(c.canonical_name || "")
-    );
-    if (!ch || ch.samples.length < 10) return null;
-    const s = ch.samples;
-    const preEnd = Math.max(4, Math.min(Math.floor(s.length / 4), 80));
-    const preRms = Math.sqrt(s.slice(0, preEnd).reduce((a, v) => a + v * v, 0) / preEnd);
-    let maxAbs = 0;
-    for (const v of s) if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
-    const thr = Math.max(preRms * 2, maxAbs * 0.3, 0.05);
-    for (let i = preEnd; i < s.length; i++) {
-      if (Math.abs(s[i]) > thr) return comtrade.time[i] * 1000;
-    }
-    return null;
-  }, [comtrade]);
+    return detectAnalogInceptionMs(comtrade, cycleN);
+  }, [comtrade, cycleN]);
 
   // Trigger offset from CFG (ms from recording start). 0 = unknown.
   const triggerOffsetMs = comtrade.trigger_time * 1000;
@@ -500,7 +627,8 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     const dur = (comtrade.time[comtrade.time.length - 1] ?? 0) * 1000;
     const center = triggerOffsetMs > 20 ? triggerOffsetMs : (inceptionTimeMs ?? null);
     if (center === null || dur <= 600) return null;
-    return [Math.max(0, center - 300), Math.min(dur, center + 700)];
+    const start = center <= 1000 ? 0 : Math.max(0, center - 300);
+    return [start, Math.min(dur, center + 700)];
   }, [triggerOffsetMs, inceptionTimeMs, comtrade.time]);
 
   const displayTimeMs = useMemo(() => {
@@ -514,6 +642,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     const offset = normalizeToInception && inceptionTimeMs !== null ? inceptionTimeMs : 0;
     return triggerOffsetMs - offset;
   }, [triggerOffsetMs, normalizeToInception, inceptionTimeMs]);
+  const displayRecordStartMs = displayTimeMs[0] ?? 0;
 
   function switchGroup(groupIdx: number) {
     setSelectedGroup(groupIdx);
@@ -650,6 +779,10 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     () => buildDigitalBarTraces(selectedStatus, displayTimeMs),
     [selectedStatus, displayTimeMs]
   );
+  const digitalEdgeTrace = useMemo(
+    () => buildDigitalEdgeTrace(selectedStatus, displayTimeMs),
+    [selectedStatus, displayTimeMs]
+  );
 
   function digitalStateAtTime(tMs: number | null) {
     if (tMs === null || selectedStatus.length === 0 || displayTimeMs.length === 0) return null;
@@ -684,11 +817,21 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   } as Plotly.Shape : null;
 
   // CFG trigger marker — amber dashed vertical line
+  const recordStartShape: Plotly.Shape = {
+    type: "line",
+    x0: displayRecordStartMs,
+    x1: displayRecordStartMs,
+    yref: "paper",
+    y0: 0,
+    y1: 1,
+    line: { color: "#f59e0b", width: 1.4, dash: "dash" },
+  } as Plotly.Shape;
+
   const triggerShape: Plotly.Shape | null = displayTriggerMs !== null ? {
     type: "line",
     x0: displayTriggerMs, x1: displayTriggerMs,
     yref: "paper", y0: 0, y1: 1,
-    line: { color: "#f59e0b", width: 1.5, dash: "dash" },
+    line: { color: "#b45309", width: 1.5, dash: "longdash" },
   } as Plotly.Shape : null;
 
   const digitalHoverShape: Plotly.Shape | null = digitalHoverMs !== null ? {
@@ -702,6 +845,11 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   } as Plotly.Shape : null;
 
   const activeRange = sharedRange ?? defaultRange;
+  const digitalSOERows = useMemo(
+    () => buildDigitalEventRows(selectedStatus, displayTimeMs, activeRange),
+    [selectedStatus, displayTimeMs, activeRange]
+  );
+  const visibleDigitalSOERows = digitalSOERows.slice(0, 120);
 
   const channelStripLayout = (ch: AnalogChannel, yRange?: [number, number]): Partial<Plotly.Layout> => ({
     height: 170,
@@ -732,6 +880,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       ...(yRange ? { range: yRange, autorange: false } : { autorange: true }),
     },
     shapes: [
+      recordStartShape,
       ...(inceptionShape && !normalizeToInception ? [inceptionShape] : []),
       ...(triggerShape ? [triggerShape] : []),
     ],
@@ -782,14 +931,15 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       ...(yRange ? { range: yRange, autorange: false } : { autorange: true }),
     },
     shapes: [
+      recordStartShape,
       ...(inceptionShape && !normalizeToInception ? [inceptionShape] : []),
       ...(triggerShape ? [triggerShape] : []),
     ],
   });
 
   const digitalBarLayout: Partial<Plotly.Layout> = {
-    height: Math.max(180, selectedStatus.length * 28 + 60),
-    margin: { l: PLOT_LEFT_MARGIN, r: 20, t: 10, b: 40 },
+    height: Math.max(220, selectedStatus.length * 32 + 70),
+    margin: { l: 160, r: 24, t: 12, b: 44 },
     paper_bgcolor: "#ffffff",
     plot_bgcolor: "#ffffff",
     hovermode: "closest",
@@ -799,6 +949,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     xaxis: {
       title: { text: xAxisLabel },
       tickfont: { size: 9 },
+      tickformat: ".2f",
       autorange: activeRange ? undefined : true,
       range: activeRange ?? undefined,
       showgrid: true,
@@ -819,6 +970,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       fixedrange: true,
     },
     shapes: [
+      recordStartShape,
       ...(inceptionShape && !normalizeToInception ? [inceptionShape] : []),
       ...(triggerShape ? [triggerShape] : []),
       ...(digitalHoverShape ? [digitalHoverShape] : []),
@@ -831,7 +983,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
         <div>
           <div className={styles.waveTitle}>COMTRADE Explorer</div>
           <div className={styles.waveSub}>
-            Semua plot tersinkron. Garis amber (---) = trigger CFG. Garis oranye (···) = inception terdeteksi.
+            Semua plot tersinkron. Garis amber (---) = awal rekaman. Garis amber gelap (-- --) = trigger CFG. Garis oranye (dot) = inception terdeteksi.
           </div>
         </div>
         <div className={styles.waveBadges}>
@@ -1090,13 +1242,54 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
                 </span>
               </div>
               <Plot
-                data={digitalBarTraces}
+                data={[...digitalBarTraces, ...(digitalEdgeTrace ? [digitalEdgeTrace] : [])]}
                 layout={digitalBarLayout}
                 config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: "reset" }}
                 style={{ width: "100%" }}
                 onRelayout={(event) => syncRange(event as Record<string, unknown>)}
                 onHover={(event) => updateDigitalHover(event as Readonly<Plotly.PlotMouseEvent>)}
               />
+              <div className={styles.digitalEventPanel}>
+                <button
+                  type="button"
+                  className={styles.digitalEventToggle}
+                  onClick={() => setShowDigitalSOE((value) => !value)}
+                >
+                  <div className={styles.digitalEventHeader}>
+                    <span>SOE Digital</span>
+                    <span>
+                      {digitalSOERows.length} events
+                      {digitalSOERows.length > visibleDigitalSOERows.length ? `, showing ${visibleDigitalSOERows.length}` : ""}
+                      {" | "}
+                      {showDigitalSOE ? "Hide" : "Show"}
+                    </span>
+                  </div>
+                </button>
+                <div className={`${styles.digitalEventBody} ${showDigitalSOE ? "" : styles.digitalEventBodyCollapsed}`}>
+                  {visibleDigitalSOERows.length > 0 ? (
+                      <div className={styles.digitalEventTable}>
+                        <div className={styles.digitalEventHead}>Time</div>
+                        <div className={styles.digitalEventHead}>State</div>
+                        <div className={styles.digitalEventHead}>Duration</div>
+                        <div className={styles.digitalEventHead}>Channel</div>
+                        {visibleDigitalSOERows.map((event, idx) => (
+                          <div className={styles.digitalEventRow} key={`${event.channel}-${event.timeMs}-${event.state}-${idx}`}>
+                            <span className={styles.digitalEventTime}>{event.timeMs.toFixed(2)} ms</span>
+                            <span className={event.state ? styles.digitalEventOn : styles.digitalEventOff}>
+                              {event.state ? "ON" : "OFF"}
+                            </span>
+                            <span className={styles.digitalEventDuration}>
+                              {event.durationMs !== null ? `${event.durationMs.toFixed(2)} ms` : "-"}
+                            </span>
+                            <span className={styles.digitalEventChannel} title={event.channel}>{event.channel}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.digitalEventEmpty}>Tidak ada perubahan status digital pada kanal/waktu yang sedang ditampilkan.</div>
+                    )}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1110,3 +1303,4 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     </div>
   );
 }
+

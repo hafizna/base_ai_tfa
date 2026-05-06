@@ -47,7 +47,13 @@ export default function ElectricalParams21({ analysisId, dataRevision = 0 }: Pro
 
   const hasAnyPhase = params && (params.i_peak_ia_a !== undefined || params.i_peak_ib_a !== undefined || params.i_peak_ic_a !== undefined);
   const hasSeq = params && (params.i_pos_seq_a !== undefined || params.i_neg_seq_a !== undefined || params.i_zero_seq_a !== undefined);
-  const hasImpedance = params && (params.z_at_inception_ohm !== undefined || params.r_at_fault_ohm !== undefined || params.z_angle_deg !== undefined);
+  const hasImpedance = params && (
+    params.z_at_inception_ohm !== undefined ||
+    params.z_min_ohm !== undefined ||
+    params.r_at_fault_ohm !== undefined ||
+    params.z_angle_deg !== undefined
+  );
+  const zMin = params?.z_min_ohm ?? params?.z_at_inception_ohm;
 
   return (
     <div className={styles.panel}>
@@ -83,6 +89,7 @@ export default function ElectricalParams21({ analysisId, dataRevision = 0 }: Pro
           {hasImpedance && (
             <Section title="Impedansi Gangguan">
               <Param label="|Z| saat Inception" value={params.z_at_inception_ohm} unit="ohm" highlight />
+              <Param label="|Z| minimum" value={zMin} unit="ohm" highlight />
               <Param label="R (resistif)" value={params.r_at_fault_ohm} unit="ohm" />
               <Param label="X (reaktif)" value={params.x_at_fault_ohm} unit="ohm" />
               <Param label="Rasio R/X" value={params.rx_ratio} unit="" />

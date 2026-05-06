@@ -512,6 +512,89 @@
 }
 
 @media print {
+  .panel {
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border: 1px solid #d7e0ea;
+    border-radius: 8px;
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .panelHeader {
+    margin-bottom: 10px;
+  }
+
+  .panelTitle {
+    font-size: 12px;
+  }
+
+  .controls,
+  .channelToggles,
+  .waveToolbar,
+  .waveChannelList,
+  .locusTimebar,
+  .locusEditorGrid,
+  .locusEditorSection,
+  .waveGhostBtn,
+  .applyBtn,
+  .selectField,
+  .inputField,
+  .zoneEditorRow {
+    display: none !important;
+  }
+
+  .waveShell {
+    border: 1px solid #d7e0ea;
+    border-radius: 8px;
+    box-shadow: none;
+    break-inside: auto;
+  }
+
+  .waveHead {
+    padding: 12px 14px 8px;
+  }
+
+  .waveGrid {
+    display: block;
+    padding: 0 12px 12px;
+  }
+
+  .wavePlotStack {
+    gap: 12px;
+  }
+
+  .waveSubplot {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .digitalEventPanel {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .digitalEventBodyCollapsed {
+    display: block;
+  }
+
+  .digitalEventTable {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .locusPlotCard {
+    border-radius: 8px;
+    padding: 10px 12px 6px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .locusPlotStack {
+    gap: 12px;
+  }
+
   .rankTrack,
   .rankFill,
   .aiConfidenceDial,
@@ -924,6 +1007,117 @@
   padding: 0 4px;
 }
 
+.digitalEventPanel {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+
+.digitalEventHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.digitalEventToggle {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.digitalEventToggle + .digitalEventTable {
+  margin-top: 8px;
+}
+
+.digitalEventBody {
+  margin-top: 8px;
+}
+
+.digitalEventBodyCollapsed {
+  display: none;
+}
+
+.digitalEventTable {
+  display: grid;
+  grid-template-columns: 96px 54px 82px minmax(140px, 1fr);
+  align-items: center;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.digitalEventEmpty {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.digitalEventHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 7px 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.digitalEventRow {
+  display: contents;
+}
+
+.digitalEventRow > span {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.74rem;
+}
+
+.digitalEventTime,
+.digitalEventDuration {
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+}
+
+.digitalEventOn,
+.digitalEventOff {
+  font-weight: 800;
+}
+
+.digitalEventOn {
+  color: #15803d;
+}
+
+.digitalEventOff {
+  color: #b91c1c;
+}
+
+.digitalEventChannel {
+  color: #0f172a;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .waveHint {
   font-size: 0.72rem;
   color: #64748b;
@@ -932,6 +1126,62 @@
 
 .soeFull {
   margin-bottom: 20px;
+}
+
+.soeTimingList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.soeTimingRow {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 10px;
+}
+
+.soeTimingMain {
+  display: grid;
+  grid-template-columns: minmax(76px, 1fr) 42px minmax(72px, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 0.74rem;
+}
+
+.soeTimingTime,
+.soeTimingDuration {
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.soeTimingChannel {
+  color: #0f172a;
+  font-size: 0.76rem;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.soeTimingRow[data-cat="trip"] {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.soeTimingRow[data-cat="ar"] {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.soeTimingRow[data-cat="pickup"] {
+  border-color: #fed7aa;
+  background: #fff7ed;
 }
 
 .soeCols {

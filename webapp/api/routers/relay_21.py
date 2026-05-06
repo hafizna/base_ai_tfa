@@ -501,6 +501,28 @@ def _compute_electrical_params(payload: dict) -> dict:
             except Exception:
                 pass
 
+    z_min_values = []
+    for v_phase, i_phase in ((va, ia), (vb, ib), (vc, ic)):
+        if v_phase is None or i_phase is None:
+            continue
+        limit = min(len(v_phase), len(i_phase), len(time))
+        if limit <= pre_end + 1:
+            continue
+        i_abs = np.abs(i_phase[:limit])
+        pre_i = i_abs[:pre_end] if pre_end > 1 else i_abs[: max(1, limit // 10)]
+        current_gate = max(float(np.sqrt(np.mean(pre_i ** 2))) * 2.0, float(np.max(i_abs)) * 0.05, 0.1)
+        valid = i_abs[pre_end:limit] > current_gate
+        if not np.any(valid):
+            continue
+        z_vals = np.abs((v_phase[pre_end:limit] * 1000.0) / i_phase[pre_end:limit])
+        z_vals = z_vals[np.isfinite(z_vals) & valid]
+        if z_vals.size:
+            z_min_values.append(float(np.min(z_vals)))
+    if z_min_values:
+        result["z_min_ohm"] = round(float(np.min(z_min_values)), 2)
+    elif "z_at_inception_ohm" in result:
+        result["z_min_ohm"] = result["z_at_inception_ohm"]
+
     ar_dead_ms = None
     for sch in payload.get("status_channels", []):
         name = sch.get("name", "").upper()
