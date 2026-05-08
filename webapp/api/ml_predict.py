@@ -885,6 +885,13 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     if prot_sentence:
         evidence.append(prot_sentence)
 
+    if peak_a > 100_000:
+        evidence.append(
+            f"Catatan validasi rasio: I puncak terhitung {peak_a:.0f} A (>100 kA). "
+            "Nilai setinggi ini sering mengindikasikan CT/VT ratio belum sesuai; verifikasi rasio COMTRADE, "
+            "setting relay/RIO, atau input manual sebelum menyimpulkan besaran arus primer."
+        )
+
     trip_phases = row.get("digital_trip_phases") or []
     cb_open_phases = row.get("digital_cb_open_phases") or []
     startup_phases = row.get("digital_startup_phases") or []

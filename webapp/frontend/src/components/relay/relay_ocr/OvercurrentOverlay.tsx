@@ -40,7 +40,7 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
   }
 
   const curveTrace: Partial<Plotly.ScatterData> = result ? {
-    x: result.curve_points.map((p) => p.current_ratio * pickup),
+    x: result.curve_points.map((p) => p.current_ratio),
     y: result.curve_points.map((p) => p.trip_time_s),
     type: "scatter",
     mode: "lines",
@@ -49,18 +49,30 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
   } : { x: [], y: [], type: "scatter", mode: "lines", name: "No data" };
 
   const measuredTrace: Partial<Plotly.ScatterData> = result?.measured_current_a ? {
-    x: [result.measured_current_a],
+    x: result.intersection_ratio ? [result.intersection_ratio] : [],
     y: [result.measured_trip_time_s ?? 0],
     type: "scatter",
     mode: "markers",
-    name: `Measured: ${result.measured_current_a.toFixed(1)} A`,
+    name: result.intersection_ratio
+      ? `Measured: ${result.intersection_ratio.toFixed(2)}x Is`
+      : `Measured: ${result.measured_current_a.toFixed(1)} A`,
     marker: { color: "#ef4444", size: 12, symbol: "x" },
   } : { x: [], y: [], type: "scatter", mode: "markers", name: "" };
+
+  const maxCurveRatio = result?.curve_points.length
+    ? Math.max(...result.curve_points.map((p) => p.current_ratio))
+    : 20;
+  const xMax = Math.max(20, maxCurveRatio, (result?.intersection_ratio ?? 0) * 1.15);
 
   const layout: Partial<Plotly.Layout> = {
     height: 380,
     margin: { t: 20, b: 50, l: 60, r: 20 },
-    xaxis: { title: { text: "Current (A)" }, type: "log", tickfont: { size: 10 } },
+    xaxis: {
+      title: { text: "Current multiple (I / Is)" },
+      type: "log",
+      range: [Math.log10(1), Math.log10(xMax)],
+      tickfont: { size: 10 },
+    },
     yaxis: { title: { text: "Trip Time (s)" }, type: "log", tickfont: { size: 10 } },
     plot_bgcolor: "#ffffff",
     paper_bgcolor: "#ffffff",
@@ -74,6 +86,15 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
   const panelNote = relayType === "SBEF"
     ? "SBEF is separated here so its timing review is not mixed with standard OCR/GFR assumptions."
     : "Use this view for OCR and GFR relays that operate through pickup and time-delay behavior.";
+  const assessmentText = !result
+    ? "Assessment belum dihitung."
+    : result.intersection_ratio == null
+      ? "Assessment: arus terukur atau pickup belum cukup untuk menghitung rasio I/Is."
+      : result.intersection_ratio <= 1
+        ? "Assessment: arus maksimum masih di bawah pickup. Dengan setting ini relay diasumsikan tidak seharusnya trip dari elemen OCR/SBEF."
+        : result.measured_trip_time_s != null
+          ? `Assessment: arus maksimum mencapai ${result.intersection_ratio.toFixed(2)}x Is. Berdasarkan kurva ${CURVE_LABELS[curveType]}, relay diperkirakan berada di area operate dengan waktu teoritis ${result.measured_trip_time_s.toFixed(3)} s. Cocokkan dengan SOE/trip aktual untuk memastikan relay bekerja sesuai setting.`
+          : `Assessment: arus maksimum mencapai ${result.intersection_ratio.toFixed(2)}x Is, tetapi waktu trip teoritis tidak dapat dihitung dari kurva ini. Verifikasi setting pickup, TMS, dan tipe kurva aktual relay.`;
 
   return (
     <div className={styles.panel}>
@@ -88,6 +109,11 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
 
       <div className={styles.row} style={{ marginBottom: 12 }}>
         <span className={styles.badge}>{panelNote}</span>
+      </div>
+      <div className={styles.row} style={{ marginBottom: 12 }}>
+        <span className={styles.badge}>
+          Titik merah adalah arus RMS satu-siklus maksimum yang dipetakan terhadap kurva sebagai rasio I/Is, bukan jumlah spike arus.
+        </span>
       </div>
 
       <div className={styles.row}>
@@ -110,7 +136,7 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
       {result && result.intersection_ratio != null && (
         <div className={styles.row} style={{ marginTop: 12 }}>
           <span className={styles.badge}>
-            Measured: {result.measured_current_a.toFixed(1)} A
+            Max 1-cycle RMS: {result.measured_current_a.toFixed(1)} A
             ({result.intersection_ratio.toFixed(2)}× Is)
           </span>
           {result.measured_trip_time_s != null && (
@@ -118,6 +144,11 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
               Trip time: {result.measured_trip_time_s.toFixed(3)} s
             </span>
           )}
+        </div>
+      )}
+      {result && (
+        <div className={styles.row} style={{ marginTop: 12 }}>
+          <span className={styles.badge}>{assessmentText}</span>
         </div>
       )}
     </div>

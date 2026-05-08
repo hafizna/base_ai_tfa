@@ -170,6 +170,16 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     status === "NOT_OPERATED" ? "NOT OPERATED"
     : status === "IDIFF_FAST_OPERATED" ? "I-DIFF FAST OPERATED"
     : "IDIFF OPERATED";
+  const plotExplanation = samples.length > 0
+    ? "Setiap titik adalah posisi operasi sesaat dari window RMS pada rekaman: I-diff terhadap I-restraint per fasa. Banyak titik berarti banyak sampel waktu yang diplot, bukan jumlah spike arus."
+    : "Tekan Compute untuk membentuk titik operasi I-diff terhadap I-restraint dari rekaman.";
+  const assessmentText = !status
+    ? "Assessment belum dihitung."
+    : status === "NOT_OPERATED"
+      ? "Assessment: berdasarkan setting karakteristik yang dipilih, titik operasi masih berada di area restraint/non-operate. Relay diasumsikan tidak seharusnya trip untuk rekaman ini, kecuali ada setting aktual lain yang belum dimasukkan."
+      : status === "IDIFF_FAST_OPERATED"
+        ? `Assessment: titik operasi menembus elemen I-DIFF>> fast${operatedPhases.length ? ` pada fasa ${operatedPhases.join(", ")}` : ""}. Dengan setting yang diberikan, operasi relay dapat dianggap sesuai karakteristik fast differential.`
+        : `Assessment: titik operasi melewati kurva operate I-DIFF>${operatedPhases.length ? ` pada fasa ${operatedPhases.join(", ")}` : ""}. Dengan setting yang diberikan, relay diasumsikan bekerja sesuai karakteristik differential/restraint.`;
 
   return (
     <div className={styles.panel}>
@@ -194,6 +204,9 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
       <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginBottom: 10, lineHeight: 1.5 }}>
         {activePreset.hint}
       </div>
+      <div className={styles.row} style={{ marginBottom: 12 }}>
+        <span className={styles.badge}>{plotExplanation}</span>
+      </div>
 
       {status && (
         <div className={`${styles.statusBadge} ${statusClass}`} style={{ marginBottom: 12 }}>
@@ -208,6 +221,9 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         config={{ displayModeBar: false, responsive: true }}
         style={{ width: "100%" }}
       />
+      <div className={styles.row} style={{ marginTop: 12 }}>
+        <span className={styles.badge}>{assessmentText}</span>
+      </div>
 
       {/* Parameter editor */}
       <h3 style={{ fontSize: "0.85rem", color: "#475569", margin: "16px 0 10px" }}>Parameters</h3>

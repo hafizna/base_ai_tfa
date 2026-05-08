@@ -54,6 +54,10 @@ export default function ElectricalParams21({ analysisId, dataRevision = 0 }: Pro
     params.z_angle_deg !== undefined
   );
   const zMin = params?.z_min_ohm ?? params?.z_at_inception_ohm;
+  const peakValues = [params?.i_peak_ia_a, params?.i_peak_ib_a, params?.i_peak_ic_a]
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const maxPeakCurrent = peakValues.length ? Math.max(...peakValues.map((value) => Math.abs(value))) : 0;
+  const hasSuspiciousCurrentRatio = maxPeakCurrent > 100_000;
 
   return (
     <div className={styles.panel}>
@@ -68,6 +72,14 @@ export default function ElectricalParams21({ analysisId, dataRevision = 0 }: Pro
 
       {params && (
         <>
+          {hasSuspiciousCurrentRatio && (
+            <div className={styles.warning} style={{ marginBottom: 12 }}>
+              Peringatan rasio: I puncak mencapai {maxPeakCurrent.toFixed(0)} A (&gt;100 kA).
+              Nilai sebesar ini sering menandakan CT/VT ratio belum sesuai. Periksa kembali rasio COMTRADE,
+              setting relay/RIO, dan input manual sebelum menarik kesimpulan.
+            </div>
+          )}
+
           <Section title="Durasi & Arus Puncak">
             <Param label="Durasi Gangguan" value={params.fault_duration_ms} unit="ms" highlight />
             <Param label="I puncak fasa A" value={params.i_peak_ia_a} unit="A" />

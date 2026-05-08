@@ -329,7 +329,13 @@ function parseSifangRIO(text: string): ImportedRelayData | null {
     }
   }
 
-  return { kind: "rio", phGnd: phGnd.slice(0, 3), phPh: phPh.slice(0, 3), ...(earthComp ? { earthComp } : {}) };
+  return {
+    kind: "rio",
+    phGnd: phGnd.slice(0, 3),
+    phPh: phPh.slice(0, 3),
+    ...(earthComp ? { earthComp } : {}),
+    ...parseRioRatios(text),
+  };
 }
 
 function parseRioEarthComp(text: string): ImportedRelayData["earthComp"] {
@@ -343,6 +349,30 @@ function parseRioEarthComp(text: string): ImportedRelayData["earthComp"] {
     k0: Math.hypot(re, xe),
     angleDeg: (Math.atan2(xe, re) * 180) / Math.PI,
     source: `RIO RE/RL=${re.toFixed(3)}, XE/XL=${xe.toFixed(3)}`,
+  };
+}
+
+function readRioNumber(text: string, labels: string[]): number | null {
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+    const match = text.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*(?:=|:)?\\s*([-+]?\\d+(?:\\.\\d+)?)`, "i"));
+    if (!match) continue;
+    const value = Number.parseFloat(match[1]);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function parseRioRatios(text: string): Pick<ImportedRelayData, "ctRatio" | "vtRatio"> {
+  const vtPrimary = readRioNumber(text, ["VPRIM-LL", "VPRIM", "VPRIMARY", "VT PRIMARY", "MAIN VT PRIMARY"]);
+  const vtSecondary = readRioNumber(text, ["VNOM", "VSEC", "VSECONDARY", "VT SECONDARY", "MAIN VT SEC'Y"]);
+  const ctPrimary = readRioNumber(text, ["IPRIM", "IPRIMARY", "CT PRIMARY", "CTPRIMARY", "PHASE CT PRIMARY"]);
+  const ctSecondary = readRioNumber(text, ["INOM", "ISEC", "ISECONDARY", "CT SECONDARY", "CTSECONDARY", "PHASE CT SEC'Y"]);
+  const vtRatio = vtPrimary != null && vtSecondary != null && vtSecondary > 0 ? vtPrimary / vtSecondary : null;
+  const ctRatio = ctPrimary != null && ctSecondary != null && ctSecondary > 0 ? ctPrimary / ctSecondary : null;
+  return {
+    ...(ctRatio != null ? { ctRatio } : {}),
+    ...(vtRatio != null ? { vtRatio } : {}),
   };
 }
 
@@ -401,6 +431,7 @@ function parseRIO(text: string): ImportedRelayData | null {
     phGnd: phGnd.slice(0, 3),
     phPh: phPh.slice(0, 3),
     earthComp: parseRioEarthComp(text),
+    ...parseRioRatios(text),
   };
 }
 
@@ -943,6 +974,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   const [plotRanges, setPlotRanges] = useState<Record<PlotFamily, PlotRange>>({ ground: {}, phase: {} });
   const [ctRatioOverride, setCtRatioOverride] = useState<number | null>(null);
   const [vtRatioOverride, setVtRatioOverride] = useState<number | null>(null);
+  const [ratioNotice, setRatioNotice] = useState("CT/VT locus memakai rasio dari CFG/parser sampai nilai RIO/XRIO atau manual diisi.");
   const rioInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchAllLoci(
@@ -1020,6 +1052,63 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     );
   }
 
+  function updateRatioOverride(kind: "ct" | "vt", raw: string) {
+    const value = raw.trim() === "" ? null : Number.parseFloat(raw);
+    if (value !== null && (!Number.isFinite(value) || value <= 0)) return;
+    if (kind === "ct") setCtRatioOverride(value);
+    else setVtRatioOverride(value);
+    setRatioNotice("CT/VT locus diubah manual. Tekan Apply CT/VT untuk menghitung ulang locus dengan rasio ini.");
+  }
+
+  function polygonVertexRows(zone: Zone) {
+    if (!zone.poly_r || !zone.poly_x) return [];
+    const count = Math.min(zone.poly_r.length, zone.poly_x.length);
+    if (!count) return [];
+    const closesToStart =
+      count > 2 &&
+      Math.abs(zone.poly_r[0] - zone.poly_r[count - 1]) < 1e-9 &&
+      Math.abs(zone.poly_x[0] - zone.poly_x[count - 1]) < 1e-9;
+    const visibleCount = closesToStart ? count - 1 : count;
+    return Array.from({ length: visibleCount }, (_, vertexIdx) => ({
+      vertexIdx,
+      r: zone.poly_r?.[vertexIdx] ?? 0,
+      x: zone.poly_x?.[vertexIdx] ?? 0,
+    }));
+  }
+
+  function updatePolygonVertex(
+    family: ZoneFamily,
+    zoneIndex: number,
+    vertexIndex: number,
+    axis: "r" | "x",
+    value: number
+  ) {
+    if (!Number.isFinite(value)) return;
+    updateZoneSet(family, (zones) =>
+      zones.map((zone, idx) => {
+        if (idx !== zoneIndex || !zone.poly_r || !zone.poly_x) return zone;
+        const nextR = [...zone.poly_r];
+        const nextX = [...zone.poly_x];
+        const count = Math.min(nextR.length, nextX.length);
+        if (vertexIndex < 0 || vertexIndex >= count) return zone;
+        const closesToStart =
+          count > 2 &&
+          Math.abs(nextR[0] - nextR[count - 1]) < 1e-9 &&
+          Math.abs(nextX[0] - nextX[count - 1]) < 1e-9;
+
+        if (axis === "r") nextR[vertexIndex] = value;
+        else nextX[vertexIndex] = value;
+
+        if (closesToStart && vertexIndex === 0) {
+          nextR[count - 1] = nextR[0];
+          nextX[count - 1] = nextX[0];
+        }
+
+        return { ...zone, poly_r: nextR, poly_x: nextX };
+      })
+    );
+  }
+
   function shapeChoiceFor(zone?: Zone): ZoneShapeChoice {
     if (!zone || zone.shape === "mho") return "mho";
     return zone.reach_mode === "z" ? "quad_z" : "quad_rx";
@@ -1090,10 +1179,20 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       let nextCtRatio = ctRatioOverride;
       let nextVtRatio = vtRatioOverride;
       if (imported.ctRatio != null && imported.vtRatio != null) {
+        const previousRatioNote = ctRatioOverride != null && vtRatioOverride != null
+          ? ` Sebelumnya CT=${ctRatioOverride.toFixed(2)}:1, VT=${vtRatioOverride.toFixed(2)}:1.`
+          : "";
         nextCtRatio = imported.ctRatio;
         nextVtRatio = imported.vtRatio;
         setCtRatioOverride(nextCtRatio);
         setVtRatioOverride(nextVtRatio);
+        setRatioNotice(
+          `CT/VT dari ${file.name} dipakai untuk locus: CT=${nextCtRatio.toFixed(2)}:1, VT=${nextVtRatio.toFixed(2)}:1.${previousRatioNote} Koreksi manual bila tidak sesuai nameplate/setting relay.`
+        );
+      } else {
+        setRatioNotice(
+          `File ${file.name} tidak memuat pasangan CT dan VT yang lengkap. Locus tetap memakai rasio CFG/parser atau nilai manual yang sedang aktif.`
+        );
       }
 
       const gndCount = imported.phGnd.length;
@@ -1365,9 +1464,52 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
                 </label>
               </div>
             ) : zone.poly_r ? (
-              <div style={{ fontSize: "0.75rem", color: "#64748b", padding: "4px 0" }}>
-                Polygon ({zone.poly_r.length - 1} vertices) — dari file .rio
-              </div>
+              <>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", padding: "4px 0 8px" }}>
+                  Polygon ({polygonVertexRows(zone).length} vertices) dari file RIO/XRIO. Nilai R/X bisa dikoreksi bila hasil import tidak sesuai.
+                </div>
+                <div className={styles.zoneEditorRow}>
+                  {polygonVertexRows(zone).map((point) => (
+                    <div
+                      key={`${zone.label}-${point.vertexIdx}`}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "36px minmax(0, 1fr) minmax(0, 1fr)",
+                        alignItems: "end",
+                        gap: 6,
+                      }}
+                    >
+                      <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#475569", paddingBottom: 8 }}>
+                        V{point.vertexIdx + 1}
+                      </span>
+                      <label className={styles.zoneLabel}>
+                        R
+                        <input
+                          className={styles.inputField}
+                          type="number"
+                          step="0.01"
+                          value={point.r}
+                          onChange={(e) =>
+                            updatePolygonVertex(family, idx, point.vertexIdx, "r", Number.parseFloat(e.target.value))
+                          }
+                        />
+                      </label>
+                      <label className={styles.zoneLabel}>
+                        X
+                        <input
+                          className={styles.inputField}
+                          type="number"
+                          step="0.01"
+                          value={point.x}
+                          onChange={(e) =>
+                            updatePolygonVertex(family, idx, point.vertexIdx, "x", Number.parseFloat(e.target.value))
+                          }
+                        />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : familyShape === "quad_z" ? (
               <div className={styles.zoneEditorRow}>
                 <label className={styles.zoneLabel}>
@@ -1528,6 +1670,51 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           />
         </div>
         <div style={{ marginTop: 6, fontSize: "0.78rem", color: "#64748b" }}>{relayStatus}</div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            gap: 8,
+            alignItems: "end",
+            marginTop: 10,
+          }}
+        >
+          <label className={styles.zoneLabel}>
+            CT ratio used by locus
+            <input
+              className={styles.inputField}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="CFG/parser"
+              value={ctRatioOverride ?? ""}
+              onChange={(event) => updateRatioOverride("ct", event.target.value)}
+            />
+          </label>
+          <label className={styles.zoneLabel}>
+            VT ratio used by locus
+            <input
+              className={styles.inputField}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="CFG/parser"
+              value={vtRatioOverride ?? ""}
+              onChange={(event) => updateRatioOverride("vt", event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className={styles.applyBtn}
+            onClick={() => void fetchAllLoci(groundZones, phaseZones, ctRatioOverride, vtRatioOverride)}
+            disabled={loading}
+          >
+            Apply CT/VT
+          </button>
+        </div>
+        <div className={styles.badge} style={{ marginTop: 8, whiteSpace: "normal", lineHeight: 1.45 }}>
+          {ratioNotice}
+        </div>
       </div>
 
       {error && (
