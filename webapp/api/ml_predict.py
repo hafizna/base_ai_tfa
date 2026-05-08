@@ -201,6 +201,18 @@ def _status_any_on(samples: list) -> bool:
     return any(int(v) == 1 for v in samples or [])
 
 
+def _is_ar_status_name(name: str) -> bool:
+    compact = re.sub(r"[^A-Z0-9]+", "", name.upper())
+    return (
+        bool(re.search(r"\bA\s*/?\s*R\b", name.upper()))
+        or "RECLOS" in compact
+        or "RECLOSE" in compact
+        or compact.startswith("AR")
+        or "AR1P" in compact
+        or "AR3P" in compact
+    )
+
+
 def _digital_sequence_features(status_channels: list, time: np.ndarray, inception_idx: int) -> dict:
     start_idx = max(0, inception_idx - 2)
     trip_phases: dict[str, float] = {}
@@ -242,8 +254,20 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
             or ("52" in name and "OPEN" in name)
         )
         breaker_match = re.search(r"\b(CB\d*)\b", name)
-        is_aux_cb = "AUXCB" in compact_name or re.search(r"\bAUX\s*CB\b", name) is not None
+        is_aux_cb = (
+            "AUXCB" in compact_name
+            or "CBAUX" in compact_name
+            or re.search(r"\bAUX\s*CB\b", name) is not None
+            or re.search(r"\bCB\s*AUX\b", name) is not None
+        )
         breaker_id = breaker_match.group(1) if breaker_match is not None else ("AUXCB" if is_aux_cb else None)
+        is_cb_aux_open_contact = (
+            is_aux_cb
+            and phase is not None
+            and not any(block in name for block in ("HEALTH", "HEALTHY", "ALARM", "FAIL", "LOCK", "BLOCK"))
+            and not any(close in name for close in ("CLOSE", "CLOSED", "52A", "CONT", "CONTACT"))
+        )
+        is_cb_open = is_cb_open or is_cb_aux_open_contact
         is_cb_closed_contact = (
             breaker_id is not None
             and ("CONT" in name or "CONTACT" in name or re.search(r"\b52A\b", name) is not None)
@@ -289,7 +313,7 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
                 if f"ZONE{zone}" in name.replace(" ", "") or f"Z{zone}" in name:
                     zone_times[f"Z{zone}"] = min(first_ms, zone_times.get(f"Z{zone}", first_ms))
 
-        if "AR" in name or "RECLOS" in name or "RECLOSE" in name:
+        if _is_ar_status_name(name):
             if first_ms is not None:
                 ar_attempt_seen = True
             if "LOCKOUT" in name or "LOCK OUT" in name:

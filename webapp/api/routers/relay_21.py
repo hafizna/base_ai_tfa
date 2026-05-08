@@ -378,15 +378,11 @@ def _extract_features_from_payload(payload: dict) -> dict:
     if v is not None and inception_idx < len(v) and abs(i[inception_idx]) > 0.01:
         impedance_ohm = float(abs(v[inception_idx] / i[inception_idx]))
 
-    # AR result from binary channels
-    ar_result = None
-    for sch in payload.get("status_channels", []):
-        name = sch.get("name", "").upper()
-        if any(k in name for k in ("AR", "RECLOSE", "RECLUSE", "RECLOS")):
-            samp = sch.get("samples", [])
-            if 1 in samp:
-                ar_result = "successful"
-            break
+    # AR result from binary channels. Use the same tightened sequence logic as
+    # the ML conclusion so A/R command bits are not mistaken for breaker success.
+    digital = _digital_sequence_features(payload.get("status_channels", []), time, inception_idx)
+    ar_ok = digital.get("digital_ar_status")
+    ar_result = "successful" if ar_ok is True else ("failed" if ar_ok is False else None)
 
     return {
         "fault_inception_angle_deg": round(fia_deg, 1),
