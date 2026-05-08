@@ -734,7 +734,7 @@ function lineImpedanceTrace(zones: Zone[]): Partial<Plotly.ScatterData> | null {
   };
 }
 
-function closestPointAtTime(allPoints: LocusPoint[], eventMs: number): LocusPoint | null {
+function closestPointAtTime(allPoints: LocusPoint[], eventMs: number, maxDeltaMs = 80): { point: LocusPoint; deltaMs: number } | null {
   if (!allPoints.length) return null;
   let closest: LocusPoint | null = null;
   let minDiff = Infinity;
@@ -742,7 +742,7 @@ function closestPointAtTime(allPoints: LocusPoint[], eventMs: number): LocusPoin
     const diff = Math.abs(p.t * 1000 - eventMs);
     if (diff < minDiff) { minDiff = diff; closest = p; }
   }
-  return closest;
+  return closest && minDiff <= maxDeltaMs ? { point: closest, deltaMs: minDiff } : null;
 }
 
 function eventTrace(
@@ -751,20 +751,24 @@ function eventTrace(
   pointsByLoop: Partial<Record<LoopName, LocusPoint[]>>,
   cursorMs: number,
   color: string,
+  visibleAtMs?: number,
 ): Partial<Plotly.ScatterData> | null {
+  if (visibleAtMs !== undefined && visibleAtMs + 0.01 < cursorMs) return null;
   const hits = loops.flatMap((loop) => {
-    const point = closestPointAtTime(pointsByLoop[loop] ?? [], cursorMs);
-    return point ? [{ loop, point }] : [];
+    const closest = closestPointAtTime(pointsByLoop[loop] ?? [], cursorMs);
+    return closest ? [{ loop, point: closest.point, deltaMs: closest.deltaMs }] : [];
   });
   if (!hits.length) return null;
 
   return {
     x: hits.map((hit) => hit.point.r),
     y: hits.map((hit) => hit.point.x),
-    customdata: hits.map((hit) => [hit.loop, cursorMs]),
+    customdata: hits.map((hit) => [hit.loop, cursorMs, hit.point.t * 1000, hit.deltaMs]),
     type: "scatter",
-    mode: "markers",
+    mode: "text+markers",
     name: label,
+    text: hits.map((hit) => hit.loop),
+    textposition: "top center",
     marker: { color, size: 13, symbol: "cross", line: { color: "#111827", width: 1.2 } },
     showlegend: true,
     hovertemplate: `%{customdata[0]} ${label}<br>t=%{customdata[1]:.1f} ms<br>R=%{x:.2f} Ω<br>X=%{y:.2f} Ω<extra></extra>`,
@@ -1352,10 +1356,10 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ? GROUND_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
     const inception = timing.inceptionMs !== null && groundEventLoops.length
-      ? eventTrace("Inception marker", groundEventLoops, pointsByLoop, timing.inceptionMs, "#facc15")
+      ? eventTrace("Inception marker", groundEventLoops, pointsByLoop, timing.inceptionMs, "#facc15", currentPlayMs)
       : null;
     const trip = relayTripMs !== null
-      ? eventTrace(relayTripTraceLabel, GROUND_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
+      ? eventTrace(relayTripTraceLabel, GROUND_LOOPS, pointsByLoop, relayTripMs, "#2563eb", currentPlayMs)
       : null;
     const zoneTraces = groundZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
     const measured = detailMode === "detailed" ? measuredTrace(GROUND_LOOPS, visiblePointsByLoop) : null;
@@ -1387,10 +1391,10 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ? PHASE_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
     const inception = timing.inceptionMs !== null && phaseEventLoops.length
-      ? eventTrace("Inception marker", phaseEventLoops, pointsByLoop, timing.inceptionMs, "#facc15")
+      ? eventTrace("Inception marker", phaseEventLoops, pointsByLoop, timing.inceptionMs, "#facc15", currentPlayMs)
       : null;
     const trip = relayTripMs !== null
-      ? eventTrace(relayTripTraceLabel, PHASE_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
+      ? eventTrace(relayTripTraceLabel, PHASE_LOOPS, pointsByLoop, relayTripMs, "#2563eb", currentPlayMs)
       : null;
     const zoneTraces = phaseZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
     const measured = detailMode === "detailed" ? measuredTrace(PHASE_LOOPS, visiblePointsByLoop) : null;
