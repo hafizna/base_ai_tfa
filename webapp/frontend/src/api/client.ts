@@ -207,6 +207,7 @@ export async function fetchElectricalParams21(analysisId: string) {
     fault_duration_ms?: number;
     inception_time_ms?: number;
     trip_time_ms?: number;
+    trip_time_source?: "soe" | "status_edge" | "estimated";
     i_peak_ia_a?: number;
     i_peak_ib_a?: number;
     i_peak_ic_a?: number;

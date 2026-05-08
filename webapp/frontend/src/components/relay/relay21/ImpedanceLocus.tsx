@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { computeLocus, fetchElectricalParams21 } from "../../../api/client";
+import { computeLocus, fetchElectricalParams21, fetchFaultClassification21 } from "../../../api/client";
 import Plot from "../../plot/PlotlyChart";
 import styles from "../../panels/Panel.module.css";
 
@@ -65,6 +65,7 @@ type PlotFamily = "ground" | "phase";
 type PlotRange = { x?: [number, number]; y?: [number, number] };
 type DetailMode = "standard" | "detailed";
 type ZoneShapeChoice = "mho" | "quad_rx" | "quad_z";
+type FaultClassification21 = Awaited<ReturnType<typeof fetchFaultClassification21>>;
 
 const GROUND_LOOPS: LoopName[] = ["ZA", "ZB", "ZC"];
 const PHASE_LOOPS: LoopName[] = ["ZAB", "ZBC", "ZCA"];
@@ -77,6 +78,38 @@ const LOOP_COLORS: Record<LoopName, string> = {
   ZBC: "#b45309",
   ZCA: "#be123c",
 };
+
+function loopForGroundPhase(phase: string): LoopName | null {
+  const normalized = phase.trim().toUpperCase();
+  if (normalized === "A") return "ZA";
+  if (normalized === "B") return "ZB";
+  if (normalized === "C") return "ZC";
+  return null;
+}
+
+function loopForPhasePair(phases: string[]): LoopName | null {
+  const key = [...new Set(phases.map((phase) => phase.trim().toUpperCase()))].sort().join("");
+  if (key === "AB") return "ZAB";
+  if (key === "BC") return "ZBC";
+  if (key === "AC") return "ZCA";
+  return null;
+}
+
+function eventLoopsForFamily(family: PlotFamily, classification: FaultClassification21 | null): LoopName[] {
+  if (!classification) return family === "ground" ? GROUND_LOOPS : PHASE_LOOPS;
+  const phases = classification.phases ?? [];
+
+  if (classification.to_ground) {
+    if (family !== "ground") return [];
+    const loops = phases.map(loopForGroundPhase).filter((loop): loop is LoopName => loop !== null);
+    return loops.length ? loops : GROUND_LOOPS;
+  }
+
+  if (family !== "phase") return [];
+  if (phases.length >= 3) return PHASE_LOOPS;
+  const loop = loopForPhasePair(phases);
+  return loop ? [loop] : PHASE_LOOPS;
+}
 
 const GROUND_ZONE_TEMPLATES: Zone[] = [
   { label: "Z1", shape: "mho", center_r: 0, center_x: 0, radius: 0, rf_fwd: 0, rf_rev: 0, xf: 0, xr: 0, line_angle_deg: 75, color: "#22c55e" },
@@ -962,11 +995,18 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   const [relayStatus, setRelayStatus] = useState("Belum ada file relay dimuat; zona proteksi tidak digambar.");
   const [rioOver, setRioOver] = useState(false);
   const [timeMode, setTimeMode] = useState<TimeMode>("all");
-  const [timing, setTiming] = useState<{ inceptionMs: number | null; durationMs: number | null; tripMs: number | null }>({
+  const [timing, setTiming] = useState<{
+    inceptionMs: number | null;
+    durationMs: number | null;
+    tripMs: number | null;
+    tripSource: "soe" | "status_edge" | "estimated" | null;
+  }>({
     inceptionMs: null,
     durationMs: null,
     tripMs: null,
+    tripSource: null,
   });
+  const [faultClassification, setFaultClassification] = useState<FaultClassification21 | null>(null);
   const [playMs, setPlayMs] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(0.5);
@@ -1023,17 +1063,21 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
 
   useEffect(() => {
     let alive = true;
-    fetchElectricalParams21(analysisId)
-      .then((params) => {
+    Promise.allSettled([fetchElectricalParams21(analysisId), fetchFaultClassification21(analysisId)])
+      .then(([paramsResult, classificationResult]) => {
         if (!alive) return;
-        setTiming({
-          inceptionMs: typeof params.inception_time_ms === "number" ? params.inception_time_ms : null,
-          durationMs: typeof params.fault_duration_ms === "number" ? params.fault_duration_ms : null,
-          tripMs: typeof params.trip_time_ms === "number" ? params.trip_time_ms : null,
-        });
-      })
-      .catch(() => {
-        if (alive) setTiming({ inceptionMs: null, durationMs: null, tripMs: null });
+        if (paramsResult.status === "fulfilled") {
+          const params = paramsResult.value;
+          setTiming({
+            inceptionMs: typeof params.inception_time_ms === "number" ? params.inception_time_ms : null,
+            durationMs: typeof params.fault_duration_ms === "number" ? params.fault_duration_ms : null,
+            tripMs: typeof params.trip_time_ms === "number" ? params.trip_time_ms : null,
+            tripSource: typeof params.trip_time_ms === "number" ? (params.trip_time_source ?? "status_edge") : null,
+          });
+        } else {
+          setTiming({ inceptionMs: null, durationMs: null, tripMs: null, tripSource: null });
+        }
+        setFaultClassification(classificationResult.status === "fulfilled" ? classificationResult.value : null);
       });
     return () => { alive = false; };
   }, [analysisId, dataRevision]);
@@ -1275,6 +1319,25 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     timing.tripMs !== null
       ? timing.tripMs
       : (timing.inceptionMs !== null && timing.durationMs !== null ? timing.inceptionMs + timing.durationMs : null);
+  const relayTripSource = timing.tripMs !== null
+    ? timing.tripSource
+    : (relayTripMs !== null ? "estimated" : null);
+  const relayTripTraceLabel = relayTripSource === "soe"
+    ? "Relay trip time (SOE)"
+    : relayTripSource === "status_edge"
+      ? "Relay trip time (digital edge)"
+      : "Estimated clearing time";
+  const groundEventLoops = useMemo(
+    () => eventLoopsForFamily("ground", faultClassification),
+    [faultClassification],
+  );
+  const phaseEventLoops = useMemo(
+    () => eventLoopsForFamily("phase", faultClassification),
+    [faultClassification],
+  );
+  const markerScopeLabel = faultClassification
+    ? `${faultClassification.to_ground ? "Phase-to-ground" : "Phase-to-phase"} ${faultClassification.phases_label || faultClassification.phases?.join("+") || ""}`.trim()
+    : "Belum teridentifikasi";
   const hasRelayZones = groundZones.length > 0 || phaseZones.length > 0;
 
   const groundTraces = useMemo(() => {
@@ -1288,11 +1351,11 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     const heads = showPlayHead
       ? GROUND_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
-    const inception = timing.inceptionMs !== null
-      ? eventTrace("Inception marker", GROUND_LOOPS, pointsByLoop, timing.inceptionMs, "#facc15")
+    const inception = timing.inceptionMs !== null && groundEventLoops.length
+      ? eventTrace("Inception marker", groundEventLoops, pointsByLoop, timing.inceptionMs, "#facc15")
       : null;
     const trip = relayTripMs !== null
-      ? eventTrace("Relay trip marker", GROUND_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
+      ? eventTrace(relayTripTraceLabel, GROUND_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
       : null;
     const zoneTraces = groundZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
     const measured = detailMode === "detailed" ? measuredTrace(GROUND_LOOPS, visiblePointsByLoop) : null;
@@ -1310,7 +1373,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ...(inception ? [inception as Plotly.Data] : []),
       ...(trip ? [trip as Plotly.Data] : []),
     ] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, detailMode, groundZones, pointsByLoop, relayTripMs, timing.inceptionMs, visiblePointsByLoop]);
+  }, [activeTimeRange, currentPlayMs, detailMode, groundEventLoops, groundZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
 
   const phaseTraces = useMemo(() => {
     const loci = PHASE_LOOPS.filter((loop) => (visiblePointsByLoop[loop] ?? []).length > 0).map((loop) =>
@@ -1323,11 +1386,11 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     const heads = showPlayHead
       ? PHASE_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
-    const inception = timing.inceptionMs !== null
-      ? eventTrace("Inception marker", PHASE_LOOPS, pointsByLoop, timing.inceptionMs, "#facc15")
+    const inception = timing.inceptionMs !== null && phaseEventLoops.length
+      ? eventTrace("Inception marker", phaseEventLoops, pointsByLoop, timing.inceptionMs, "#facc15")
       : null;
     const trip = relayTripMs !== null
-      ? eventTrace("Relay trip marker", PHASE_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
+      ? eventTrace(relayTripTraceLabel, PHASE_LOOPS, pointsByLoop, relayTripMs, "#2563eb")
       : null;
     const zoneTraces = phaseZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
     const measured = detailMode === "detailed" ? measuredTrace(PHASE_LOOPS, visiblePointsByLoop) : null;
@@ -1345,7 +1408,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ...(inception ? [inception as Plotly.Data] : []),
       ...(trip ? [trip as Plotly.Data] : []),
     ] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, detailMode, phaseZones, pointsByLoop, relayTripMs, timing.inceptionMs, visiblePointsByLoop]);
+  }, [activeTimeRange, currentPlayMs, detailMode, phaseEventLoops, phaseZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
 
   // When zones are loaded, merge zone bounds with locus points but cap at 4× the
   // zone span so pre-fault load impedance (100-150 Ω away) doesn't crush the view.
@@ -1797,9 +1860,10 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
         <div className={styles.locusTimeReadout}>
           <strong>{currentPlayMs.toFixed(2)} ms</strong>
           <span>{activeWindowLabel}</span>
+          <span>Inception marker scope: {markerScopeLabel}; trip marker follows SOE/digital trip time on both plots.</span>
           {timing.inceptionMs !== null && timing.durationMs !== null && (
             <span>
-              Inception {timing.inceptionMs.toFixed(1)} ms | Relay trip {relayTripMs !== null ? relayTripMs.toFixed(1) : "-"} ms | FCT {timing.durationMs.toFixed(1)} ms
+              Inception {timing.inceptionMs.toFixed(1)} ms | {relayTripTraceLabel} {relayTripMs !== null ? relayTripMs.toFixed(1) : "-"} ms | FCT {timing.durationMs.toFixed(1)} ms
             </span>
           )}
         </div>

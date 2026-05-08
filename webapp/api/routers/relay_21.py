@@ -524,18 +524,30 @@ def _compute_electrical_params(payload: dict) -> dict:
     if ar_dead_ms is not None:
         result["ar_dead_time_ms"] = ar_dead_ms
 
-    trip_time_ms = None
-    for sch in payload.get("status_channels", []):
-        name = sch.get("name", "").upper()
-        if not any(key in name for key in ("TRIP", "TRIPPING", "OPRT", "OPERATE")):
-            continue
-        samples = sch.get("samples", [])
-        first_idx = next((idx for idx, value in enumerate(samples) if value == 1), None)
-        if first_idx is not None and first_idx < len(time):
-            candidate_ms = float(time[first_idx] * 1000)
-            trip_time_ms = candidate_ms if trip_time_ms is None else min(trip_time_ms, candidate_ms)
+    trip_time_ms = digital.get("digital_first_trip_ms")
+    trip_time_source = "soe" if trip_time_ms is not None else None
+    if trip_time_ms is None:
+        start_idx = max(0, inception_idx - 2)
+        for sch in payload.get("status_channels", []):
+            name = sch.get("name", "").upper()
+            if not any(key in name for key in ("TRIP", "TRIPPING", "OPRT", "OPERATE")):
+                continue
+            samples = sch.get("samples", [])
+            n = min(len(samples), len(time))
+            if n == 0:
+                continue
+            prev = int(samples[start_idx - 1]) if start_idx > 0 and start_idx < n else 0
+            for idx in range(start_idx, n):
+                val = int(samples[idx])
+                if prev == 0 and val == 1:
+                    candidate_ms = float(time[idx] * 1000)
+                    trip_time_ms = candidate_ms if trip_time_ms is None else min(trip_time_ms, candidate_ms)
+                    trip_time_source = "status_edge"
+                    break
+                prev = val
     if trip_time_ms is not None:
         result["trip_time_ms"] = round(trip_time_ms, 1)
+        result["trip_time_source"] = trip_time_source or "status_edge"
 
     result["fault_duration_ms"] = round((time[extinction_idx] - time[inception_idx]) * 1000, 1)
     result["inception_time_ms"] = round(float(time[inception_idx]) * 1000, 1)
