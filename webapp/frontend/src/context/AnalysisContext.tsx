@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 
-export type RelayType = "21" | "87L" | "87T" | "OCR" | "REF" | "SBEF" | "CCP";
+export type RelayType = "21" | "87L" | "87T" | "OCR" | "REF" | "SBEF" | "CCP" | "TWS_FL";
 
 export interface AnalogChannel {
   id: string;

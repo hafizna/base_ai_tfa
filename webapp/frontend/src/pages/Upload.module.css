@@ -108,6 +108,11 @@
   gap: 18px;
 }
 
+.singleDrop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .dropzone {
   min-height: 176px;
   border: 1.5px solid rgba(26, 63, 108, 0.18);

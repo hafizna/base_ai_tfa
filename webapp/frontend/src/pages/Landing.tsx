@@ -60,6 +60,14 @@ const RELAY_OPTIONS: RelayOption[] = [
       "Use this category when the earth-fault protection uses a dedicated SBEF timing characteristic and should be reviewed separately from GFR.",
     icon: "SBEF",
   },
+  {
+    id: "TWS_FL",
+    label: "TWS FL",
+    subtitle: "Traveling-wave fault locator viewer",
+    tooltip:
+      "Upload Qualitrol Cashel TWS FL .cdb exports, inspect paired-end waveforms, GPS tags, record numbers, and fault distance results.",
+    icon: "TWS",
+  },
 ];
 
 export default function Landing() {
@@ -80,7 +88,7 @@ export default function Landing() {
         <div className={styles.eyebrow}>PLN AI-Powered DFR Analytics</div>
         <div className={styles.logo}>DFR Analyser</div>
         <p className={styles.subtitle}>
-          Pick the protection family first, then upload the COMTRADE pair for analysis.
+          Pick the protection family first, then upload the COMTRADE pair or TWS FL export for analysis.
         </p>
       </header>
 
@@ -102,7 +110,7 @@ export default function Landing() {
       </main>
 
       <footer className={styles.footer}>
-        Upload a matching <code>.cfg</code> and <code>.dat</code> pair after selecting the relay type.
+        Upload a matching <code>.cfg</code> and <code>.dat</code> pair, or a TWS FL <code>.cdb</code> export.
       </footer>
     </div>
   );

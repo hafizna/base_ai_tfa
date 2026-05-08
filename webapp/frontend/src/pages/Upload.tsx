@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAnalysis } from "../context/AnalysisContext";
-import { uploadComtrade } from "../api/client";
+import { uploadComtrade, uploadTwsCdb } from "../api/client";
 import styles from "./Upload.module.css";
 
 const RELAY_LABELS: Record<string, string> = {
@@ -12,6 +12,7 @@ const RELAY_LABELS: Record<string, string> = {
   OCR: "50/51 / GFR",
   REF: "REF",
   SBEF: "SBEF",
+  TWS_FL: "TWS FL - Traveling Wave",
 };
 
 interface DetectionSuggestion {
@@ -26,9 +27,11 @@ export default function Upload() {
 
   const cfgRef = useRef<HTMLInputElement>(null);
   const datRef = useRef<HTMLInputElement>(null);
+  const cdbRef = useRef<HTMLInputElement>(null);
 
   const [cfgFile, setCfgFile] = useState<File | null>(null);
   const [datFile, setDatFile] = useState<File | null>(null);
+  const [cdbFile, setCdbFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<DetectionSuggestion | null>(null);
@@ -40,7 +43,11 @@ export default function Upload() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!cfgFile || !datFile) {
+    if (relayType === "TWS_FL" && !cdbFile) {
+      setError("Please select a .cdb export file.");
+      return;
+    }
+    if (relayType !== "TWS_FL" && (!cfgFile || !datFile)) {
       setError("Please select both .cfg and .dat files.");
       return;
     }
@@ -49,6 +56,17 @@ export default function Upload() {
     setLoading(true);
 
     try {
+      if (relayType === "TWS_FL") {
+        const data = await uploadTwsCdb(cdbFile!);
+        navigate(`/tws/${data.analysis_id}`);
+        return;
+      }
+
+      if (!cfgFile || !datFile) {
+        setError("Please select both .cfg and .dat files.");
+        return;
+      }
+
       const data = await uploadComtrade(cfgFile, datFile);
       const suggested = data.suggested_relay_type;
       if (suggested && suggested !== relayType) {
@@ -83,35 +101,55 @@ export default function Upload() {
 
       <div className={styles.card}>
         <div className={styles.badge}>{RELAY_LABELS[relayType]}</div>
-        <h1 className={styles.title}>Upload COMTRADE Files</h1>
+        <h1 className={styles.title}>{relayType === "TWS_FL" ? "Upload TWS FL Export" : "Upload COMTRADE Files"}</h1>
         <p className={styles.hint}>
-          Select the matching <code>.cfg</code> and <code>.dat</code> files from your relay or DFR recorder.
+          {relayType === "TWS_FL" ? (
+            <>
+              Select the Qualitrol Cashel TWS FL <code>.cdb</code> export from the fault locator viewer.
+            </>
+          ) : (
+            <>
+              Select the matching <code>.cfg</code> and <code>.dat</code> files from your relay or DFR recorder.
+            </>
+          )}
         </p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.dropRow}>
-            <DropZone
-              label=".cfg"
-              accept=".cfg,.CFG"
-              file={cfgFile}
-              inputRef={cfgRef}
-              onChange={setCfgFile}
-            />
-            <DropZone
-              label=".dat"
-              accept=".dat,.DAT"
-              file={datFile}
-              inputRef={datRef}
-              onChange={setDatFile}
-            />
-          </div>
+          {relayType === "TWS_FL" ? (
+            <div className={styles.singleDrop}>
+              <DropZone
+                label=".cdb"
+                accept=".cdb,.CDB"
+                file={cdbFile}
+                inputRef={cdbRef}
+                onChange={setCdbFile}
+              />
+            </div>
+          ) : (
+            <div className={styles.dropRow}>
+              <DropZone
+                label=".cfg"
+                accept=".cfg,.CFG"
+                file={cfgFile}
+                inputRef={cfgRef}
+                onChange={setCfgFile}
+              />
+              <DropZone
+                label=".dat"
+                accept=".dat,.DAT"
+                file={datFile}
+                inputRef={datRef}
+                onChange={setDatFile}
+              />
+            </div>
+          )}
 
           {error && <div className={styles.error}>{error}</div>}
 
           <button
             type="submit"
             className={styles.submit}
-            disabled={loading || !cfgFile || !datFile}
+            disabled={loading || (relayType === "TWS_FL" ? !cdbFile : !cfgFile || !datFile)}
           >
             {loading ? "Parsing..." : "Analyze"}
           </button>

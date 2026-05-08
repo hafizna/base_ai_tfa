@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from .routers import upload, relay_21, relay_87l, relay_87t, relay_ocr, relay_ref
+from .routers import upload, relay_21, relay_87l, relay_87t, relay_ocr, relay_ref, tws
 from .storage import get_session_ttl_hours, get_storage_backend
 
 app = FastAPI(
@@ -42,6 +42,7 @@ app.include_router(relay_87l.router)
 app.include_router(relay_87t.router)
 app.include_router(relay_ocr.router)
 app.include_router(relay_ref.router)
+app.include_router(tws.router)
 
 
 @app.get("/api/health")

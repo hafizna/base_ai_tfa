@@ -19,6 +19,79 @@ export interface UploadedAnalysis {
   detection_confidence?: number | null;
 }
 
+export interface TwsUploadedAnalysis {
+  analysis_id: string;
+  source_file: string;
+  circuit_name: string;
+  line_length_km: number;
+  endpoint_count: number;
+  total_samples: number;
+  warnings: string[];
+}
+
+export interface TwsChannel {
+  phase: string;
+  name: string;
+  samples: number[];
+  min: number;
+  max: number;
+}
+
+export interface TwsEndpoint {
+  role: "X" | "Y" | "Z";
+  index_id: number;
+  station_name: string;
+  station_display_name: string;
+  device_name: string;
+  device_display_name: string;
+  feeder_name: string;
+  feeder_display_name: string;
+  record_number: number;
+  record_file_name: string;
+  trigger_time: string;
+  trigger_time_us: number;
+  event_time_us: number;
+  event_time_local: number;
+  gps_time_tag: string;
+  corrected_gps: string;
+  gps_locked: boolean;
+  sample_rate_hz: number;
+  total_samples: number;
+  decimation: number;
+  trigger_phase: string;
+  software_trigger_phase: string;
+  software_trigger_point: number;
+  trigger_delay: number;
+  fault_distance_km: number;
+  channels: TwsChannel[];
+}
+
+export interface TwsResult {
+  result_id: number;
+  result_time_us: number;
+  result_time_local: number;
+  circuit_id: number;
+  circuit_name: string;
+  segment_id: number;
+  segment_name: string;
+  line_length_km: number;
+  velocity_factor: number;
+  sample_distance_km: number;
+  distance_from_segment_end_a: number;
+  is_component_fault: boolean;
+  endpoints: TwsEndpoint[];
+}
+
+export interface TwsCdbData {
+  source_type: "tws_cdb";
+  source_file: string;
+  station_name: string;
+  rec_dev_id: string;
+  total_samples: number;
+  results: TwsResult[];
+  warnings: string[];
+}
+
 export interface AnalysisChannelSummary {
   id: string;
   name: string;
@@ -59,6 +132,18 @@ export async function uploadComtrade(cfg: File, dat: File) {
   form.append("cfg_file", cfg);
   form.append("dat_file", dat);
   const { data } = await api.post<UploadedAnalysis>("/api/upload", form);
+  return data;
+}
+
+export async function uploadTwsCdb(cdb: File) {
+  const form = new FormData();
+  form.append("cdb_file", cdb);
+  const { data } = await api.post<TwsUploadedAnalysis>("/api/tws/upload-cdb", form);
+  return data;
+}
+
+export async function fetchTwsAnalysis(analysisId: string) {
+  const { data } = await api.get<TwsCdbData>(`/api/tws/${analysisId}`);
   return data;
 }
 
