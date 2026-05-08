@@ -240,20 +240,23 @@ function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" 
   const text = `${ch.name} ${ch.canonical_name}`.toUpperCase();
   const unit = ch.unit.toLowerCase();
 
+  // Explicit name-based detection takes priority over any unit heuristic.
   if (/\b(?:IBIAS|IREST|IRESTR|RESTRAINT|RSTR|BIAS)\b/.test(text)) return "restraint";
   if (/\b(?:IDIFF|IDIF|IDL[123]?|LDL)\b/.test(text) || /\bIL[123]\s*D\b/.test(text) || /\bIL[123]D\b/.test(text)) {
     return "differential";
   }
-  if (unit === "pu" || unit === "in") return "differential";
+
   if (ch.measurement === "voltage") return "voltage";
-  if (/\b(?:IN|I0|3I0|IDNS)\b/.test(text)) return "neutralCurrent";
-  if (/\bREM(?:OTE)?\b|\bREM\s+L\b/.test(text)) return "remoteCurrent";
+
   if (ch.measurement === "current") {
-    // Winding-side suffix (Siemens 7UT612: iL1-S1 = HV phase A, iL1-S2 = LV phase A)
-    // or dot-prefixed naming (Siemens 7UT8x: HVS.IA / LVS.IA).
-    if (extractSidedSuffix(ch.name) || /\b(HVS|LVS|MVS|TVS|HV|LV|MV|TV)\b/i.test(ch.name)) {
-      return "windingCurrent";
-    }
+    // Winding-side detection runs before any pu/neutral fallback so that
+    // Siemens 7UT612 phase currents recorded in pu (e.g. "iL1-S1") are
+    // categorized as winding currents rather than misclassified as diff.
+    const hasSidedSuffix = !!extractSidedSuffix(ch.name) || /\b(HVS|LVS|MVS|TVS|HV|LV|MV|TV)\b/i.test(ch.name);
+    if (hasSidedSuffix) return "windingCurrent";
+    if (/\bREM(?:OTE)?\b|\bREM\s+L\b/.test(text)) return "remoteCurrent";
+    if (/\b(?:IN|I0|3I0|IDNS)\b/.test(text)) return "neutralCurrent";
+    if (unit === "pu" || unit === "in") return "differential";
     return "lineCurrent";
   }
   return "unknown";
@@ -381,11 +384,13 @@ function extractWindingSuffix(name: string): string {
 }
 
 /** Map Siemens-style suffix to canonical short side code used elsewhere in the explorer. */
-const SUFFIX_SIDE_SHORT: Record<string, string> = { a: "HVS", b: "LVS", c: "TVS" };
+const SUFFIX_SIDE_SHORT: Record<string, string> = { a: "HVS", b: "LVS", c: "TVS", d: "S4", e: "S5" };
 const SUFFIX_SIDE_LABEL: Record<string, string> = {
   a: "Side 1 (HV)",
   b: "Side 2 (LV)",
   c: "Side 3 (TV)",
+  d: "Side 4 (Aux)",
+  e: "Side 5 (Aux)",
 };
 
 /** Human-readable label for a winding prefix. */
@@ -422,7 +427,7 @@ function detectChannelGroups(
   const withSuffix = suffixes.filter((s) => s).length;
   if (
     uniqueSuffixes.length >= 2 &&
-    uniqueSuffixes.length <= 3 &&
+    uniqueSuffixes.length <= 5 &&
     withSuffix >= channels.length * 0.7
   ) {
     return uniqueSuffixes.sort().map((sfx) => ({
