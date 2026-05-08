@@ -229,7 +229,7 @@ function ResultSummary({ result }: { result: TwsResult }) {
     <section className={styles.resultSummary}>
       <div className={styles.resultHeader}>
         <div>
-          <span className={styles.kicker}>Computed TWS FL Result</span>
+          <span className={styles.kicker}>Qualitrol TWS FL Generated Result</span>
           <h2>{result.circuit_name || result.segment_name || "Line fault"}</h2>
         </div>
         <div className={styles.lineLengthPill}>{formatKm(result.line_length_km, 1)} km line</div>

@@ -600,7 +600,8 @@
 
 @media print {
   .titleBar,
-  .titleActions {
+  .titleActions,
+  .docPanel {
     display: none !important;
   }
   .page {
