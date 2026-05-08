@@ -88,12 +88,18 @@ function waveformTraces(endpoint: TwsEndpoint, result: TwsResult, amplitudeScale
 function WaveformPane({
   endpoint,
   result,
-  amplitudeScale,
 }: {
   endpoint: TwsEndpoint;
   result: TwsResult;
-  amplitudeScale: number;
 }) {
+  const amplitudeScale = useMemo(
+    () =>
+      Math.max(
+        1,
+        ...endpoint.channels.flatMap((channel) => channel.samples.map((sample) => Math.abs(sample))),
+      ),
+    [endpoint],
+  );
   const traces = useMemo(() => waveformTraces(endpoint, result, amplitudeScale), [amplitudeScale, endpoint, result]);
 
   const layout: Partial<Plotly.Layout> = {
@@ -303,12 +309,6 @@ export default function TwsViewer() {
   const result = data?.results[0];
   const xEndpoint = result?.endpoints.find((endpoint) => endpoint.role === "X") ?? result?.endpoints[0];
   const yEndpoint = result?.endpoints.find((endpoint) => endpoint.role === "Y") ?? result?.endpoints[1];
-  const amplitudeScale = Math.max(
-    1,
-    ...(result?.endpoints.flatMap((endpoint) =>
-      endpoint.channels.flatMap((channel) => channel.samples.map((sample) => Math.abs(sample))),
-    ) ?? []),
-  );
 
   return (
     <div className={styles.page}>
@@ -334,12 +334,200 @@ export default function TwsViewer() {
               use the computed result distances above for reporting.
             </div>
             <div className={styles.paneGrid}>
-              <WaveformPane endpoint={xEndpoint} result={result} amplitudeScale={amplitudeScale} />
-              <WaveformPane endpoint={yEndpoint} result={result} amplitudeScale={amplitudeScale} />
+              <WaveformPane endpoint={xEndpoint} result={result} />
+              <WaveformPane endpoint={yEndpoint} result={result} />
             </div>
           </details>
+          <SelComparisonPanel result={result} />
+          <MethodologyPanel result={result} xEndpoint={xEndpoint} yEndpoint={yEndpoint} />
         </main>
       )}
     </div>
+  );
+}
+
+function MethodologyPanel({
+  result,
+  xEndpoint,
+  yEndpoint,
+}: {
+  result: TwsResult;
+  xEndpoint: TwsEndpoint;
+  yEndpoint: TwsEndpoint;
+}) {
+  const xName = xEndpoint.station_display_name || xEndpoint.station_name || "X";
+  const yName = yEndpoint.station_display_name || yEndpoint.station_name || "Y";
+  const xKm = xEndpoint.fault_distance_km;
+  const yKm = yEndpoint.fault_distance_km;
+  const lineKm = result.line_length_km;
+  const velocityFactor = result.velocity_factor;
+
+  return (
+    <section className={styles.docPanel}>
+      <header className={styles.docHeader}>
+        <h3>Cara Membaca Grafik & Menentukan Lokasi Gangguan</h3>
+        <span className={styles.docSubtitle}>
+          Penjelasan metodologi Travelling Wave (TW) Fault Locator — wajib dikonfirmasi dengan bukti lapangan
+        </span>
+      </header>
+
+      <div className={styles.docGrid}>
+        <article className={styles.docCard}>
+          <h4>1. Apa yang ditampilkan grafik</h4>
+          <p>
+            Saat terjadi gangguan, surja tegangan/arus (<em>travelling wave</em>) merambat dari titik gangguan ke kedua
+            ujung saluran dengan kecepatan mendekati cahaya. Kedua relay TWS di {xName} (X) dan {yName} (Y) merekam
+            kedatangan gelombang tersebut. Sumbu X grafik adalah <strong>jarak relatif</strong> terhadap penanda
+            kedatangan gelombang pertama (titik <code>M</code>, di posisi 0 km), dihitung dari{" "}
+            <code>(waktu sampel − waktu marker) × kecepatan rambat</code>. Pantulan dari ujung saluran atau titik
+            gangguan akan muncul sebagai puncak pada sumbu X tersebut. Tiga jejak warna adalah fasa A (merah), B
+            (hijau), dan C (biru).
+          </p>
+        </article>
+
+        <article className={styles.docCard}>
+          <h4>2. Bagaimana jarak gangguan dihitung</h4>
+          <p>
+            Metode utama yang dipakai adalah <strong>Type D (dua ujung)</strong> mengikuti referensi Schweitzer et al.
+            (IEEE, 2014):
+          </p>
+          <pre className={styles.docFormula}>m = ½ × (ℓ + (t_X − t_Y) × v)</pre>
+          <ul>
+            <li>
+              <strong>ℓ</strong> = panjang saluran ({formatKm(lineKm, 2)} km) — diambil dari <code>CIRCUIT2.XML</code>{" "}
+              pada file CDB.
+            </li>
+            <li>
+              <strong>v</strong> = kecepatan rambat = <code>c × velocity_factor</code> (
+              {velocityFactor.toFixed(2)}% × 299.792 km/s).
+            </li>
+            <li>
+              <strong>t_X, t_Y</strong> = waktu kedatangan gelombang di masing-masing ujung, sudah disinkronkan via
+              GPS.
+            </li>
+          </ul>
+          <p>
+            Hasil: gangguan terjadi <strong>{formatKm(xKm, 2)} km dari {xName}</strong> atau{" "}
+            <strong>{formatKm(yKm, 2)} km dari {yName}</strong>. Nilai ini juga di-cross-check dengan nilai DTFX/DTFY
+            yang sudah dihitung perangkat Qualitrol (lihat tabel perbandingan di atas).
+          </p>
+        </article>
+
+        <article className={styles.docCard}>
+          <h4>3. Akurasi & sumber kesalahan</h4>
+          <ul>
+            <li>
+              Akurasi inheren TW sekitar <strong>± 0,2 µs</strong> ≈ 60 meter (≈ satu span tower).
+            </li>
+            <li>
+              Faktor pembatas akurasi: ketidakseragaman <em>line sag</em>, perubahan ketinggian medan, beda struktur
+              tower antar seksi, dan dispersi gelombang.
+            </li>
+            <li>
+              Untuk saluran &gt; 100 km, beda 0,5–1 km antara hasil TW dan posisi fisik adalah hal wajar dan tidak
+              menggugurkan validitas hasil.
+            </li>
+          </ul>
+        </article>
+
+        <article className={`${styles.docCard} ${styles.docCardConfirm}`}>
+          <h4>4. Konfirmasi Lapangan (WAJIB DIISI)</h4>
+          <p>
+            Hasil TW di atas adalah <strong>indikasi awal</strong>. Tim patroli wajib mengisi temuan lapangan agar
+            arsip ini berstatus <em>terverifikasi</em>:
+          </p>
+          <ul className={styles.docChecklist}>
+            <li>
+              <span>Nomor tower terdampak (mis. T-145):</span>
+              <code className={styles.docFillBlank}>__________</code>
+            </li>
+            <li>
+              <span>Span yang terdampak (antara T-… s/d T-…):</span>
+              <code className={styles.docFillBlank}>__________ s/d __________</code>
+            </li>
+            <li>
+              <span>Jarak terukur dari tower {xName} (km):</span>
+              <code className={styles.docFillBlank}>__________ km</code>
+            </li>
+            <li>
+              <span>Selisih vs hasil TWS ({formatKm(xKm, 2)} km):</span>
+              <code className={styles.docFillBlank}>__________ m</code>
+            </li>
+            <li>
+              <span>Jenis kerusakan (insulator/konduktor/aksesoris/lainnya):</span>
+              <code className={styles.docFillBlank}>__________</code>
+            </li>
+            <li>
+              <span>Penyebab dugaan (petir / pohon / hewan / vandalisme / lainnya):</span>
+              <code className={styles.docFillBlank}>__________</code>
+            </li>
+            <li>
+              <span>Foto / berita acara patroli (lampiran):</span>
+              <code className={styles.docFillBlank}>__________</code>
+            </li>
+            <li>
+              <span>Petugas patroli & tanggal verifikasi:</span>
+              <code className={styles.docFillBlank}>__________</code>
+            </li>
+          </ul>
+          <p className={styles.docNote}>
+            Catatan: bukti lapangan akan dipakai untuk kalibrasi ulang <code>velocity_factor</code> dan koreksi panjang
+            saluran (line sag) agar prediksi TWS berikutnya makin akurat.
+          </p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function SelComparisonPanel({ result }: { result: TwsResult }) {
+  const sel = result.sel_type_d;
+  if (!sel) {
+    return (
+      <section className={styles.selPanel}>
+        <h3>SEL Type-D vs Qualitrol</h3>
+        <p className={styles.selEmpty}>
+          Not enough metadata in this export to recompute the two-end fault location (need both X and Y arrival
+          times, line length, and velocity factor).
+        </p>
+      </section>
+    );
+  }
+
+  const v_kms = sel.velocity_km_s;
+  return (
+    <section className={styles.selPanel}>
+      <header className={styles.selHeader}>
+        <h3>SEL Type-D vs Qualitrol</h3>
+        <span>
+          m = ½(ℓ + (t_X − t_Y)·v) &nbsp;|&nbsp; ℓ = {formatKm(sel.line_length_km, 2)} km, v ={" "}
+          {(v_kms / 1000).toFixed(2)} ×10³ km/s, Δt = {sel.delta_t_us.toFixed(2)} µs
+        </span>
+      </header>
+      <table className={styles.selTable}>
+        <thead>
+          <tr>
+            <th>Terminal</th>
+            <th>Our SEL Type-D</th>
+            <th>Qualitrol DTF</th>
+            <th>Δ (ours − Qualitrol)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>X</td>
+            <td>{formatKm(sel.m_from_x_km, 3)} km</td>
+            <td>{formatKm(sel.qualitrol_x_km, 3)} km</td>
+            <td className={styles.selDelta}>{(sel.delta_x_km * 1000).toFixed(0)} m</td>
+          </tr>
+          <tr>
+            <td>Y</td>
+            <td>{formatKm(sel.m_from_y_km, 3)} km</td>
+            <td>{formatKm(sel.qualitrol_y_km, 3)} km</td>
+            <td className={styles.selDelta}>{(sel.delta_y_km * 1000).toFixed(0)} m</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   );
 }

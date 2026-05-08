@@ -66,6 +66,20 @@ export interface TwsEndpoint {
   channels: TwsChannel[];
 }
 
+export interface TwsSelTypeD {
+  tx_seconds: number;
+  ty_seconds: number;
+  delta_t_us: number;
+  velocity_km_s: number;
+  line_length_km: number;
+  m_from_x_km: number;
+  m_from_y_km: number;
+  qualitrol_x_km: number;
+  qualitrol_y_km: number;
+  delta_x_km: number;
+  delta_y_km: number;
+}
+
 export interface TwsResult {
   result_id: number;
   result_time_us: number;
@@ -76,10 +90,12 @@ export interface TwsResult {
   segment_name: string;
   line_length_km: number;
   velocity_factor: number;
+  velocity_km_s?: number;
   sample_distance_km: number;
   distance_from_segment_end_a: number;
   is_component_fault: boolean;
   endpoints: TwsEndpoint[];
+  sel_type_d?: TwsSelTypeD | null;
 }
 
 export interface TwsCdbData {

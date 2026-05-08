@@ -162,6 +162,49 @@ def _read_cdf(cdf_bytes: bytes, archive_name: str, warnings: list[str]) -> dict[
     }
 
 
+def _compute_sel_type_d(
+    endpoints: list[dict[str, Any]],
+    line_length_km: float,
+    velocity_km_s: float,
+) -> dict[str, Any] | None:
+    """Recompute fault distance from per-terminal TW arrival times (SEL Type D).
+
+    Uses m_from_X = (line_length + (t_X - t_Y) * v) / 2, mirroring eq. (2) of
+    Schweitzer et al., 2014. The arrival-time field used here is event_time_us,
+    which Cashel exports already align to GPS for both terminals.
+    """
+    endpoint_x = next((e for e in endpoints if e.get("role") == "X"), None)
+    endpoint_y = next((e for e in endpoints if e.get("role") == "Y"), None)
+    if endpoint_x is None or endpoint_y is None:
+        return None
+    if line_length_km <= 0 or velocity_km_s <= 0:
+        return None
+
+    t_x = float(endpoint_x.get("event_time_us") or 0.0)
+    t_y = float(endpoint_y.get("event_time_us") or 0.0)
+    if t_x == 0.0 or t_y == 0.0:
+        return None
+
+    delta_t_s = t_x - t_y
+    m_from_x = 0.5 * (line_length_km + delta_t_s * velocity_km_s)
+    m_from_y = line_length_km - m_from_x
+    qx = float(endpoint_x.get("fault_distance_km") or 0.0)
+    qy = float(endpoint_y.get("fault_distance_km") or 0.0)
+    return {
+        "tx_seconds": t_x,
+        "ty_seconds": t_y,
+        "delta_t_us": delta_t_s * 1e6,
+        "velocity_km_s": velocity_km_s,
+        "line_length_km": line_length_km,
+        "m_from_x_km": m_from_x,
+        "m_from_y_km": m_from_y,
+        "qualitrol_x_km": qx,
+        "qualitrol_y_km": qy,
+        "delta_x_km": m_from_x - qx,
+        "delta_y_km": m_from_y - qy,
+    }
+
+
 def _event_table(outer_zip: zipfile.ZipFile) -> dict[int, dict[str, str]]:
     events: dict[int, dict[str, str]] = {}
     for name in outer_zip.namelist():
@@ -261,6 +304,8 @@ def parse_tws_cdb_bytes(data: bytes, source_filename: str = "record.cdb") -> dic
         sample_rate = max((e.get("sample_rate_hz") or 0.0 for e in endpoints), default=0.0)
         sample_distance_km = SPEED_OF_LIGHT_KM_S * (velocity_factor / 100.0) / sample_rate if sample_rate > 0 else 0.0
         line_length_km = _as_float(segment.get("Length"))
+        velocity_km_s = SPEED_OF_LIGHT_KM_S * (velocity_factor / 100.0)
+        sel_type_d = _compute_sel_type_d(endpoints, line_length_km, velocity_km_s)
         parsed_results.append(
             {
                 "result_id": _as_int(row.get("ResultID")),
@@ -273,10 +318,12 @@ def parse_tws_cdb_bytes(data: bytes, source_filename: str = "record.cdb") -> dic
                 "segment_name": segment.get("Name", ""),
                 "line_length_km": line_length_km,
                 "velocity_factor": velocity_factor,
+                "velocity_km_s": velocity_km_s,
                 "sample_distance_km": sample_distance_km,
                 "distance_from_segment_end_a": _as_float(row.get("DistanceFromSegmentEndA")),
                 "is_component_fault": str(row.get("IsComponentFault", "")).lower() == "true",
                 "endpoints": endpoints,
+                "sel_type_d": sel_type_d,
             }
         )
 
