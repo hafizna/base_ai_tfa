@@ -575,3 +575,41 @@
   border-radius: 4px;
   margin: 4px 0 0;
 }
+
+.titleActions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.titleButton {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #0f172a;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.titleButton:hover {
+  background: #e2e8f0;
+}
+
+@media print {
+  .titleBar,
+  .titleActions {
+    display: none !important;
+  }
+  .page {
+    background: #ffffff;
+  }
+  .waveformDetails[open] summary {
+    display: none;
+  }
+  .docCardConfirm {
+    break-inside: avoid;
+  }
+}

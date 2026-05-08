@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 
 import { fetchTwsAnalysis } from "../api/client";
 import type { TwsCdbData, TwsEndpoint, TwsResult } from "../api/client";
@@ -315,6 +315,12 @@ export default function TwsViewer() {
       <header className={styles.titleBar}>
         <strong>TWS Fault Locator</strong>
         <span>{data?.source_file ?? "Cashel .cdb export"}</span>
+        <div className={styles.titleActions}>
+          <Link to="/" className={styles.titleButton}>← Back to Home</Link>
+          <button type="button" className={styles.titleButton} onClick={() => window.print()}>
+            🖨 Print
+          </button>
+        </div>
       </header>
       {loading && <main className={styles.state}>Loading TWS FL export...</main>}
       {error && <main className={styles.state}>{error}</main>}
@@ -485,7 +491,7 @@ function SelComparisonPanel({ result }: { result: TwsResult }) {
   if (!sel) {
     return (
       <section className={styles.selPanel}>
-        <h3>SEL Type-D vs Qualitrol</h3>
+        <h3>TFA Calculation vs Qualitrol</h3>
         <p className={styles.selEmpty}>
           Not enough metadata in this export to recompute the two-end fault location (need both X and Y arrival
           times, line length, and velocity factor).
@@ -498,7 +504,7 @@ function SelComparisonPanel({ result }: { result: TwsResult }) {
   return (
     <section className={styles.selPanel}>
       <header className={styles.selHeader}>
-        <h3>SEL Type-D vs Qualitrol</h3>
+        <h3>TFA Calculation vs Qualitrol</h3>
         <span>
           m = ½(ℓ + (t_X − t_Y)·v) &nbsp;|&nbsp; ℓ = {formatKm(sel.line_length_km, 2)} km, v ={" "}
           {(v_kms / 1000).toFixed(2)} ×10³ km/s, Δt = {sel.delta_t_us.toFixed(2)} µs
@@ -508,7 +514,7 @@ function SelComparisonPanel({ result }: { result: TwsResult }) {
         <thead>
           <tr>
             <th>Terminal</th>
-            <th>Our SEL Type-D</th>
+            <th>TFA Calculation</th>
             <th>Qualitrol DTF</th>
             <th>Δ (ours − Qualitrol)</th>
           </tr>
