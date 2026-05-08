@@ -12,12 +12,22 @@ interface Props {
 
 interface RatioGroup {
   type: "CT" | "VT";
+  /** Optional sub-label for multi-winding cases (e.g. "HV", "LV"). */
+  subLabel?: string;
   channelIds: string[];
   cfgPrimary: number;
   cfgSecondary: number;
   newPrimary: number;
   newSecondary: number;
 }
+
+/** Detect Siemens 7UT612 winding-side suffix (e.g. "iL1-S1" → "S1"). */
+function sidedSuffix(name: string): string {
+  const m = name.match(/-S([1-5])\b/i);
+  return m ? `S${m[1]}` : "";
+}
+
+const SIDE_LABEL: Record<string, string> = { S1: "HV", S2: "LV", S3: "TV" };
 
 // ---------------------------------------------------------------------------
 // VT system voltage knowledge base (Indonesian transmission systems)
@@ -88,15 +98,43 @@ function buildGroups(comtrade: ComtradeData): RatioGroup[] {
   const groups: RatioGroup[] = [];
 
   if (currChs.length > 0) {
-    const cfgP = currChs[0].ct_primary;
-    const cfgS = currChs[0].ct_secondary;
-    groups.push({
-      type: "CT",
-      channelIds: currChs.map((ch) => ch.id),
-      cfgPrimary: cfgP,
-      cfgSecondary: cfgS,
-      newPrimary: cfgP,
-      newSecondary: cfgS,
+    // Bucket current channels by (ct_primary, ct_secondary) so transformer
+    // differential recordings with distinct HV / LV CTs get one ratio control
+    // each instead of being collapsed to the first channel's CT.
+    const buckets = new Map<string, { primary: number; secondary: number; ids: string[]; sides: Set<string> }>();
+    for (const ch of currChs) {
+      const key = `${ch.ct_primary}|${ch.ct_secondary}`;
+      const entry = buckets.get(key) ?? {
+        primary: ch.ct_primary,
+        secondary: ch.ct_secondary,
+        ids: [],
+        sides: new Set<string>(),
+      };
+      entry.ids.push(ch.id);
+      const sfx = sidedSuffix(ch.name);
+      if (sfx) entry.sides.add(sfx);
+      buckets.set(key, entry);
+    }
+    const bucketList = [...buckets.values()];
+    const multi = bucketList.length > 1;
+    bucketList.forEach((b) => {
+      const sideTags = [...b.sides].sort();
+      const subLabel = multi
+        ? sideTags.length === 1 && SIDE_LABEL[sideTags[0]]
+          ? SIDE_LABEL[sideTags[0]]
+          : sideTags.length > 0
+            ? sideTags.join("/")
+            : `${b.primary}A`
+        : undefined;
+      groups.push({
+        type: "CT",
+        subLabel,
+        channelIds: b.ids,
+        cfgPrimary: b.primary,
+        cfgSecondary: b.secondary,
+        newPrimary: b.primary,
+        newSecondary: b.secondary,
+      });
     });
   }
 
@@ -131,10 +169,10 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
     setApplied(false);
   }, [baseGroups]);
 
-  function updateField(type: "CT" | "VT", field: "newPrimary" | "newSecondary", raw: string | number) {
+  function updateField(idx: number, field: "newPrimary" | "newSecondary", raw: string | number) {
     const value = typeof raw === "number" ? raw : parseFloat(raw);
     if (!Number.isFinite(value) || value <= 0) return;
-    setGroups((prev) => prev.map((g) => (g.type === type ? { ...g, [field]: value } : g)));
+    setGroups((prev) => prev.map((g, i) => (i === idx ? { ...g, [field]: value } : g)));
     setApplied(false);
   }
 
@@ -190,15 +228,16 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
 
         {/* Ratio inputs */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {groups.map((g) => {
+          {groups.map((g, idx) => {
             const factor = (() => {
               const oldR = g.cfgSecondary > 0 ? g.cfgPrimary / g.cfgSecondary : 1;
               const newR = g.newSecondary > 0 ? g.newPrimary / g.newSecondary : 1;
               return oldR > 0 ? newR / oldR : 1;
             })();
             const changed = Math.abs(factor - 1) > 0.001;
+            const badgeText = g.subLabel ? `${g.type} ${g.subLabel}` : g.type;
             return (
-              <div key={g.type} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div key={`${g.type}-${idx}-${g.cfgPrimary}`} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span
                   className={styles.badge}
                   style={
@@ -207,7 +246,7 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
                       : { background: "#faf5ff", color: "#7c3aed", fontSize: "0.72rem" }
                   }
                 >
-                  {g.type}
+                  {badgeText}
                 </span>
                 <input
                   className={styles.ratioInput}
@@ -216,14 +255,14 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
                   step="any"
                   value={g.newPrimary}
                   style={{ width: 72 }}
-                  onChange={(e) => updateField(g.type, "newPrimary", e.target.value)}
+                  onChange={(e) => updateField(idx, "newPrimary", e.target.value)}
                 />
                 <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>/</span>
                 <select
                   className={styles.ratioInput}
                   value={g.newSecondary}
                   style={{ width: 68 }}
-                  onChange={(e) => updateField(g.type, "newSecondary", parseFloat(e.target.value))}
+                  onChange={(e) => updateField(idx, "newSecondary", parseFloat(e.target.value))}
                 >
                   {(g.type === "CT" ? CT_SECONDARY_OPTIONS : VT_SECONDARY_OPTIONS).map((v) => (
                     <option key={v} value={v}>

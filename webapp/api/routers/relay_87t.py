@@ -16,6 +16,8 @@ from .relay_87l import _characteristic_threshold
 
 router = APIRouter(prefix="/api/analyze/87t", tags=["relay-87t"])
 
+import re
+
 # Phase channel candidates — checked against ch["canonical_name"] and ch["name"].upper()
 HV_CHANNELS = {
     "L1": ["IA_HV", "IHA", "IA1", "HVS.IA"],
@@ -39,10 +41,45 @@ RELAY_DIFF_CHANNELS = {
     "L3": ["87T.IDC"],
 }
 
+# Phase index for Siemens-style "iL1-S1" / "IL2-S2" naming. L1=A, L2=B, L3=C.
+PHASE_NUM = {"L1": "1", "L2": "2", "L3": "3"}
+
+
+def _name_matches_side(name_upper: str, phase: str, side: int) -> bool:
+    """Return True when channel name encodes the phase and winding side.
+
+    Recognizes Siemens 7UT612 (e.g. "IL1-S1"), Siemens 7UT8x ("HVS.IA"),
+    and the legacy "_HV" / "_LV" suffix conventions.
+    """
+    pnum = PHASE_NUM[phase]
+    pletter = {"L1": "A", "L2": "B", "L3": "C"}[phase]
+    side_keyword = {1: "HVS?", 2: "LVS?", 3: "TVS?"}[side]
+    # Siemens 7UT612: "IL1-S1", "ILA-S2"
+    if re.search(rf"\bI?L?{pnum}\b.*-S{side}\b", name_upper):
+        return True
+    if re.search(rf"\bI{pletter}\b.*-S{side}\b", name_upper):
+        return True
+    # 7UT8x dotted: "HVS.IA"
+    if re.search(rf"\b{side_keyword}\.\s*I{pletter}\b", name_upper):
+        return True
+    # Generic _HV / _LV suffix
+    suffix_word = {1: "HV", 2: "LV", 3: "TV"}[side]
+    if re.search(rf"\bI{pletter}_?{suffix_word}\b", name_upper):
+        return True
+    return False
+
 
 def _find_ch(channels, candidates):
     for ch in channels:
         if ch.get("canonical_name") in candidates or ch["name"].upper() in candidates:
+            return np.array(ch["samples"], dtype=float)
+    return None
+
+
+def _find_winding_ch(channels, phase: str, side: int):
+    """Locate the per-phase current of a given transformer winding side."""
+    for ch in channels:
+        if _name_matches_side(ch["name"].upper(), phase, side):
             return np.array(ch["samples"], dtype=float)
     return None
 
@@ -78,11 +115,17 @@ def _compute_87t(comtrade_data: dict, params: dict) -> dict:
 
     for phase in ["L1", "L2", "L3"]:
         i_hv = _find_ch(channels, HV_CHANNELS[phase])
+        if i_hv is None:
+            i_hv = _find_winding_ch(channels, phase, 1)
         i_mv = _find_ch(channels, MV_CHANNELS[phase])
+        if i_mv is None:
+            i_mv = _find_winding_ch(channels, phase, 3)
         i_lv = _find_ch(channels, LV_CHANNELS[phase])
+        if i_lv is None:
+            i_lv = _find_winding_ch(channels, phase, 2)
         i_diff_ch = _find_ch(channels, RELAY_DIFF_CHANNELS[phase])
 
-        # Fallback: try generic phase channel names
+        # Fallback: try generic phase channel names (single-bay recordings)
         if i_hv is None:
             from .relay_87l import PHASE_CURRENT_MAP
             i_hv = _find_ch(channels, PHASE_CURRENT_MAP[phase])

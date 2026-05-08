@@ -116,6 +116,23 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
 
   const charPts = buildCharacteristic(params);
 
+  // Operate region = polygon bounded below by the dual-slope characteristic
+  // and above by the I-DIFF>> fast line. We draw it as a closed scattergl
+  // trace with `fill: "toself"` so it follows the curve instead of sitting
+  // as a rectangle behind both operate and restrain zones.
+  const operateRegion: Partial<Plotly.ScatterData> = {
+    x: [...charPts.map((p) => p.x), 10, 0, charPts[0].x],
+    y: [...charPts.map((p) => p.y), params.idiff_fast, params.idiff_fast, charPts[0].y],
+    type: "scatter",
+    mode: "lines",
+    fill: "toself",
+    fillcolor: "rgba(254, 226, 226, 0.55)",
+    line: { width: 0 },
+    name: "Operate region",
+    hoverinfo: "skip",
+    showlegend: false,
+  };
+
   const charTrace: Partial<Plotly.ScatterData> = {
     x: charPts.map((p) => p.x),
     y: charPts.map((p) => p.y),
@@ -152,17 +169,6 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     plot_bgcolor: "#ffffff",
     paper_bgcolor: "#ffffff",
     legend: { orientation: "h", y: -0.15 },
-    shapes: [
-      {
-        type: "rect",
-        x0: 0, x1: 10,
-        y0: charPts[0].y, y1: params.idiff_fast,
-        fillcolor: "#fef2f2",
-        opacity: 0.3,
-        line: { width: 0 },
-        layer: "below",
-      } as Plotly.Shape,
-    ],
   };
 
   const statusClass = status === "NOT_OPERATED" ? styles.statusNot : status === "IDIFF_FAST_OPERATED" ? styles.statusFast : styles.statusOperated;
@@ -216,7 +222,7 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
       )}
 
       <Plot
-        data={[charTrace, fastLine, ...phaseTraces] as Plotly.Data[]}
+        data={[operateRegion, charTrace, fastLine, ...phaseTraces] as Plotly.Data[]}
         layout={layout}
         config={{ displayModeBar: false, responsive: true }}
         style={{ width: "100%" }}

@@ -379,7 +379,15 @@ def _parse_analog_channels(com: Comtrade, manufacturer: str, warnings: List[str]
             # If the samples already exceed 10× the rated secondary value they
             # are clearly in primary units — applying the ratio again would
             # inflate them by another 1000–4000×.
-            if pors == 'S' and ct_primary > 0 and ct_secondary > 0 and ct_primary != ct_secondary:
+            #
+            # Additional guard for Siemens 7UT612-style per-unit recordings:
+            # when the unit explicitly says I/In, I/InS, pu, or p.u., samples are
+            # already dimensionless per-unit-of-rated-current. Multiplying by
+            # ct_primary/ct_secondary would inflate a 1.0 pu sample to 300 A,
+            # which is meaningless without knowing the winding's nominal current.
+            unit_norm = ch_unit.strip().lower().replace(" ", "")
+            is_per_unit_unit = unit_norm in {"pu", "p.u.", "in", "i/in", "i/ins", "u/un", "u/uns"}
+            if pors == 'S' and ct_primary > 0 and ct_secondary > 0 and ct_primary != ct_secondary and not is_per_unit_unit:
                 max_abs = float(np.max(np.abs(samples_primary))) if len(samples_primary) > 0 else 0.0
                 # Guard: some relays (e.g. NARI/NR PCS-9xx) embed the full CT/VT
                 # ratio inside `a` but still write PS='S'. Their samples will already
@@ -431,6 +439,10 @@ def _parse_analog_channels(com: Comtrade, manufacturer: str, warnings: List[str]
                     normalized_unit = 'A'
                 elif unit_upper == 'A':
                     normalized_unit = 'A'
+                elif is_per_unit_unit:
+                    # Keep per-unit-of-rated-current samples as-is and label them "pu".
+                    # Used by Siemens 7UT-family recordings (I/InS, I/In).
+                    normalized_unit = 'pu'
                 # mA already handled above
 
             # Validate CT/VT ratios (warn if unusual)

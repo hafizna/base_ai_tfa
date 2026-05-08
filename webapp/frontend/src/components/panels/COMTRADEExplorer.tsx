@@ -205,7 +205,36 @@ function phaseFromNameOrCanonical(ch: Pick<AnalogChannel, "name" | "canonical_na
   return null;
 }
 
-type ChannelRole = "lineCurrent" | "remoteCurrent" | "differential" | "restraint" | "voltage" | "neutralCurrent" | "unknown";
+type ChannelRole =
+  | "lineCurrent"
+  | "remoteCurrent"
+  | "windingCurrent"
+  | "differential"
+  | "restraint"
+  | "voltage"
+  | "neutralCurrent"
+  | "unknown";
+
+/** Detect Siemens 7UT612-style "-S1" / "-S2" / "-S3" winding-side suffix. */
+function extractSidedSuffix(name: string): string {
+  const m = name.match(/-S([1-5])\b/i);
+  return m ? `S${m[1]}` : "";
+}
+
+const SIDED_SUFFIX_LABEL: Record<string, string> = {
+  S1: "HV Side",
+  S2: "LV Side",
+  S3: "TV Side",
+  S4: "Side 4",
+  S5: "Side 5",
+};
+const SIDED_SUFFIX_SHORT: Record<string, string> = {
+  S1: "HVS",
+  S2: "LVS",
+  S3: "TVS",
+  S4: "S4",
+  S5: "S5",
+};
 
 function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" | "measurement" | "phase">): ChannelRole {
   const text = `${ch.name} ${ch.canonical_name}`.toUpperCase();
@@ -219,7 +248,14 @@ function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" 
   if (ch.measurement === "voltage") return "voltage";
   if (/\b(?:IN|I0|3I0|IDNS)\b/.test(text)) return "neutralCurrent";
   if (/\bREM(?:OTE)?\b|\bREM\s+L\b/.test(text)) return "remoteCurrent";
-  if (ch.measurement === "current") return "lineCurrent";
+  if (ch.measurement === "current") {
+    // Winding-side suffix (Siemens 7UT612: iL1-S1 = HV phase A, iL1-S2 = LV phase A)
+    // or dot-prefixed naming (Siemens 7UT8x: HVS.IA / LVS.IA).
+    if (extractSidedSuffix(ch.name) || /\b(HVS|LVS|MVS|TVS|HV|LV|MV|TV)\b/i.test(ch.name)) {
+      return "windingCurrent";
+    }
+    return "lineCurrent";
+  }
   return "unknown";
 }
 
@@ -250,6 +286,24 @@ function channelDisplay(ch: AnalogChannel) {
     return {
       title: canonical && canonical !== raw ? `${canonical} Remote` : raw,
       detail: `Remote-end line current${phaseText ? ` / ${phaseText}` : ""}`,
+      raw,
+    };
+  }
+
+  if (role === "windingCurrent") {
+    const sided = extractSidedSuffix(ch.name);
+    let sideLabel = sided ? SIDED_SUFFIX_LABEL[sided] : "";
+    if (!sideLabel) {
+      const upper = ch.name.toUpperCase();
+      if (/\bHVS?\b/.test(upper)) sideLabel = "HV Side";
+      else if (/\bLVS?\b/.test(upper)) sideLabel = "LV Side";
+      else if (/\bMVS?\b/.test(upper)) sideLabel = "MV Side";
+      else if (/\bTVS?\b/.test(upper)) sideLabel = "TV Side";
+    }
+    const sideShort = sided ? SIDED_SUFFIX_SHORT[sided] : "";
+    return {
+      title: phase && phase !== "N" && sideShort ? `I ${phase} ${sideShort}` : canonical || raw,
+      detail: `${sideLabel || "Winding"} current${phaseText ? ` / ${phaseText}` : ""}`,
       raw,
     };
   }
@@ -314,8 +368,16 @@ function extractPrefix(name: string): string {
  * Returns "" if no single-letter trailing suffix is present.
  */
 function extractWindingSuffix(name: string): string {
-  const m = name.match(/\.([abc])\s*$/i);
-  return m ? m[1].toLowerCase() : "";
+  // Siemens 7UT8x style: "Current IA.a" / "Current IA.b" / "Current IA.c"
+  const dotted = name.match(/\.([abc])\s*$/i);
+  if (dotted) return dotted[1].toLowerCase();
+  // Siemens 7UT612 style: "iL1-S1" / "iL1-S2" — map S1→a, S2→b, S3→c
+  const sided = name.match(/-S([1-5])\b/i);
+  if (sided) {
+    const idx = Number(sided[1]);
+    return ["", "a", "b", "c", "d", "e"][idx] || "";
+  }
+  return "";
 }
 
 /** Map Siemens-style suffix to canonical short side code used elsewhere in the explorer. */
