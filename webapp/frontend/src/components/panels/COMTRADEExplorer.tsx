@@ -215,10 +215,26 @@ type ChannelRole =
   | "neutralCurrent"
   | "unknown";
 
-/** Detect Siemens 7UT612-style "-S1" / "-S2" / "-S3" winding-side suffix. */
+/**
+ * Detect winding-side marker on a channel name.
+ * Recognizes:
+ *   - Siemens 7UT612: "iL1-S1", "iL2-S2"
+ *   - ABB RET670 / GE T60: "W1 CT IL1", "W2 CT IL2"
+ *   - Dotted prefix: "HVS.IA", "LVS.IB"
+ *   - Free-text tokens: "REF HV", "REF LV", "MV", "TV"
+ * Returns "S1".."S5" or empty.
+ */
 function extractSidedSuffix(name: string): string {
-  const m = name.match(/-S([1-5])\b/i);
-  return m ? `S${m[1]}` : "";
+  const upper = name.toUpperCase();
+  let m = upper.match(/-S([1-5])\b/);
+  if (m) return `S${m[1]}`;
+  m = upper.match(/\bW([1-3])\b/);
+  if (m) return `S${m[1]}`;
+  if (/\bHVS?\b/.test(upper)) return "S1";
+  if (/\bLVS?\b/.test(upper)) return "S2";
+  if (/\bMVS?\b/.test(upper)) return "S3";
+  if (/\bTVS?\b/.test(upper)) return "S3";
+  return "";
 }
 
 const SIDED_SUFFIX_LABEL: Record<string, string> = {
@@ -241,8 +257,14 @@ function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" 
   const unit = ch.unit.toLowerCase();
 
   // Explicit name-based detection takes priority over any unit heuristic.
+  // Standalone DIFF/BIAS tokens (e.g. "REF DIFF HV") matter for relays whose
+  // names don't always carry the leading "I", so detect both forms.
   if (/\b(?:IBIAS|IREST|IRESTR|RESTRAINT|RSTR|BIAS)\b/.test(text)) return "restraint";
-  if (/\b(?:IDIFF|IDIF|IDL[123]?|LDL)\b/.test(text) || /\bIL[123]\s*D\b/.test(text) || /\bIL[123]D\b/.test(text)) {
+  if (
+    /\b(?:IDIFF|IDIF|IDL[123]?|LDL|DIFF)\b/.test(text) ||
+    /\bIL[123]\s*D\b/.test(text) ||
+    /\bIL[123]D\b/.test(text)
+  ) {
     return "differential";
   }
 
@@ -250,10 +272,9 @@ function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" 
 
   if (ch.measurement === "current") {
     // Winding-side detection runs before any pu/neutral fallback so that
-    // Siemens 7UT612 phase currents recorded in pu (e.g. "iL1-S1") are
-    // categorized as winding currents rather than misclassified as diff.
-    const hasSidedSuffix = !!extractSidedSuffix(ch.name) || /\b(HVS|LVS|MVS|TVS|HV|LV|MV|TV)\b/i.test(ch.name);
-    if (hasSidedSuffix) return "windingCurrent";
+    // Siemens 7UT612 phase currents recorded in pu (e.g. "iL1-S1") and
+    // ABB/GE "W1 CT IL1" / "REF HV" channels all get the windingCurrent role.
+    if (extractSidedSuffix(ch.name)) return "windingCurrent";
     if (/\bREM(?:OTE)?\b|\bREM\s+L\b/.test(text)) return "remoteCurrent";
     if (/\b(?:IN|I0|3I0|IDNS)\b/.test(text)) return "neutralCurrent";
     if (unit === "pu" || unit === "in") return "differential";
@@ -295,18 +316,23 @@ function channelDisplay(ch: AnalogChannel) {
 
   if (role === "windingCurrent") {
     const sided = extractSidedSuffix(ch.name);
-    let sideLabel = sided ? SIDED_SUFFIX_LABEL[sided] : "";
-    if (!sideLabel) {
-      const upper = ch.name.toUpperCase();
-      if (/\bHVS?\b/.test(upper)) sideLabel = "HV Side";
-      else if (/\bLVS?\b/.test(upper)) sideLabel = "LV Side";
-      else if (/\bMVS?\b/.test(upper)) sideLabel = "MV Side";
-      else if (/\bTVS?\b/.test(upper)) sideLabel = "TV Side";
-    }
+    const sideLabel = sided ? SIDED_SUFFIX_LABEL[sided] : "Winding";
     const sideShort = sided ? SIDED_SUFFIX_SHORT[sided] : "";
+    const isRef = /\bREF\b/i.test(ch.name);
+    let title: string;
+    if (isRef) {
+      title = sideShort ? `REF ${sideShort.replace(/S$/, "")}` : raw;
+    } else if (phase === "N" && sideShort) {
+      title = `IN ${sideShort}`;
+    } else if (phase && phase !== "N" && sideShort) {
+      title = `I${phase} ${sideShort}`;
+    } else {
+      title = canonical && canonical !== raw ? canonical : raw;
+    }
+    const detailKind = isRef ? "REF input current" : "Winding current";
     return {
-      title: phase && phase !== "N" && sideShort ? `I ${phase} ${sideShort}` : canonical || raw,
-      detail: `${sideLabel || "Winding"} current${phaseText ? ` / ${phaseText}` : ""}`,
+      title,
+      detail: `${sideLabel} ${detailKind}${phaseText ? ` / ${phaseText}` : ""}`,
       raw,
     };
   }
@@ -374,10 +400,11 @@ function extractWindingSuffix(name: string): string {
   // Siemens 7UT8x style: "Current IA.a" / "Current IA.b" / "Current IA.c"
   const dotted = name.match(/\.([abc])\s*$/i);
   if (dotted) return dotted[1].toLowerCase();
-  // Siemens 7UT612 style: "iL1-S1" / "iL1-S2" — map S1→a, S2→b, S3→c
-  const sided = name.match(/-S([1-5])\b/i);
+  // Reuse the unified side detector so W1/W2/W3 (ABB/GE), -S1..-S5 (Siemens
+  // 7UT612), and HV/LV/MV/TV markers all participate in winding grouping.
+  const sided = extractSidedSuffix(name);
   if (sided) {
-    const idx = Number(sided[1]);
+    const idx = Number(sided.slice(1));
     return ["", "a", "b", "c", "d", "e"][idx] || "";
   }
   return "";
