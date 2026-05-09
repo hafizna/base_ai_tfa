@@ -35,12 +35,13 @@ function phaseOf(ch: AnalogChannel): "A" | "B" | "C" | null {
 }
 
 function isRelayDiff(ch: AnalogChannel): boolean {
-  const u = ch.unit.toLowerCase();
   const name = `${ch.name} ${ch.canonical_name}`.toUpperCase();
+  // Winding currents recorded in pu (Siemens 7UT612 "iL1-S1", ABB "W1 CT IL1",
+  // dotted "HVS.IA") must not be classified as relay-computed differential —
+  // otherwise the fault analyzer skips them and reports "Tidak Terdeteksi".
+  if (/-S[1-5]\b|\bW[1-3]\b|\bHVS?\b|\bLVS?\b|\bMVS?\b|\bTVS?\b/.test(name)) return false;
   return (
-    u === "pu" ||
-    u === "in" ||
-    /\b(?:IDIFF|IDIF|IDL[123]?|IBIAS|IREST|IRESTR|BIAS|RESTRAINT|LDL)\b/.test(name) ||
+    /\b(?:IDIFF|IDIF|IDL[123]?|IBIAS|IREST|IRESTR|BIAS|RESTRAINT|LDL|DIFF)\b/.test(name) ||
     /\bIL[123]\s*D\b/.test(name) ||
     /\bIL[123]D\b/.test(name)
   );
