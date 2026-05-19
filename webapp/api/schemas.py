@@ -150,6 +150,21 @@ class LocusResponse(BaseModel):
     fault_inception_idx: Optional[int]
 
 
+class LocusEvent(BaseModel):
+    """A single curated digital event placed on the impedance-locus timeline."""
+    time_ms: float          # absolute time in the record (ms)
+    rel_ms: float           # relative to fault inception (negative = pre-fault)
+    channel: str            # raw status channel name
+    state: int              # 1 = asserted, 0 = de-asserted
+    category: str           # trip | zone | reclose | breaker | comms | other
+    label: str              # short human label for the marker
+
+
+class LocusEventsResponse(BaseModel):
+    inception_time_ms: Optional[float]
+    events: List[LocusEvent]
+
+
 class AIFaultFeatures(BaseModel):
     analysis_id: Optional[str] = None
     fault_inception_angle_deg: float

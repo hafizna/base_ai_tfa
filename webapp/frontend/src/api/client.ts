@@ -241,6 +241,25 @@ export async function fetchElectricalParams21(analysisId: string) {
   };
 }
 
+export type LocusEventCategory = "trip" | "zone" | "reclose" | "breaker" | "comms" | "other";
+
+export interface LocusEvent {
+  time_ms: number;
+  rel_ms: number;
+  channel: string;
+  state: number;
+  category: LocusEventCategory;
+  label: string;
+}
+
+export async function fetchLocusEvents21(analysisId: string) {
+  const { data } = await api.get(`/api/analyze/21/locus-events?analysis_id=${analysisId}`);
+  return data as {
+    inception_time_ms: number | null;
+    events: LocusEvent[];
+  };
+}
+
 export async function extractFeatures21(analysisId: string) {
   const { data } = await api.get(`/api/analyze/21/extract-features?analysis_id=${analysisId}`);
   return data as {

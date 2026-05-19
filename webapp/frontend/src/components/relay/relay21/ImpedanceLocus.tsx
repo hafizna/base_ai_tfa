@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { computeLocus, fetchElectricalParams21, fetchFaultClassification21 } from "../../../api/client";
+import {
+  computeLocus,
+  fetchElectricalParams21,
+  fetchFaultClassification21,
+  fetchLocusEvents21,
+  type LocusEvent,
+  type LocusEventCategory,
+} from "../../../api/client";
 import Plot from "../../plot/PlotlyChart";
 import styles from "../../panels/Panel.module.css";
 
@@ -775,6 +782,65 @@ function eventTrace(
   };
 }
 
+const EVENT_CATEGORY_STYLE: Record<LocusEventCategory, { color: string; symbol: string; title: string }> = {
+  trip:    { color: "#dc2626", symbol: "x",            title: "Trip" },
+  zone:    { color: "#7c3aed", symbol: "diamond-open", title: "Zona" },
+  reclose: { color: "#0891b2", symbol: "star",         title: "Auto-Reclose" },
+  breaker: { color: "#ea580c", symbol: "square-open",  title: "PMT / CB" },
+  comms:   { color: "#16a34a", symbol: "triangle-up",  title: "Teleproteksi" },
+  other:   { color: "#64748b", symbol: "circle-open",  title: "Lain" },
+};
+
+/**
+ * Place curated key digital events on the locus at the trajectory point closest
+ * to each event's timestamp. Only events at or before the replay cursor are
+ * shown, so the protection sequence unfolds along the trace as playback advances.
+ * One trace per category keeps the legend readable and lets users toggle groups.
+ */
+function keyEventsTrace(
+  category: LocusEventCategory,
+  events: LocusEvent[],
+  allPoints: LocusPoint[],
+  cursorMs: number,
+): Partial<Plotly.ScatterData> | null {
+  if (!allPoints.length) return null;
+  const style = EVENT_CATEGORY_STYLE[category];
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const text: string[] = [];
+  const custom: (string | number)[][] = [];
+  for (const ev of events) {
+    if (ev.category !== category) continue;
+    if (ev.time_ms - 0.01 > cursorMs) continue;          // not yet reached in replay
+    const closest = closestPointAtTime(allPoints, ev.time_ms, 120);
+    if (!closest) continue;
+    xs.push(closest.point.r);
+    ys.push(closest.point.x);
+    const arrow = ev.state === 1 ? "▲" : "▽";            // assert vs de-assert
+    text.push(`${arrow} ${ev.label}`);
+    custom.push([ev.channel, ev.state ? "aktif" : "lepas", ev.time_ms, ev.rel_ms]);
+  }
+  if (!xs.length) return null;
+  return {
+    x: xs,
+    y: ys,
+    text,
+    customdata: custom,
+    type: "scatter",
+    mode: "text+markers",
+    name: style.title,
+    textposition: "bottom center",
+    textfont: { size: 9, color: style.color },
+    marker: { color: style.color, size: 11, symbol: style.symbol, line: { color: "#111827", width: 1 } },
+    showlegend: true,
+    legendgroup: `evt-${category}`,
+    hovertemplate:
+      `%{customdata[0]} (%{customdata[1]})<br>` +
+      `t=%{customdata[2]:.1f} ms · rel %{customdata[3]:+.1f} ms<br>` +
+      `R=%{x:.2f} Ω · X=%{y:.2f} Ω<extra></extra>`,
+  };
+}
+
 function headTrace(loop: LoopName, points: LocusPoint[], currentMs: number): Partial<Plotly.ScatterData> | null {
   const eligible = points.filter((point) => point.t * 1000 <= currentMs);
   const point = eligible[eligible.length - 1];
@@ -1011,6 +1077,8 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     tripSource: null,
   });
   const [faultClassification, setFaultClassification] = useState<FaultClassification21 | null>(null);
+  const [locusEvents, setLocusEvents] = useState<LocusEvent[]>([]);
+  const [showLocusEvents, setShowLocusEvents] = useState(true);
   const [playMs, setPlayMs] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(0.5);
@@ -1083,6 +1151,14 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
         }
         setFaultClassification(classificationResult.status === "fulfilled" ? classificationResult.value : null);
       });
+    return () => { alive = false; };
+  }, [analysisId, dataRevision]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchLocusEvents21(analysisId)
+      .then((res) => { if (alive) setLocusEvents(res.events ?? []); })
+      .catch(() => { if (alive) setLocusEvents([]); });
     return () => { alive = false; };
   }, [analysisId, dataRevision]);
 
@@ -1344,10 +1420,24 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     : "Belum teridentifikasi";
   const hasRelayZones = groundZones.length > 0 || phaseZones.length > 0;
 
+  // Anchor key-event markers to the family's richest trajectory (the faulted
+  // loop traces the longest path), so markers land on the visible locus line.
+  const buildEventTraces = (loops: LoopName[]): Plotly.Data[] => {
+    if (!showLocusEvents || locusEvents.length === 0) return [];
+    const anchor = loops
+      .map((loop) => pointsByLoop[loop] ?? [])
+      .reduce((best, pts) => (pts.length > best.length ? pts : best), [] as LocusPoint[]);
+    if (anchor.length === 0) return [];
+    return (["trip", "zone", "reclose", "breaker", "comms", "other"] as LocusEventCategory[])
+      .map((cat) => keyEventsTrace(cat, locusEvents, anchor, currentPlayMs))
+      .filter(Boolean) as Plotly.Data[];
+  };
+
   const groundTraces = useMemo(() => {
     const loci = GROUND_LOOPS.filter((loop) => (visiblePointsByLoop[loop] ?? []).length > 0).map((loop) =>
       loopTrace(loop, visiblePointsByLoop[loop] ?? [], detailMode)
     );
+    const eventTraces = buildEventTraces(GROUND_LOOPS);
     const directions = detailMode === "detailed"
       ? GROUND_LOOPS.map((loop) => directionTrace(loop, visiblePointsByLoop[loop] ?? [])).filter(Boolean)
       : [];
@@ -1365,7 +1455,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     const measured = detailMode === "detailed" ? measuredTrace(GROUND_LOOPS, visiblePointsByLoop) : null;
     const line = detailMode === "detailed" ? lineImpedanceTrace(groundZones) : null;
     if (detailMode !== "detailed") {
-      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
+      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...eventTraces, ...zoneTraces] as Plotly.Data[];
     }
     return [
       ...zoneTraces,
@@ -1376,13 +1466,17 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ...(measured ? [measured as Plotly.Data] : []),
       ...(inception ? [inception as Plotly.Data] : []),
       ...(trip ? [trip as Plotly.Data] : []),
+      ...eventTraces,
     ] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, detailMode, groundEventLoops, groundZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
+  // buildEventTraces closes over showLocusEvents/locusEvents/currentPlayMs/pointsByLoop (all in deps)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTimeRange, currentPlayMs, detailMode, groundEventLoops, groundZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop, showLocusEvents, locusEvents]);
 
   const phaseTraces = useMemo(() => {
     const loci = PHASE_LOOPS.filter((loop) => (visiblePointsByLoop[loop] ?? []).length > 0).map((loop) =>
       loopTrace(loop, visiblePointsByLoop[loop] ?? [], detailMode)
     );
+    const eventTraces = buildEventTraces(PHASE_LOOPS);
     const directions = detailMode === "detailed"
       ? PHASE_LOOPS.map((loop) => directionTrace(loop, visiblePointsByLoop[loop] ?? [])).filter(Boolean)
       : [];
@@ -1400,7 +1494,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     const measured = detailMode === "detailed" ? measuredTrace(PHASE_LOOPS, visiblePointsByLoop) : null;
     const line = detailMode === "detailed" ? lineImpedanceTrace(phaseZones) : null;
     if (detailMode !== "detailed") {
-      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
+      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...eventTraces, ...zoneTraces] as Plotly.Data[];
     }
     return [
       ...zoneTraces,
@@ -1411,8 +1505,11 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ...(measured ? [measured as Plotly.Data] : []),
       ...(inception ? [inception as Plotly.Data] : []),
       ...(trip ? [trip as Plotly.Data] : []),
+      ...eventTraces,
     ] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, detailMode, phaseEventLoops, phaseZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
+  // buildEventTraces closes over showLocusEvents/locusEvents/currentPlayMs/pointsByLoop (all in deps)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTimeRange, currentPlayMs, detailMode, phaseEventLoops, phaseZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop, showLocusEvents, locusEvents]);
 
   // When zones are loaded, merge zone bounds with locus points but cap at 4× the
   // zone span so pre-fault load impedance (100-150 Ω away) doesn't crush the view.
@@ -1835,6 +1932,16 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           >
             Show End
           </button>
+          <button
+            type="button"
+            className={styles.waveGhostBtn}
+            onClick={() => setShowLocusEvents((v) => !v)}
+            title="Tampilkan event digital kunci (trip, zona, AR, PMT, teleproteksi) di sepanjang lintasan locus, terungkap mengikuti kursor replay"
+            style={showLocusEvents ? { background: "#eff6ff", borderColor: "#3b82f6", color: "#1d4ed8" } : undefined}
+            disabled={locusEvents.length === 0}
+          >
+            {showLocusEvents ? "Event digital ✓" : "Event digital"}
+          </button>
           <label className={styles.zoneLabel}>
             Replay speed
             <select
@@ -1865,6 +1972,11 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           <strong>{currentPlayMs.toFixed(2)} ms</strong>
           <span>{activeWindowLabel}</span>
           <span>Inception marker scope: {markerScopeLabel}; trip marker follows SOE/digital trip time on both plots.</span>
+          {showLocusEvents && locusEvents.length > 0 && (
+            <span>
+              Event digital: {locusEvents.filter((e) => e.time_ms - 0.01 <= currentPlayMs).length}/{locusEvents.length} terungkap di sepanjang locus (mengikuti kursor replay).
+            </span>
+          )}
           {timing.inceptionMs !== null && timing.durationMs !== null && (
             <span>
               Inception {timing.inceptionMs.toFixed(1)} ms | {relayTripTraceLabel} {relayTripMs !== null ? relayTripMs.toFixed(1) : "-"} ms | FCT {timing.durationMs.toFixed(1)} ms
