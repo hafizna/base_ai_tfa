@@ -696,6 +696,9 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const [normalizeToInception, setNormalizeToInception] = useState(false);
   const [displayMode, setDisplayMode] = useState<"instantaneous" | "rms">("instantaneous");
   const [analogViewMode, setAnalogViewMode] = useState<AnalogViewMode>("stacked");
+  // When on, every stacked current strip shares one y-range so a small phase
+  // current cannot visually appear as tall as the faulted phase.
+  const [uniformCurrentScale, setUniformCurrentScale] = useState(true);
   const [digitalHoverMs, setDigitalHoverMs] = useState<number | null>(null);
   const [showDigitalSOE, setShowDigitalSOE] = useState(true);
   const [soePosition, setSoePosition] = useState<SOEPosition>("belowDigital");
@@ -807,6 +810,25 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   );
   const selectedAnalogStrips = visibleAnalog.filter((ch) => selectedAnalog.has(ch.id));
   const selectedStatus = statusChannels.filter((ch) => selectedDigital.has(ch.id));
+
+  // Shared symmetric y-range across all selected current strips. Keeps phase
+  // amplitudes honest relative to each other — a 0.4 kA phase renders ~1/5 the
+  // height of a 2 kA faulted phase instead of both filling their strip.
+  const sharedCurrentYRange = useMemo((): [number, number] | undefined => {
+    if (!uniformCurrentScale) return undefined;
+    const currents = selectedAnalogStrips.filter((ch) => ch.measurement === "current");
+    if (currents.length < 2) return undefined;
+    let max = 0;
+    for (const ch of currents) {
+      const p = channelPeak(samplesForDisplay(ch));
+      if (p > max) max = p;
+    }
+    if (max === 0) return undefined;
+    const pad = max * 0.12;
+    return [-(max + pad), max + pad];
+  // samplesForDisplay closes over displayMode/cycleN; both are in deps via the array below
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniformCurrentScale, selectedAnalogStrips, displayMode, cycleN]);
 
   const xAxisLabel = normalizeToInception ? "Waktu relatif inception (ms)" : "Waktu (ms)";
   const inceptionDisplayMs = normalizeToInception ? 0 : (inceptionTimeMs ?? null);
@@ -1174,6 +1196,17 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
           >
             {analogViewMode === "stacked" ? "Stacked Channels" : "Grouped Overlay"}
           </button>
+          {analogViewMode === "stacked" && (
+            <button
+              type="button"
+              className={`${styles.waveGhostBtn} ${styles.waveModeBtn}`}
+              onClick={() => setUniformCurrentScale((v) => !v)}
+              title="Samakan skala sumbu-Y semua kanal arus agar tinggi gelombang sebanding (fasa terganggu paling tinggi)"
+              style={uniformCurrentScale ? { background: "#eff6ff", borderColor: "#3b82f6", color: "#1d4ed8" } : undefined}
+            >
+              {uniformCurrentScale ? "Skala arus seragam ✓" : "Skala arus per-kanal"}
+            </button>
+          )}
           {inceptionTimeMs !== null && (
             <button
               type="button"
@@ -1281,7 +1314,10 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
             const info = channelDisplay(ch);
             const label = info.title;
             const stats = channelStats(ch);
-            const yRange = channelRange(samplesForDisplay(ch));
+            const yRange =
+              ch.measurement === "current" && sharedCurrentYRange
+                ? sharedCurrentYRange
+                : channelRange(samplesForDisplay(ch));
             return (
               <div key={ch.id} className={styles.waveSubplot}>
                 <div className={styles.waveSubplotTitle} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -1292,6 +1328,9 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
                     <span style={{ color: "#94a3b8", fontWeight: 500 }}>{ch.unit}</span>
                   </span>
                   <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    {ch.measurement === "current" && sharedCurrentYRange && (
+                      <span style={{ color: "#3b82f6", fontWeight: 700 }}>skala bersama · </span>
+                    )}
                     Max: {formatStat(stats.max, ch.unit)} | Min: {formatStat(stats.min, ch.unit)} | RMS: {formatStat(stats.rms, ch.unit)}
                   </span>
                 </div>

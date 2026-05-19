@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from ..schemas import (
     LocusAnalysisRequest, LocusResponse, LocusPoint,
+    LocusEventsResponse,
     AIFaultFeatures, AIFaultResult,
 )
 from ..storage import load_analysis
@@ -616,6 +617,103 @@ def _compute_fault_classification(payload: dict) -> dict:
     }
 
 
+def _inception_idx_from_payload(payload: dict) -> tuple[np.ndarray, int]:
+    """Re-derive the fault-inception index the same way _compute_electrical_params does,
+    so locus-event rel_ms aligns with the inception marker already on the plot."""
+    channels = payload.get("analog_channels", [])
+    time = np.array(payload.get("time", []))
+    freq = float(payload.get("frequency", 50.0))
+    if len(time) < 4:
+        return time, 0
+
+    ia = _find_phase_current(channels, "A")
+    ib = _find_phase_current(channels, "B")
+    ic = _find_phase_current(channels, "C")
+    sr = 1.0 / (time[1] - time[0]) if len(time) > 1 else 1000.0
+    cycle_n = max(4, int(sr / freq))
+    available = [arr for arr in (ia, ib, ic) if arr is not None]
+    i_ref = max(available, key=lambda arr: float(np.max(np.abs(arr)))) if available else None
+    pre_end = min(2 * cycle_n, len(i_ref) // 4) if i_ref is not None else 0
+    if i_ref is not None and pre_end > 1:
+        pre_rms = float(np.sqrt(np.mean(i_ref[:pre_end] ** 2)))
+        threshold = max(pre_rms * 2.0, np.max(np.abs(i_ref)) * 0.3, 0.05)
+        inception_idx = next(
+            (idx for idx in range(pre_end, len(i_ref)) if abs(i_ref[idx]) > threshold),
+            int(np.argmax(np.abs(i_ref))),
+        )
+        return time, inception_idx
+    return time, 0
+
+
+# Curated key-event classification. Only protection-relevant channels become
+# locus markers — full SOE stays in the dedicated SOE table.
+_LOCUS_EVENT_RULES = [
+    # (category, short label, substring keywords, regex keywords) — first rule
+    # whose substring OR regex matches the upper-cased channel name wins.
+    ("zone",     "Zone",  ["ZONE 1", "ZONE1", "ZONE 2", "ZONE2", "ZONE 3", "ZONE3"],
+                          [r"\bZ[123]\b"]),
+    ("trip",     "Trip",  ["TRIP", "OPRT", "OPERATE", "TRIPPING"], []),
+    ("comms",    "Chan",  ["CHAN RECV", "CHAN. RECV", "SIG. SEND", "SIG SEND",
+                           "DIST. CHAN", "CARRIER", "POTT", "PUTT"], []),
+    ("reclose",  "AR",    ["A/R", "AR ", "RECLOS", "A R ", "AUTORECLOSE"],
+                          [r"\b79\b"]),
+    ("breaker",  "CB",    ["CB AUX", "52-A", "52A", "52-B", "52B",
+                           "CB OPEN", "CB CLOSE", "PMT", "BREAKER"], []),
+]
+
+
+def _classify_locus_event(name: str) -> Optional[tuple[str, str]]:
+    import re as _re
+    upper = name.upper()
+    for category, label, keywords, patterns in _LOCUS_EVENT_RULES:
+        if any(kw in upper for kw in keywords):
+            return category, label
+        if any(_re.search(p, upper) for p in patterns):
+            return category, label
+    return None
+
+
+def _compute_locus_events(payload: dict) -> dict:
+    """Curated digital events with timestamps, anchored to fault inception."""
+    time, inception_idx = _inception_idx_from_payload(payload)
+    if len(time) == 0:
+        return {"inception_time_ms": None, "events": []}
+
+    inception_s = float(time[inception_idx]) if inception_idx < len(time) else float(time[0])
+    events: list[dict] = []
+
+    for sch in payload.get("status_channels", []):
+        name = str(sch.get("name", "") or "")
+        classified = _classify_locus_event(name)
+        if classified is None:
+            continue
+        category, label = classified
+        samples = sch.get("samples") or []
+        n = min(len(samples), len(time))
+        if n < 2:
+            continue
+        prev = int(samples[0])
+        for idx in range(1, n):
+            val = int(samples[idx])
+            if val != prev:
+                t_s = float(time[idx])
+                events.append({
+                    "time_ms": round(t_s * 1000.0, 2),
+                    "rel_ms": round((t_s - inception_s) * 1000.0, 2),
+                    "channel": name,
+                    "state": val,
+                    "category": category,
+                    "label": label,
+                })
+            prev = val
+
+    events.sort(key=lambda e: (e["time_ms"], e["channel"]))
+    return {
+        "inception_time_ms": round(inception_s * 1000.0, 2),
+        "events": events,
+    }
+
+
 @router.get("/fault-classification")
 async def fault_classification(analysis_id: str):
     """Classify fault type, phases, zone and trip for the Jenis Gangguan panel."""
@@ -647,6 +745,18 @@ async def extract_features(analysis_id: str):
     loop = asyncio.get_event_loop()
     features = await loop.run_in_executor(None, _extract_features_from_payload, payload)
     return features
+
+
+@router.get("/locus-events", response_model=LocusEventsResponse)
+async def locus_events(analysis_id: str):
+    """Curated key digital events (trip/zone/AR/CB/comms) with timestamps,
+    used to overlay the protection sequence along the impedance locus."""
+    payload = load_analysis(analysis_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _compute_locus_events, payload)
+    return result
 
 
 @router.post("/locus", response_model=LocusResponse)
