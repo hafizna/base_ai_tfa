@@ -2,7 +2,15 @@ import { Component, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 
-import { fetchAnalysis } from "../api/client";
+import Plotly from "plotly.js";
+
+import {
+  aiFaultAnalysis21,
+  extractFeatures21,
+  fetchAnalysis,
+  generateReport,
+  type ReportChart,
+} from "../api/client";
 import COMTRADEExplorer from "../components/panels/COMTRADEExplorer";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
 import AIFaultAnalysis21 from "../components/relay/relay21/AIFaultAnalysis21";
@@ -83,6 +91,7 @@ export default function Workspace() {
   const [dataRevision, setDataRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     if (!analysisId) return;
@@ -109,6 +118,98 @@ export default function Workspace() {
   function handlePrint() {
     if (typeof window !== "undefined") {
       window.print();
+    }
+  }
+
+  async function captureWorkspaceCharts(): Promise<ReportChart[]> {
+    const nodes = Array.from(
+      document.querySelectorAll<HTMLElement>(".js-plotly-plot"),
+    );
+    const charts: ReportChart[] = [];
+    for (const node of nodes) {
+      const gd = node as HTMLElement & {
+        _fullLayout?: { title?: { text?: string } | string };
+        layout?: { title?: { text?: string } | string };
+      };
+      const rawTitle =
+        (typeof gd._fullLayout?.title === "object" && gd._fullLayout?.title?.text) ||
+        (typeof gd._fullLayout?.title === "string" && gd._fullLayout?.title) ||
+        (typeof gd.layout?.title === "object" && gd.layout?.title?.text) ||
+        (typeof gd.layout?.title === "string" && gd.layout?.title) ||
+        "";
+      const title = String(rawTitle || "").trim();
+      const lowerTitle = title.toLowerCase();
+
+      let id: string | null = null;
+      if (/impedance|locus|r-?x/.test(lowerTitle)) {
+        id = "impedance_locus";
+      } else if (/diff|restraint/.test(lowerTitle)) {
+        id = "diff_restraint";
+      } else if (/overcurrent|ocr|inverse|tcc/.test(lowerTitle)) {
+        id = "overcurrent_overlay";
+      }
+
+      if (!id) continue;
+
+      try {
+        const dataUrl = await Plotly.toImage(gd as Parameters<typeof Plotly.toImage>[0], {
+          format: "png",
+          width: 1400,
+          height: 900,
+          scale: 2,
+        });
+        const image_b64 = String(dataUrl).replace(/^data:image\/png;base64,/, "");
+        charts.push({ id, title, image_b64 });
+      } catch (err) {
+        console.warn(`Failed to export Plotly chart "${title}":`, err);
+      }
+    }
+    return charts;
+  }
+
+  async function fetchAiAnalysisSafe(): Promise<Record<string, unknown> | null> {
+    if (relayType !== "21") return null;
+    try {
+      const features = await extractFeatures21(currentAnalysisId);
+      const result = await aiFaultAnalysis21(currentAnalysisId, features);
+      return result as Record<string, unknown>;
+    } catch (err) {
+      console.warn("Failed to fetch AI analysis for report:", err);
+      return null;
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    try {
+      const [charts, aiAnalysis] = await Promise.all([
+        captureWorkspaceCharts(),
+        fetchAiAnalysisSafe(),
+      ]);
+
+      const blob = await generateReport(currentAnalysisId, {
+        relay_type: relayType,
+        ai_analysis: aiAnalysis,
+        charts,
+      });
+
+      const stationSlug = (comtrade?.station_name || "report")
+        .replace(/\s+/g, "_")
+        .replace(/[\\/]/g, "-");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `laporan_gangguan_${stationSlug}_${currentAnalysisId.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to generate PDF report:", err);
+      alert("Gagal membuat laporan PDF. Cek console untuk detail.");
+    } finally {
+      setIsGeneratingPdf(false);
     }
   }
 
@@ -236,6 +337,16 @@ export default function Workspace() {
             <span className={styles.meta}>{comtrade.frequency} Hz nominal</span>
             <span className={styles.meta}>{comtrade.analog_channels.length} analog</span>
             <span className={styles.meta}>{comtrade.status_channels.length} digital</span>
+            {relayType === "21" && (
+              <button
+                className={styles.downloadPdfBtn}
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                type="button"
+              >
+                {isGeneratingPdf ? "Menyiapkan PDF…" : "📄 Download PDF Report"}
+              </button>
+            )}
             <button className={styles.printBtn} onClick={handlePrint} type="button">
               Print / PDF
             </button>

@@ -14,6 +14,7 @@ uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 anyio>=4.0
 psycopg[binary]>=3.2
+reportlab>=4.0
 
 # --- Dev / profiling (optional, not installed in prod) ---
 # Install manually: python -m pip install --user py-spy

@@ -15,6 +15,7 @@ data/predictions/
 
 # Build artefacts
 *.png
+!webapp/api/assets/*.png
 
 # OS
 .DS_Store

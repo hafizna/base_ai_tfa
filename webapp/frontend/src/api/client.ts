@@ -297,3 +297,23 @@ export async function overCurrentCharacteristic(analysisId: string, curve_type: 
   const { data } = await api.post("/api/analyze/ocr/characteristic", { analysis_id: analysisId, curve_type, is_pickup_a, tms });
   return data;
 }
+
+export interface ReportChart {
+  id: string;
+  title: string;
+  image_b64: string;
+}
+
+export interface ReportRequest {
+  relay_type: string;
+  ai_analysis?: Record<string, unknown> | null;
+  charts: ReportChart[];
+}
+
+export async function generateReport(analysisId: string, body: ReportRequest): Promise<Blob> {
+  const { data } = await api.post(`/api/report/${analysisId}`, body, {
+    responseType: "blob",
+    timeout: 60000,
+  });
+  return data;
+}
