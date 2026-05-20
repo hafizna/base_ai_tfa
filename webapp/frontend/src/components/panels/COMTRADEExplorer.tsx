@@ -696,9 +696,6 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const [normalizeToInception, setNormalizeToInception] = useState(false);
   const [displayMode, setDisplayMode] = useState<"instantaneous" | "rms">("instantaneous");
   const [analogViewMode, setAnalogViewMode] = useState<AnalogViewMode>("stacked");
-  // When on, every stacked current strip shares one y-range so a small phase
-  // current cannot visually appear as tall as the faulted phase.
-  const [uniformCurrentScale, setUniformCurrentScale] = useState(true);
   const [digitalHoverMs, setDigitalHoverMs] = useState<number | null>(null);
   const [showDigitalSOE, setShowDigitalSOE] = useState(true);
   const [soePosition, setSoePosition] = useState<SOEPosition>("belowDigital");
@@ -811,11 +808,11 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
   const selectedAnalogStrips = visibleAnalog.filter((ch) => selectedAnalog.has(ch.id));
   const selectedStatus = statusChannels.filter((ch) => selectedDigital.has(ch.id));
 
-  // Shared symmetric y-range across all selected current strips. Keeps phase
-  // amplitudes honest relative to each other — a 0.4 kA phase renders ~1/5 the
-  // height of a 2 kA faulted phase instead of both filling their strip.
+  // All current strips always share one symmetric y-range so phase amplitudes
+  // stay honest relative to each other — a 0.4 kA phase renders ~1/5 the height
+  // of a 2 kA faulted phase instead of both filling their strip. This is the
+  // only sensible default for fault analysis, so it is not user-toggleable.
   const sharedCurrentYRange = useMemo((): [number, number] | undefined => {
-    if (!uniformCurrentScale) return undefined;
     const currents = selectedAnalogStrips.filter((ch) => ch.measurement === "current");
     if (currents.length < 2) return undefined;
     let max = 0;
@@ -828,7 +825,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     return [-(max + pad), max + pad];
   // samplesForDisplay closes over displayMode/cycleN; both are in deps via the array below
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uniformCurrentScale, selectedAnalogStrips, displayMode, cycleN]);
+  }, [selectedAnalogStrips, displayMode, cycleN]);
 
   const xAxisLabel = normalizeToInception ? "Waktu relatif inception (ms)" : "Waktu (ms)";
   const inceptionDisplayMs = normalizeToInception ? 0 : (inceptionTimeMs ?? null);
@@ -1196,17 +1193,6 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
           >
             {analogViewMode === "stacked" ? "Stacked Channels" : "Grouped Overlay"}
           </button>
-          {analogViewMode === "stacked" && (
-            <button
-              type="button"
-              className={`${styles.waveGhostBtn} ${styles.waveModeBtn}`}
-              onClick={() => setUniformCurrentScale((v) => !v)}
-              title="Samakan skala sumbu-Y semua kanal arus agar tinggi gelombang sebanding (fasa terganggu paling tinggi)"
-              style={uniformCurrentScale ? { background: "#eff6ff", borderColor: "#3b82f6", color: "#1d4ed8" } : undefined}
-            >
-              {uniformCurrentScale ? "Skala arus seragam ✓" : "Skala arus per-kanal"}
-            </button>
-          )}
           {inceptionTimeMs !== null && (
             <button
               type="button"
