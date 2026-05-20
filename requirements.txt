@@ -14,3 +14,8 @@ uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 anyio>=4.0
 psycopg[binary]>=3.2
+
+# --- Dev / profiling (optional, not installed in prod) ---
+# Install manually: python -m pip install --user py-spy
+# Used by profiling/profile_request.{ps1,sh} to capture flamegraphs.
+# py-spy>=0.4

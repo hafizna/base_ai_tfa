@@ -3,13 +3,30 @@
 Extracts the same 17-feature vector that models/train.py uses, then runs the
 LightGBM multi-class classifier with the same calibration and confidence caps
 as models/predict.py.
+
+Pipeline order
+--------------
+1. extract_ml_features      → 17 analog + digital sequence features
+2. _augment_row_with_soe_context  → inject SOE-derived loop hints
+3. Tier 1 (models/rules.apply_rules) — deterministic structural rules
+   (KONDUKTOR / GANGGUAN PERMANEN / CT anomaly / SOE mismatch)
+4. Tier 2 LightGBM predict_proba
+5. Probability calibration (fitted calibrator pickle if present, else T=1.5)
+6. Confidence caps (transient ambiguity, equipment caution, PETIR digital
+   caution) — each cap is recorded in `applied_caps`
+7. Structured evidence (text + severity + weight) for richer UI rendering
+
+The response also exposes introspection fields: raw + calibrated
+probabilities, the actual feature vector used, applied caps, and model
+metadata (version, training profile, file SHA-256).
 """
 
+import hashlib
 import pickle
 import re
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 
@@ -17,10 +34,21 @@ _PIPELINE_DIR = Path(__file__).parent.parent.parent
 if str(_PIPELINE_DIR) not in sys.path:
     sys.path.insert(0, str(_PIPELINE_DIR))
 
-from models.predict import _petir_subtype_description  # noqa: E402
+from models.predict import _petir_subtype_description, _augment_row_with_soe_context  # noqa: E402
+from models.rules import apply_rules  # noqa: E402
 from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
+_CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calibrator.pkl"
+
+# Cached so we hash the model file + load the pickle once per process.
+# Set ``_MODEL_BUNDLE_CACHE``/``_CALIBRATOR_CACHE`` to ``None`` to invalidate
+# (mostly used by tests). Each cache uses a sentinel-empty dict to mean
+# "already tried, nothing available" — distinct from ``None`` ("not tried").
+_MODEL_BUNDLE_CACHE: Optional[dict] = None
+_MODEL_META_CACHE: Optional[dict] = None
+_CALIBRATOR_CACHE: Optional[dict] = None
+_FEATURE_VERSION = "v1.2025-04"  # bump when feature schema changes incompatibly
 
 _LABEL_DISPLAY = {
     "PETIR":       "Petir / Lightning",
@@ -36,10 +64,195 @@ _TRANSIENT = {"PETIR", "LAYANG", "HEWAN", "BENDA_ASING"}
 
 
 def _load_model() -> Optional[dict]:
+    """Return the model bundle, loading it from disk at most once per process.
+
+    The bundle is cached in module scope so subsequent calls are a dict lookup
+    rather than a pickle deserialise. Call ``warmup()`` from the FastAPI
+    startup lifespan to pay the load cost before the first request.
+    """
+    global _MODEL_BUNDLE_CACHE
+    if _MODEL_BUNDLE_CACHE is not None:
+        return _MODEL_BUNDLE_CACHE or None
     if not _MODEL_PATH.exists():
+        _MODEL_BUNDLE_CACHE = {}
         return None
-    with open(_MODEL_PATH, "rb") as f:
-        return pickle.load(f)
+    try:
+        with open(_MODEL_PATH, "rb") as f:
+            _MODEL_BUNDLE_CACHE = pickle.load(f)
+    except Exception:
+        _MODEL_BUNDLE_CACHE = {}
+        return None
+    return _MODEL_BUNDLE_CACHE
+
+
+def warmup() -> dict:
+    """Eagerly load model, calibrator, metadata, and Tier-2 helper modules.
+
+    Called from the FastAPI startup lifespan so the very first request does
+    not pay a 200–500 ms pickle-deserialise + import cost. Returns a small
+    status dict for logging.
+    """
+    bundle = _load_model()
+    _ = _load_calibrator()
+    meta = _model_metadata(bundle)
+    # Force the deferred ``models.predict`` / ``models.train`` imports too —
+    # these pull in LightGBM and sklearn which dominate cold-start time.
+    deferred_loaded = False
+    try:
+        from models.train import FEATURE_COLS  # noqa: F401
+        from models.predict import (  # noqa: F401
+            _build_feature_vector,
+            _apply_transient_ambiguity_confidence_cap,
+            _apply_equipment_caution_cap,
+        )
+        deferred_loaded = True
+    except Exception:
+        pass
+    return {
+        "model_loaded": bool(bundle),
+        "model_version": meta.get("model_version"),
+        "calibration": meta.get("calibration", {}).get("method"),
+        "deferred_imports_loaded": deferred_loaded,
+    }
+
+
+def _load_calibrator() -> Optional[dict]:
+    """Optional probability calibrator fitted on a held-out validation split.
+
+    Produced by ``python models/calibrate.py``. When present, the bundle
+    contains ``{calibrator, classes_, method, fitted_at_utc, n_samples}`` and
+    is preferred over the default temperature scaling.
+    """
+    global _CALIBRATOR_CACHE
+    if _CALIBRATOR_CACHE is not None:
+        return _CALIBRATOR_CACHE or None
+    if not _CALIBRATOR_PATH.exists():
+        _CALIBRATOR_CACHE = {}
+        return None
+    try:
+        with open(_CALIBRATOR_PATH, "rb") as f:
+            _CALIBRATOR_CACHE = pickle.load(f)
+    except Exception:
+        _CALIBRATOR_CACHE = {}
+        return None
+    return _CALIBRATOR_CACHE
+
+
+def _model_metadata(bundle: Optional[dict]) -> dict:
+    """Return small metadata dict for response introspection.
+
+    Cached per-process. ``model_version`` is derived from training timestamp +
+    file SHA-256 prefix so any retrain produces a new value automatically.
+    """
+    global _MODEL_META_CACHE
+    if _MODEL_META_CACHE is not None:
+        return _MODEL_META_CACHE
+
+    meta: dict = {
+        "feature_version": _FEATURE_VERSION,
+        "model_present": bundle is not None,
+        "model_path": str(_MODEL_PATH.name),
+    }
+    if not _MODEL_PATH.exists():
+        _MODEL_META_CACHE = meta
+        return meta
+
+    try:
+        h = hashlib.sha256(_MODEL_PATH.read_bytes()).hexdigest()[:12]
+        meta["model_sha256_prefix"] = h
+    except Exception:
+        meta["model_sha256_prefix"] = "unknown"
+
+    if isinstance(bundle, dict):
+        profile = bundle.get("training_profile") or {}
+        trained_at = profile.get("trained_at_utc") or "unknown"
+        meta["model_trained_at_utc"] = trained_at
+        meta["model_type"] = bundle.get("model_type", "unknown")
+        meta["model_version"] = f"{trained_at[:10] if trained_at != 'unknown' else 'untrained'}+{meta.get('model_sha256_prefix', '????????')}"
+        meta["feature_cols"] = list(bundle.get("feature_cols") or [])
+        meta["classes"] = list(bundle.get("classes") or bundle.get("all_classes") or [])
+        # Cast numpy.int64 → int so FastAPI / JSON serializer accepts the response.
+        meta["class_counts"] = {str(k): int(v) for k, v in (bundle.get("class_counts") or {}).items()}
+        meta["training_profile"] = dict(profile) if profile else {}
+
+    calibrator_bundle = _load_calibrator()
+    if calibrator_bundle:
+        meta["calibration"] = {
+            "method": calibrator_bundle.get("method", "platt"),
+            "fitted_at_utc": calibrator_bundle.get("fitted_at_utc", "unknown"),
+            "held_out_samples": calibrator_bundle.get("n_samples"),
+        }
+    else:
+        meta["calibration"] = {"method": "temperature_T1.5", "note": "no fitted calibrator found"}
+
+    _MODEL_META_CACHE = meta
+    return meta
+
+
+def _apply_calibrator(
+    proba: np.ndarray,
+    classes: list,
+    feature_row: np.ndarray,
+) -> tuple[np.ndarray, str]:
+    """Prefer fitted calibrator if available, else temperature scaling.
+
+    Returns (calibrated_proba, method_name). The fitted calibrator is a
+    ``CalibratedClassifierCV(cv='prefit')`` produced by ``models/calibrate.py``.
+    """
+    bundle = _load_calibrator()
+    if bundle and bundle.get("calibrator") is not None:
+        try:
+            cal = bundle["calibrator"]
+            cal_classes = list(getattr(cal, "classes_", classes))
+            cal_proba = cal.predict_proba(feature_row)[0]
+            # Re-align to the order the caller expects (in case classes_ differs).
+            class_to_idx = {c: i for i, c in enumerate(cal_classes)}
+            aligned = np.zeros(len(classes), dtype=float)
+            for i, c in enumerate(classes):
+                j = class_to_idx.get(c)
+                if j is not None:
+                    aligned[i] = float(cal_proba[j])
+            if aligned.sum() > 0:
+                aligned /= aligned.sum()
+                return aligned, bundle.get("method", "platt")
+        except Exception:
+            pass
+
+    # Fallback: temperature scaling
+    p = np.asarray(proba, dtype=float)
+    p = np.clip(p, 1e-12, 1.0)
+    logits = np.log(p) / 1.5
+    logits -= logits.max()
+    exp = np.exp(logits)
+    return exp / exp.sum(), "temperature_T1.5"
+
+
+# Severity / weight buckets for structured evidence.
+_SEVERITY_WEIGHT = {
+    "verdict": 1.0,
+    "critical": 0.9,
+    "warning": 0.7,
+    "notable": 0.5,
+    "info": 0.3,
+}
+
+
+def _ev(text: str, severity: str = "info", weight: Optional[float] = None, kind: str = "narrative") -> dict:
+    """Build a structured evidence item.
+
+    Args:
+        text: human-readable Indonesian sentence (UI renders this verbatim).
+        severity: one of info | notable | warning | critical | verdict.
+        weight: 0..1 importance; defaults to the bucket value if omitted.
+        kind: tag describing the source (narrative | rule | cap | model | physics).
+    """
+    sev = severity if severity in _SEVERITY_WEIGHT else "info"
+    return {
+        "text": text,
+        "severity": sev,
+        "weight": float(weight) if weight is not None else _SEVERITY_WEIGHT[sev],
+        "kind": kind,
+    }
 
 
 def _find_ch(channels: list, candidates: list[str]) -> Optional[np.ndarray]:
@@ -674,157 +887,20 @@ def _empty_features() -> dict:
     return row
 
 
-def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
-    """
-    Run the LightGBM fault classifier on session payload.
-    Returns a dict matching the AIFaultResult schema.
-    Heavy model imports are deferred to here so server startup never fails.
-    """
-    # Lazy imports — only executed when AI analysis is requested
-    try:
-        from models.train import FEATURE_COLS, encode_reclose, encode_trip_type, encode_zone, parse_phase_count  # noqa: F401
-        from models.predict import (
-            _calibrate_proba,
-            _build_feature_vector,
-            _apply_transient_ambiguity_confidence_cap,
-            _apply_equipment_caution_cap,
-        )
-    except Exception as e:
-        return {
-            "fault_type": "transient",
-            "cause_ranking": [],
-            "overall_confidence": 0.0,
-            "evidence": [f"Model imports gagal: {e}"],
-        }
+_LABEL_MAP = {
+    "PETIR":       "Petir / Lightning",
+    "LAYANG":      "Layang-Layang / Kite",
+    "POHON":       "Pohon / Vegetasi",
+    "HEWAN":       "Hewan / Binatang",
+    "BENDA_ASING": "Benda Asing",
+    "KONDUKTOR":   "Konduktor / Tower",
+    "PERALATAN":   "Peralatan Rusak / Anomali Proteksi",
+}
 
-    model_bundle = _load_model()
-    row = extract_ml_features(payload, relay_type)
 
-    LABEL_MAP = {
-        "PETIR":       "Petir / Lightning",
-        "LAYANG":      "Layang-Layang / Kite",
-        "POHON":       "Pohon / Vegetasi",
-        "HEWAN":       "Hewan / Binatang",
-        "BENDA_ASING": "Benda Asing",
-        "KONDUKTOR":   "Konduktor / Tower",
-        "PERALATAN":   "Peralatan Rusak / Anomali Proteksi",
-    }
-
-    if row.get("ct_anomaly_detected"):
-        ranking = [
-            {"cause": "PERALATAN", "label": LABEL_MAP["PERALATAN"], "confidence": 0.82},
-            {"cause": "KONDUKTOR", "label": LABEL_MAP["KONDUKTOR"], "confidence": 0.07},
-            {"cause": "PETIR", "label": LABEL_MAP["PETIR"], "confidence": 0.05},
-            {"cause": "POHON", "label": LABEL_MAP["POHON"], "confidence": 0.03},
-            {"cause": "LAYANG", "label": LABEL_MAP["LAYANG"], "confidence": 0.02},
-            {"cause": "HEWAN", "label": LABEL_MAP["HEWAN"], "confidence": 0.01},
-            {"cause": "BENDA_ASING", "label": LABEL_MAP["BENDA_ASING"], "confidence": 0.0},
-        ]
-        return {
-            "fault_type": "permanent",
-            "cause_ranking": ranking,
-            "overall_confidence": 0.82,
-            "evidence": [
-                "Indikasi anomali CT/pengukuran terdeteksi dari pola arus.",
-                f"Detail: {row.get('ct_anomaly_evidence', '')}.",
-                "Arus yang naik stabil pada fasa dengan tegangan tetap sehat lebih konsisten dengan masalah rangkaian CT/peralatan daripada sambaran petir impulsif.",
-                "Rekomendasi: periksa CT secondary, wiring, terminal block, burden, dan rekaman relay pembanding sebelum menyimpulkan gangguan lapangan.",
-            ],
-        }
-
-    if model_bundle is None:
-        n = len(LABEL_MAP)
-        ranking = [
-            {"cause": k, "label": v, "confidence": round(1 / n, 3)}
-            for k, v in LABEL_MAP.items()
-        ]
-        return {
-            "fault_type": "transient",
-            "cause_ranking": ranking,
-            "overall_confidence": round(1 / n, 3),
-            "evidence": ["Model fault_classifier.pkl tidak ditemukan — prediksi tidak tersedia."],
-        }
-
-    clf = model_bundle["clf"]
-    classes = list(getattr(clf, "classes_", model_bundle.get("classes", [])))
-
-    try:
-        from models.train import FEATURE_COLS as _FC
-    except Exception:
-        _FC = model_bundle.get("feature_cols", [])
-
-    X = _build_feature_vector(row, model_bundle.get("feature_cols", _FC))
-    pred = str(clf.predict(X)[0])
-    proba = clf.predict_proba(X)[0]
-
-    proba = _calibrate_proba(proba, temperature=1.5)
-    confidence = float(proba.max())
-    if confidence > 0.92:
-        confidence = 0.92
-
-    sorted_p = np.sort(proba)[::-1]
-    margin = float(sorted_p[0] - sorted_p[1]) if len(sorted_p) >= 2 else 1.0
-
-    confidence, _ = _apply_transient_ambiguity_confidence_cap(
-        confidence=confidence,
-        pred_label=pred,
-        proba_classes=classes,
-        proba=proba,
-        margin=margin,
-    )
-    confidence, _ = _apply_equipment_caution_cap(
-        pred_label=pred,
-        confidence=confidence,
-        class_counts=model_bundle.get("class_counts"),
-        soe=None,
-        protection_name="DISTANCE" if relay_type == "21" else "DIFFERENTIAL",
-    )
-
-    ranking = sorted(
-        [
-            {
-                "cause": cls,
-                "label": LABEL_MAP.get(cls, cls),
-                "confidence": round(float(p), 3),
-            }
-            for cls, p in zip(classes, proba)
-        ],
-        key=lambda x: x["confidence"],
-        reverse=True,
-    )
-
-    digital_trip_phases = row.get("digital_trip_phases") or []
-    digital_cb_open_phases = row.get("digital_cb_open_phases") or []
-    digital_startup_to_trip = row.get("digital_startup_to_trip_ms")
-    digital_caution = (
-        row.get("digital_ar_lockout")
-        or row.get("digital_ar_not_ready")
-        or len(digital_cb_open_phases) >= 3
-        or (digital_startup_to_trip is not None and digital_startup_to_trip > 20)
-    )
-    if pred == "PETIR" and digital_caution:
-        confidence = min(confidence, 0.72)
-        for item in ranking:
-            if item["cause"] == "PETIR":
-                item["confidence"] = min(float(item["confidence"]), 0.72)
-            elif item["cause"] == "HEWAN":
-                item["confidence"] = max(float(item["confidence"]), 0.12)
-            elif item["cause"] == "KONDUKTOR":
-                item["confidence"] = max(float(item["confidence"]), 0.08)
-            elif item["cause"] == "PERALATAN":
-                item["confidence"] = max(float(item["confidence"]), 0.06)
-        ranking.sort(key=lambda x: x["confidence"], reverse=True)
-
-    # Fault type: driven purely by ML top cause nature, not by AR result
-    top_class = ranking[0]["cause"] if ranking else pred
-    fault_type = "transient" if top_class in _TRANSIENT else "permanent"
-
-    ar_ok = row.get("reclose_successful")
-
-    # --- Rich narrative evidence ---
-    evidence = []
-
-    # 1. Fault detection summary
+def _build_narrative_evidence(row: dict, ranking: list, pred: str, confidence: float, margin: float) -> list[dict]:
+    """Structured evidence — each item carries severity + weight so the UI can rank visually."""
+    evidence: list[dict] = []
     phases_str = row.get("faulted_phases", "A")
     phases = [p for p in phases_str.split("+") if p]
     is_ground = bool(row.get("is_ground_fault", False))
@@ -833,19 +909,18 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     sag_pct = row.get("voltage_sag_depth_pu", 0.0) * 100
 
     if n_phases >= 3:
-        fault_code, type_name = "3Ph", "Gangguan Tiga Fasa"
+        type_name = "Gangguan Tiga Fasa"
     elif n_phases == 2 and is_ground:
-        fault_code, type_name = "DLG", "Double Line to Ground"
+        type_name = "Double Line to Ground"
     elif n_phases == 2:
-        fault_code, type_name = "LL", "Line to Line"
+        type_name = "Line to Line"
     elif is_ground:
-        fault_code, type_name = "SLG", "Single Line to Ground"
+        type_name = "Single Line to Ground"
     else:
-        fault_code, type_name = "SL", "Single Line"
+        type_name = "Single Line"
 
     phases_label = "+".join(phases) + ("-N" if is_ground and n_phases < 3 else "")
 
-    # 1+2. Combined fault detection + protection-trip narrative.
     zone = row.get("zone_operated", "")
     trip = row.get("trip_type", "")
     dur = row.get("fault_duration_ms", 0.0)
@@ -861,6 +936,7 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     if fault_clauses:
         fault_sentence += " dengan " + " dan ".join(fault_clauses)
     fault_sentence += "."
+    evidence.append(_ev(fault_sentence, "info", kind="physics"))
 
     prot_bits = []
     if zone:
@@ -871,26 +947,22 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
         prot_bits.append(f"Proteksi mentrigger TRIP ({trip_label}) namun zona proteksi tidak dapat diidentifikasi dari rekaman")
     elif dur > 0:
         prot_bits.append("Zona dan tipe trip proteksi tidak dapat diidentifikasi dari rekaman")
-
-    prot_sentence = ""
     if prot_bits:
-        prot_sentence = prot_bits[0]
+        text = prot_bits[0]
         if dur > 0:
-            prot_sentence += f", dengan Fault Clearing Time (FCT) {dur:.0f} ms pada fasa terganggu {phases_label}"
-        prot_sentence += "."
+            text += f", dengan Fault Clearing Time (FCT) {dur:.0f} ms pada fasa terganggu {phases_label}"
+        text += "."
+        evidence.append(_ev(text, "info", kind="physics"))
     elif dur > 0:
-        prot_sentence = f"Fault Clearing Time (FCT) {dur:.0f} ms pada fasa terganggu {phases_label}."
-
-    evidence.append(fault_sentence)
-    if prot_sentence:
-        evidence.append(prot_sentence)
+        evidence.append(_ev(f"Fault Clearing Time (FCT) {dur:.0f} ms pada fasa terganggu {phases_label}.", "info", kind="physics"))
 
     if peak_a > 100_000:
-        evidence.append(
+        evidence.append(_ev(
             f"Catatan validasi rasio: I puncak terhitung {peak_a:.0f} A (>100 kA). "
             "Nilai setinggi ini sering mengindikasikan CT/VT ratio belum sesuai; verifikasi rasio COMTRADE, "
-            "setting relay/RIO, atau input manual sebelum menyimpulkan besaran arus primer."
-        )
+            "setting relay/RIO, atau input manual sebelum menyimpulkan besaran arus primer.",
+            "warning", kind="physics",
+        ))
 
     trip_phases = row.get("digital_trip_phases") or []
     cb_open_phases = row.get("digital_cb_open_phases") or []
@@ -908,102 +980,292 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
             details.append(f"CB open fase {', '.join(cb_open_phases)}")
         if startup_to_trip is not None:
             details.append(f"selang startup ke trip {startup_to_trip:.1f} ms")
-        evidence.append("Pembacaan kanal digital menunjukkan " + "; ".join(details) + ".")
+        evidence.append(_ev("Pembacaan kanal digital menunjukkan " + "; ".join(details) + ".", "info", kind="physics"))
 
     if topology_hint == "one_and_half_breaker":
         breaker_text = "/".join(contact_breakers) if contact_breakers else "dua PMT"
-        evidence.append(
+        evidence.append(_ev(
             f"Kanal kontak {breaker_text} menunjukkan indikasi bay 1.5 breaker; "
-            "status reclose dievaluasi dari urutan kontak PMT membuka lalu menutup kembali."
-        )
+            "status reclose dievaluasi dari urutan kontak PMT membuka lalu menutup kembali.",
+            "info", kind="physics",
+        ))
 
     if cb_open_phases and len(cb_open_phases) >= 3 and trip == "single_pole":
-        evidence.append(
+        evidence.append(_ev(
             "Catatan koreksi: meskipun loop gangguan terdeteksi satu fasa ke tanah, kanal digital menunjukkan "
-            "PMT/CB tiga fasa membuka; trip operasi lebih tepat dibaca sebagai three-pole."
-        )
+            "PMT/CB tiga fasa membuka; trip operasi lebih tepat dibaca sebagai three-pole.",
+            "warning", kind="physics",
+        ))
 
-    # 3. AR status
+    ar_ok = row.get("reclose_successful")
     ar_dead_ms = row.get("digital_ar_dead_time_ms")
     reclose_mode = row.get("digital_reclose_mode")
     cb_close_phases = row.get("digital_cb_close_phases") or []
     ar_attempted = bool(row.get("digital_ar_attempted"))
-    mode_label = {
-        "single_pole": "single-pole reclose",
-        "three_pole": "three-pole reclose",
-    }.get(reclose_mode or "", "")
-
-    def _ar_recap_suffix() -> str:
-        parts = []
-        if ar_dead_ms is not None:
-            parts.append(f"dead time ≈ {ar_dead_ms:.0f} ms")
-        if mode_label:
-            phase_str = "+".join(cb_close_phases) if cb_close_phases else ""
-            parts.append(f"{mode_label}{f' (fase {phase_str})' if phase_str else ''}")
-        return f" ({'; '.join(parts)})" if parts else ""
+    mode_label = {"single_pole": "single-pole reclose", "three_pole": "three-pole reclose"}.get(reclose_mode or "", "")
+    parts = []
+    if ar_dead_ms is not None:
+        parts.append(f"dead time ≈ {ar_dead_ms:.0f} ms")
+    if mode_label:
+        phase_str = "+".join(cb_close_phases) if cb_close_phases else ""
+        parts.append(f"{mode_label}{f' (fase {phase_str})' if phase_str else ''}")
+    ar_suffix = f" ({'; '.join(parts)})" if parts else ""
 
     if ar_ok is True:
-        evidence.append(
-            "Auto Reclose (AR) berhasil — gangguan terkonfirmasi bersifat transien"
-            f"{_ar_recap_suffix()}."
-        )
+        evidence.append(_ev(f"Auto Reclose (AR) berhasil — gangguan terkonfirmasi bersifat transien{ar_suffix}.", "notable", kind="physics"))
     elif ar_ok is False:
-        evidence.append(
-            "Auto Reclose (AR) gagal — gangguan kemungkinan bersifat permanen"
-            f"{_ar_recap_suffix()}."
-        )
+        evidence.append(_ev(f"Auto Reclose (AR) gagal — gangguan kemungkinan bersifat permanen{ar_suffix}.", "notable", kind="physics"))
     elif ar_attempted and cb_open_phases and not cb_close_phases:
-        phase_str = ", ".join(cb_open_phases)
-        evidence.append(
-            "Urutan single-pole/open-pole terdeteksi pada kanal digital"
-            f" (fase {phase_str}), tetapi kontak PMT menutup kembali tidak terekam dalam durasi file; "
-            "status keberhasilan AR belum dapat dipastikan dari rekaman ini."
-        )
+        evidence.append(_ev(
+            f"Urutan single-pole/open-pole terdeteksi pada kanal digital (fase {', '.join(cb_open_phases)}), "
+            "tetapi kontak PMT menutup kembali tidak terekam dalam durasi file; status keberhasilan AR belum dapat dipastikan dari rekaman ini.",
+            "info", kind="physics",
+        ))
     else:
-        evidence.append("Status Auto Reclose (AR) tidak teridentifikasi dari rekaman digital.")
+        evidence.append(_ev("Status Auto Reclose (AR) tidak teridentifikasi dari rekaman digital.", "info", kind="physics"))
 
-    # 4. AI classification conclusion
-    evidence.append(
-        f"Berdasarkan analisis pola gelombang, AI mengklasifikasikan gangguan ini sebagai "
-        f"{ranking[0]['label']} dengan tingkat keyakinan {confidence:.0%}."
-    )
+    top_label = ranking[0]['label'] if ranking else "—"
+    evidence.append(_ev(
+        f"Berdasarkan analisis pola gelombang, AI mengklasifikasikan gangguan ini sebagai {top_label} "
+        f"dengan tingkat keyakinan {confidence:.0%}.",
+        "verdict", weight=min(1.0, confidence + 0.05), kind="model",
+    ))
 
-    # 4a. PETIR sub-mechanism (Shielding Failure vs Back-Flashover)
     if pred == "PETIR":
         subtype_line = _petir_subtype_description(row)
         if subtype_line:
-            evidence.append(subtype_line)
+            evidence.append(_ev(subtype_line, "notable", kind="physics"))
 
     if pred == "PETIR" and (
-        row.get("digital_ar_lockout")
-        or row.get("digital_ar_not_ready")
+        row.get("digital_ar_lockout") or row.get("digital_ar_not_ready")
         or (cb_open_phases and len(cb_open_phases) >= 3)
         or (startup_to_trip is not None and startup_to_trip > 20)
     ):
-        evidence.append(
+        evidence.append(_ev(
             "Catatan interpretasi: label PETIR perlu dibaca hati-hati karena kanal digital menunjukkan "
             "evolusi pickup/trip dan/atau operasi tiga fasa/AR lockout; kandidat fisik seperti Hewan, "
-            "Konduktor, atau Peralatan tetap perlu diverifikasi dari inspeksi lapangan."
-        )
+            "Konduktor, atau Peralatan tetap perlu diverifikasi dari inspeksi lapangan.",
+            "critical", kind="cap",
+        ))
 
-    # 5. FIA note
     fia = row.get("inception_angle_degrees", 0.0)
     if abs(fia) > 60:
-        evidence.append(
-            f"Fault Inception Angle (FIA) = {fia:.1f}° — gangguan terjadi dekat puncak tegangan, "
-            f"pola tipikal gangguan petir."
-        )
+        evidence.append(_ev(
+            f"Fault Inception Angle (FIA) = {fia:.1f}° — gangguan terjadi dekat puncak tegangan, pola tipikal gangguan petir.",
+            "notable", kind="physics",
+        ))
 
-    # 6. Thin margin warning
     if margin < 0.15 and len(ranking) >= 2:
-        evidence.append(
-            f"Catatan: Selisih keyakinan ke kandidat kedua ({ranking[1]['label']}) "
-            f"hanya {margin * 100:.1f} pp — verifikasi lapangan tetap disarankan."
+        evidence.append(_ev(
+            f"Catatan: Selisih keyakinan ke kandidat kedua ({ranking[1]['label']}) hanya {margin * 100:.1f} pp — verifikasi lapangan tetap disarankan.",
+            "warning", kind="model",
+        ))
+
+    return evidence
+
+
+def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
+    """Run the LightGBM fault classifier on a session payload.
+
+    Returns a dict matching the (now-extended) AIFaultResult schema. The
+    response embeds enough provenance for downstream auditing:
+
+      - ``raw_probabilities`` — pre-calibration LightGBM output
+      - ``calibrated_probabilities`` — post-calibration, pre-cap
+      - ``applied_caps`` — list of confidence caps that fired
+      - ``feature_vector_used`` — exact features fed to the classifier
+      - ``tier1`` — Tier 1 rule match (if any)
+      - ``meta`` — model version, feature columns, calibration method, etc.
+
+    Heavy model imports are deferred to here so server startup never fails.
+    """
+    try:
+        from models.train import FEATURE_COLS  # noqa: F401
+        from models.predict import (
+            _build_feature_vector,
+            _apply_transient_ambiguity_confidence_cap,
+            _apply_equipment_caution_cap,
         )
+    except Exception as e:
+        return {
+            "fault_type": "transient",
+            "cause_ranking": [],
+            "overall_confidence": 0.0,
+            "evidence": [_ev(f"Model imports gagal: {e}", "critical", kind="model")],
+            "meta": _model_metadata(None),
+        }
+
+    model_bundle = _load_model()
+    meta = _model_metadata(model_bundle)
+
+    row = extract_ml_features(payload, relay_type)
+    # Inject SOE-derived loop context so Tier 1 sanity rules see the same
+    # signals the CLI inference path has. SOE list is not built here yet, so
+    # this is a no-op until a future change passes a real SOE through.
+    row = _augment_row_with_soe_context(row, soe=None)
+
+    # ------------------------------------------------------------------
+    # Tier 1 — deterministic rules
+    # ------------------------------------------------------------------
+    tier1 = apply_rules(row)
+    if tier1 is not None:
+        # Translate rule label back to the cause_ranking format the UI uses.
+        # Some Tier 1 rules emit labels that do not map cleanly to the 7-class
+        # taxonomy (e.g. "GANGGUAN PERMANEN"); in that case we still surface
+        # the rule's confidence on the matching class when possible.
+        rule_to_cause = {
+            "KONDUKTOR / TOWER": "KONDUKTOR",
+            "PERALATAN RUSAK / ANOMALI PROTEKSI": "PERALATAN",
+            "GANGGUAN PERMANEN": None,  # no direct cause class
+        }
+        cause_key = rule_to_cause.get(tier1.label)
+        ranking: list[dict] = []
+        if cause_key is not None:
+            ranking.append({"cause": cause_key, "label": _LABEL_MAP.get(cause_key, tier1.label), "confidence": round(float(tier1.confidence), 3)})
+            for k, v in _LABEL_MAP.items():
+                if k == cause_key:
+                    continue
+                ranking.append({"cause": k, "label": v, "confidence": round((1.0 - tier1.confidence) / max(len(_LABEL_MAP) - 1, 1), 3)})
+        else:
+            # Permanent-fault rules — present a flat distribution but keep
+            # KONDUKTOR slightly elevated since that is the modal cause.
+            for k, v in _LABEL_MAP.items():
+                base = 0.18 if k == "KONDUKTOR" else 0.05
+                ranking.append({"cause": k, "label": v, "confidence": round(base, 3)})
+
+        fault_type = "permanent"  # all current Tier 1 rules describe permanent / equipment issues
+
+        evidence: list[dict] = [
+            _ev(f"Tier 1 rule '{tier1.rule_name}' aktif — {tier1.label}.", "verdict", weight=float(tier1.confidence), kind="rule"),
+            _ev(tier1.evidence, "critical", weight=float(tier1.confidence), kind="rule"),
+            _ev(
+                "Klasifikasi ini berasal dari aturan deterministik (rules.py), bukan model LightGBM. "
+                "Verifikasi lapangan tetap disarankan.",
+                "notable", kind="rule",
+            ),
+        ]
+
+        return {
+            "fault_type": fault_type,
+            "cause_ranking": ranking,
+            "overall_confidence": float(tier1.confidence),
+            "evidence": evidence,
+            "tier1": {
+                "fired": True,
+                "rule_name": tier1.rule_name,
+                "label": tier1.label,
+                "confidence": float(tier1.confidence),
+                "evidence": tier1.evidence,
+            },
+            "raw_probabilities": None,
+            "calibrated_probabilities": None,
+            "applied_caps": [],
+            "feature_vector_used": None,
+            "meta": meta,
+        }
+
+    # ------------------------------------------------------------------
+    # Tier 2 — LightGBM
+    # ------------------------------------------------------------------
+    if model_bundle is None:
+        n = len(_LABEL_MAP)
+        ranking = [{"cause": k, "label": v, "confidence": round(1 / n, 3)} for k, v in _LABEL_MAP.items()]
+        return {
+            "fault_type": "transient",
+            "cause_ranking": ranking,
+            "overall_confidence": round(1 / n, 3),
+            "evidence": [_ev("Model fault_classifier.pkl tidak ditemukan — prediksi tidak tersedia.", "critical", kind="model")],
+            "tier1": {"fired": False},
+            "meta": meta,
+        }
+
+    clf = model_bundle["clf"]
+    classes = list(getattr(clf, "classes_", model_bundle.get("classes", [])))
+    feature_cols = list(model_bundle.get("feature_cols") or [])
+
+    X = _build_feature_vector(row, feature_cols)
+    pred = str(clf.predict(X)[0])
+    raw_proba = np.asarray(clf.predict_proba(X)[0], dtype=float)
+
+    calibrated_proba, calibration_method = _apply_calibrator(raw_proba, classes, X)
+
+    applied_caps: list[dict] = []
+    confidence = float(calibrated_proba.max())
+    if confidence > 0.92:
+        applied_caps.append({"name": "ceiling_92", "before": confidence, "after": 0.92, "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."})
+        confidence = 0.92
+
+    sorted_p = np.sort(calibrated_proba)[::-1]
+    margin = float(sorted_p[0] - sorted_p[1]) if len(sorted_p) >= 2 else 1.0
+
+    new_conf, ambiguity_note = _apply_transient_ambiguity_confidence_cap(
+        confidence=confidence, pred_label=pred, proba_classes=classes,
+        proba=calibrated_proba, margin=margin,
+    )
+    if new_conf != confidence:
+        applied_caps.append({"name": "transient_ambiguity", "before": confidence, "after": new_conf, "reason": ambiguity_note.strip(" []")})
+        confidence = new_conf
+
+    new_conf, equipment_note = _apply_equipment_caution_cap(
+        pred_label=pred, confidence=confidence,
+        class_counts=model_bundle.get("class_counts"),
+        soe=None,
+        protection_name="DISTANCE" if relay_type == "21" else "DIFFERENTIAL",
+    )
+    if new_conf != confidence:
+        applied_caps.append({"name": "equipment_caution", "before": confidence, "after": new_conf, "reason": equipment_note.strip(" []")})
+        confidence = new_conf
+
+    ranking = sorted(
+        [{"cause": cls, "label": _LABEL_MAP.get(cls, cls), "confidence": round(float(p), 3)} for cls, p in zip(classes, calibrated_proba)],
+        key=lambda x: x["confidence"], reverse=True,
+    )
+
+    # PETIR + caution-digital cap
+    digital_cb_open_phases = row.get("digital_cb_open_phases") or []
+    digital_startup_to_trip = row.get("digital_startup_to_trip_ms")
+    digital_caution = (
+        row.get("digital_ar_lockout") or row.get("digital_ar_not_ready")
+        or len(digital_cb_open_phases) >= 3
+        or (digital_startup_to_trip is not None and digital_startup_to_trip > 20)
+    )
+    if pred == "PETIR" and digital_caution:
+        if confidence > 0.72:
+            applied_caps.append({"name": "petir_digital_caution", "before": confidence, "after": 0.72, "reason": "AR lockout / startup-to-trip terlalu lama / CB tiga fasa membuka — meragukan label PETIR."})
+        confidence = min(confidence, 0.72)
+        for item in ranking:
+            if item["cause"] == "PETIR":
+                item["confidence"] = min(float(item["confidence"]), 0.72)
+            elif item["cause"] == "HEWAN":
+                item["confidence"] = max(float(item["confidence"]), 0.12)
+            elif item["cause"] == "KONDUKTOR":
+                item["confidence"] = max(float(item["confidence"]), 0.08)
+            elif item["cause"] == "PERALATAN":
+                item["confidence"] = max(float(item["confidence"]), 0.06)
+        ranking.sort(key=lambda x: x["confidence"], reverse=True)
+
+    top_class = ranking[0]["cause"] if ranking else pred
+    fault_type = "transient" if top_class in _TRANSIENT else "permanent"
+
+    evidence = _build_narrative_evidence(row, ranking, pred, confidence, margin)
+
+    raw_dict = {cls: round(float(p), 4) for cls, p in zip(classes, raw_proba)}
+    cal_dict = {cls: round(float(p), 4) for cls, p in zip(classes, calibrated_proba)}
+    feature_vector_used = {col: float(X[0, i]) for i, col in enumerate(feature_cols)} if feature_cols else None
+
+    meta = dict(meta)
+    meta["calibration_method_used"] = calibration_method
+    meta["margin"] = round(margin, 4)
 
     return {
         "fault_type": fault_type,
         "cause_ranking": ranking,
         "overall_confidence": confidence,
         "evidence": evidence,
+        "tier1": {"fired": False},
+        "raw_probabilities": raw_dict,
+        "calibrated_probabilities": cal_dict,
+        "applied_caps": applied_caps,
+        "feature_vector_used": feature_vector_used,
+        "meta": meta,
     }

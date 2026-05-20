@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { aiFaultAnalysis21, extractFeatures21 } from "../../../api/client";
 import styles from "../../panels/Panel.module.css";
-import AIFaultResultView from "../shared/AIFaultResultView";
+import AIFaultResultView, { type AIApiTrace, type AIFaultResult } from "../shared/AIFaultResultView";
 
 interface Props {
   analysisId: string;
@@ -19,13 +19,6 @@ interface Features {
   ar_result: "successful" | "failed" | null | "";
 }
 
-interface AIResult {
-  cause_ranking: { cause: string; label: string; confidence: number }[];
-  fault_type: string;
-  overall_confidence: number;
-  evidence: string[];
-}
-
 const EMPTY_FEATURES: Features = {
   fault_inception_angle_deg: 0,
   fault_duration_ms: 0,
@@ -39,14 +32,16 @@ const EMPTY_FEATURES: Features = {
 export default function AIFaultAnalysis21({ analysisId, dataRevision = 0 }: Props) {
   const [features, setFeatures] = useState<Features>(EMPTY_FEATURES);
   const [extracting, setExtracting] = useState(true);
-  const [result, setResult] = useState<AIResult | null>(null);
+  const [result, setResult] = useState<AIFaultResult | null>(null);
   const [running, setRunning] = useState(false);
   const [autoRan, setAutoRan] = useState(false);
+  const [apiTrace, setApiTrace] = useState<AIApiTrace | null>(null);
 
   useEffect(() => {
     setExtracting(true);
     setAutoRan(false);
     setResult(null);
+    setApiTrace(null);
 
     extractFeatures21(analysisId)
       .then((data) => setFeatures({ ...data, ar_result: data.ar_result ?? "" }))
@@ -61,28 +56,54 @@ export default function AIFaultAnalysis21({ analysisId, dataRevision = 0 }: Prop
 
   async function run(nextFeatures = features, silent = false) {
     setRunning(true);
+    const requestPayload = {
+      analysis_id: analysisId,
+      ...nextFeatures,
+      ar_result: nextFeatures.ar_result || null,
+    };
+    const startedAt = new Date();
+    const t0 = performance.now();
     try {
       const response = await aiFaultAnalysis21(analysisId, {
         ...nextFeatures,
         ar_result: nextFeatures.ar_result || null,
       });
       setResult(response);
-    } catch {
-      if (!silent) {
-        setResult({
-          fault_type: "transient",
-          cause_ranking: [],
-          overall_confidence: 0,
-          evidence: ["AI analysis request failed."],
-        });
-      }
+      setApiTrace({
+        method: "POST",
+        endpoint: "/api/analyze/21/ai-analysis",
+        requestPayload,
+        responsePayload: response,
+        startedAt: startedAt.toISOString(),
+        durationMs: performance.now() - t0,
+        status: 200,
+      });
+    } catch (err) {
+      const fallback: AIFaultResult = {
+        fault_type: "transient",
+        cause_ranking: [],
+        overall_confidence: 0,
+        evidence: [{ text: "AI analysis request failed.", severity: "critical" }],
+      };
+      if (!silent) setResult(fallback);
+      setApiTrace({
+        method: "POST",
+        endpoint: "/api/analyze/21/ai-analysis",
+        requestPayload,
+        responsePayload: { error: String(err) },
+        startedAt: startedAt.toISOString(),
+        durationMs: performance.now() - t0,
+      });
     } finally {
       setRunning(false);
       if (silent) setAutoRan(true);
     }
   }
 
-  const importFailed = result?.evidence.some((item) => item.toLowerCase().includes("model imports gagal")) ?? false;
+  const importFailed = result?.evidence.some((item) => {
+    const text = typeof item === "string" ? item : item.text ?? "";
+    return text.toLowerCase().includes("model imports gagal");
+  }) ?? false;
 
   return (
     <div className={styles.panel}>
@@ -125,6 +146,7 @@ export default function AIFaultAnalysis21({ analysisId, dataRevision = 0 }: Prop
           result={result}
           permanentLabel="Permanen"
           transientLabel="Transien"
+          apiTrace={apiTrace ?? undefined}
         />
       )}
     </div>

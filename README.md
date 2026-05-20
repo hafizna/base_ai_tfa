@@ -2,7 +2,7 @@
 
 Sistem klasifikasi penyebab gangguan transmisi berbasis COMTRADE IEEE C37.111.
 
-Update terakhir: 30 April 2026
+Update terakhir: 20 Mei 2026
 
 ---
 
@@ -92,15 +92,19 @@ Bila file berasal dari DFR eksternal (Qualitrol, Toshiba standalone) tanpa sinya
 | `core/feature_extractor.py` | Ekstraksi 17 fitur line/transmisi |
 | `core/transformer_channel_mapper.py` | Pemetaan channel trafo HV/LV/diff/restraint |
 | `core/transformer_feature_extractor.py` | Ekstraksi fitur trafo (H2, H5, slope, DC offset) |
-| `models/rules.py` | Tier 1: aturan deterministik KONDUKTOR/PERMANEN |
+| `models/rules.py` | Tier 1: aturan deterministik KONDUKTOR/PERMANEN (sekarang juga dipanggil dari UI endpoint) |
 | `models/train.py` | Training **LightGBM** 7-kelas (input: labeled_features.csv); CV report otomatis |
+| `models/calibrate.py` | Fit Platt/isotonic probability calibrator pada held-out split → `proba_calibrator.pkl`. Dipakai webapp inference jika tersedia, else fallback ke temperature T=1.5 |
 | `models/predict.py` | Inference end-to-end + PETIR sub-mechanism (SF/BFO) classifier |
 | `models/transformer_classifier.py` | Klasifikasi event trafo berbasis pengetahuan (6 kelas) — **standalone / batch only**; belum dipanggil dari FastAPI router |
 | `models/fault_classifier.pkl` | Model LightGBM aktif (7 kelas line-fault) |
-| `webapp/api/main.py` | FastAPI backend root, mount semua router |
+| `models/proba_calibrator.pkl` | (Opsional) calibrator hasil `models/calibrate.py`; auto-detected saat inference |
+| `webapp/api/main.py` | FastAPI backend root, lifespan warmup (eager model preload), GZipMiddleware, mount semua router |
 | `webapp/api/routers/` | Router per-rele: `upload`, `relay_21`, `relay_87l`, `relay_87t`, `relay_ocr`, `relay_ref` |
-| `webapp/api/ml_predict.py` | Builder fitur 17-dim + evidence narrative untuk React UI |
+| `webapp/api/ml_predict.py` | Builder fitur 17-dim + Tier 1 wiring + LightGBM + calibration + structured evidence + introspection fields untuk React UI |
 | `webapp/frontend/` | React (Vite) UI yang terhubung ke FastAPI via `/api/*` (proxy `:5173 → :8000`) |
+| `webapp/frontend/src/components/relay/shared/AIFaultResultView.tsx` | Render AI fault result + Provenance panel (Tier 1, applied caps, model meta) + collapsible JSON API Inspector |
+| `profiling/` | py-spy helper script (PS + sh) untuk capture flamegraph; output di `profiling/flamegraphs/` (gitignored). Lihat `profiling/README.md` |
 | `batch_extract.py` | Ekstraksi fitur batch dari seluruh raw_data/ termasuk corpus kandidat 87L |
 | `extract_all.py` | Ekstraksi arsip ZIP/RAR menggunakan 7-Zip |
 
@@ -150,9 +154,39 @@ python models/train.py
 # output:  models/fault_classifier.pkl
 ```
 
+### Fit probability calibrator (opsional)
+```bash
+python models/calibrate.py                    # Platt scaling (default)
+python models/calibrate.py --method isotonic  # isotonic (butuh ≥30 sampel/kelas)
+# output: models/proba_calibrator.pkl
+# Webapp auto-detect saat startup; fall back ke temperature T=1.5 kalau tidak ada.
+```
+
 ### Klasifikasi file tunggal
 ```bash
 python models/predict.py path/to/file.cfg
+```
+
+### Production deployment
+```bash
+# start.sh menjalankan uvicorn dengan WEB_CONCURRENCY (default 2 worker).
+# Tiap worker reload model bundle (~180 MB RSS), jadi tune sesuai RAM.
+WEB_CONCURRENCY=4 ./start.sh
+
+# FastAPI lifespan otomatis warmup model + sklearn/LightGBM saat boot,
+# jadi request pertama tidak bayar cold-start ~30 ms pickle load.
+# Status warmup expose di GET /api/health → "warmup": {...}.
+```
+
+### Profiling (Opsi A step #1)
+```powershell
+# Install py-spy sekali (dev-only, tidak ada di requirements.txt)
+python -m pip install --user py-spy
+
+# Capture flamegraph 30 detik sambil eksekusi smoke request
+./profiling/profile_request.ps1                    # Windows
+./profiling/profile_request.sh                     # Linux/macOS
+# output: profiling/flamegraphs/profile_<timestamp>.svg
 ```
 
 ---
@@ -168,8 +202,11 @@ python models/predict.py path/to/file.cfg
 | CV F1 macro | 0.407 (LGBM) vs 0.352 (RF) — primary metric karena class imbalance |
 | CV F1 weighted | 0.757 (LGBM) vs 0.738 (RF) |
 | CV accuracy | 0.778 (LGBM) — kurang relevan karena imbalance |
-| Kalibrasi | temperature scaling T=1.5; ceiling 92%; cap 0.65/0.72 saat voltage absent |
+| Kalibrasi | Default: temperature scaling T=1.5. Override otomatis bila `models/proba_calibrator.pkl` tersedia (Platt/isotonic dari held-out split, hasilkan via `python models/calibrate.py`). Tetap dilengkapi ceiling 92% + cap 0.65/0.72 saat voltage absent |
+| Caps | Tercatat di response field `applied_caps[]`: `ceiling_92`, `transient_ambiguity`, `equipment_caution`, `petir_digital_caution`. Tiap entry menyimpan before/after + reason untuk audit |
 | PETIR sub-mechanism | Shielding Failure / Back-Flashover / Belum Konklusif (rule-based, data-driven) |
+| Tier 1 di UI | `models/rules.py:apply_rules()` dijalankan **sebelum** LightGBM. Jika fire → response berisi `tier1: {fired, rule_name, label, evidence}` dan LightGBM dilewati |
+| Introspection fields | `raw_probabilities`, `calibrated_probabilities`, `feature_vector_used`, `applied_caps`, `meta.model_version` (timestamp+SHA), `meta.feature_version`, `meta.calibration_method_used` — semua diserialisasi dalam JSON response dan terlihat di **API & JSON Inspector** panel UI |
 | Catatan | `POHON` dan `PERALATAN` tetap di taksonomi, tetapi hanya muncul sebagai prediksi bila data latih usable sudah mencukupi. Untuk RF vs LGBM benchmarking jalankan `compare_models.py`. |
 
 ---
@@ -476,20 +513,22 @@ base_ai_tfa/                          ← repo root
   models/
     rules.py                            ← Tier 1 deterministic rules
     train.py                            ← LightGBM training (CV report)
+    calibrate.py                        ← Fit Platt/isotonic calibrator (held-out)
     predict.py                          ← inference + PETIR SF/BFO sub-classifier
     transformer_classifier.py
     fault_classifier.pkl                ← model aktif (LightGBM, 7 kelas)
+    proba_calibrator.pkl                ← (opsional) calibrator hasil calibrate.py
     petir_tree.pkl                      ← legacy alias
     stage3_petir_classifier.pkl
     stage3_feature_columns.pkl
   webapp/
     api/
-      main.py                           ← FastAPI app root
-      ml_predict.py                     ← evidence builder untuk React UI
-      schemas.py                        ← Pydantic request/response
+      main.py                           ← FastAPI app root + lifespan warmup + GZipMiddleware
+      ml_predict.py                     ← Tier 1 wiring + LightGBM + calibration + structured evidence + introspection
+      schemas.py                        ← Pydantic request/response (AIFaultResult diperluas)
       storage.py                        ← session storage (CSV/Postgres fallback)
       routers/
-        upload.py                       ← POST /api/upload
+        upload.py                       ← POST /api/upload, GET /api/analysis/{id} (gzipped)
         relay_21.py                     ← distance + impedance locus
         relay_87l.py                    ← line differential
         relay_87t.py                    ← transformer differential
@@ -504,11 +543,17 @@ base_ai_tfa/                          ← repo root
         pages/                          ← Landing, Upload, Workspace
         components/
           panels/                       ← COMTRADEExplorer (per-side waveform), SOETimeline, dll.
-          relay/relay21/                ← ImpedanceLocus, ElectricalParams21
+          relay/relay21/                ← ImpedanceLocus, ElectricalParams21, AIFaultAnalysis21
           relay/relay87l/               ← DiffRestraintPlot, AIFaultAnalysis87L
           relay/relay87t/               ← FaultRecap87T
+          relay/shared/AIFaultResultView.tsx  ← Verdict + cause ranking + structured evidence + Provenance + API/JSON Inspector
         api/client.ts                   ← axios client; baseURL = VITE_API_URL || ""
         context/AnalysisContext.tsx
+  profiling/                            ← Opsi A step #1 helpers
+    profile_request.ps1                 ← Windows PS helper (uvicorn + py-spy + smoke request)
+    profile_request.sh                  ← POSIX helper untuk Linux/CI
+    README.md                           ← apa yang dicari di flamegraph
+    flamegraphs/                        ← gitignored; output SVG py-spy
   data/
     features/                           ← labeled_features.csv (training set, ~314 KB)
     labels/                             ← labels_from_folders.csv (folder-derived labels)
@@ -519,11 +564,35 @@ base_ai_tfa/                          ← repo root
   extract_all.py                        ← unzip arsip via 7-Zip
   Dockerfile                            ← multi-stage: vite build → python runtime
   Procfile                              ← web: ./start.sh
-  start.sh                              ← uvicorn webapp.api.main:app --port $PORT
+  start.sh                              ← uvicorn dengan WEB_CONCURRENCY env (default 2)
   nixpacks.toml
   railway.json
   requirements.txt
 ```
+
+---
+
+## Optimasi Performa (Opsi A)
+
+Roadmap inkremental untuk menjaga app tetap di Python (tanpa rewrite ke Rust/Go).
+Tujuan: kurangi p50 latency request tanpa kehilangan fleksibilitas eksperimen ML.
+Profile dulu (#1), lalu putuskan step berikutnya berdasar data, bukan asumsi.
+
+| # | Step | Status | Catatan |
+|---|---|---|---|
+| **1** | py-spy profiling helper + flamegraph capture | ✅ Selesai | `profiling/profile_request.{ps1,sh}` — spin up uvicorn isolated, eksekusi smoke request, output SVG. Lihat `profiling/README.md` |
+| **2** | Eager model + LightGBM preload di startup | ✅ Selesai | FastAPI `lifespan` panggil `ml_predict.warmup()` — pickle load + sklearn/LightGBM import ditelan ~30 ms di boot. Status di `GET /api/health → warmup` |
+| **5** | uvicorn `--workers` configurable via env | ✅ Selesai | `start.sh` baca `WEB_CONCURRENCY` (default 2). Tiap worker ~180 MB RSS; tune sesuai RAM |
+| **α** | GZipMiddleware untuk response JSON besar | ✅ Selesai | `minimum_size=10KB`, `compresslevel=6`. 2–5× reduction untuk waveform JSON di `/api/analysis/{id}` dan `/api/recalculate-ratio`. Health checks bypass |
+| **6** | mmap `.dat` di `core/comtrade_parser.py` | ⏸️ Pending | Tunggu profile data. Marginal kalau `np.fromfile` sudah cukup cepat |
+| **3** | ONNX convert + `onnxruntime` inference | ⏸️ Pending | Tunggu profile data. 2–3× speedup di langkah inference (~1 ms → ~0.3 ms); marginal absolut tapi rapi |
+| **4** | Vectorize `_digital_sequence_features` loop | ⚠️ Hold | Effort:risk ratio buruk (logika bounce rejection + 1.5-breaker rumit). Sentuh hanya kalau profile dominan |
+| **β** | Binary endpoint (Float32 buffer) untuk `/api/analysis/{id}` | ⏸️ Pending | ~10× reduction tambahan di atas GZip; perlu refactor decoder Plotly |
+| **γ** | Per-channel lazy load (`/channels/{id}/samples`) | ⏸️ Pending | Hanya berguna kalau profile menunjukkan banyak record multi-kanal yang user lihat selektif |
+
+**Yang menunggu data profile** sebelum diputuskan: step #3, #6, β, γ. Step #4 sengaja
+di-hold (risiko regresi tinggi terhadap logika yang sudah teruji). Step #1 + #2 + #5 +
+α dieksekusi karena risk rendah dan ROI jelas tanpa profile.
 
 ---
 
@@ -533,9 +602,16 @@ base_ai_tfa/                          ← repo root
 |---|---|---|
 | Parser COMTRADE multi-merk | Selesai | NARI, ABB, Siemens, GE, Alstom, Toshiba, Qualitrol, Reyrolle |
 | Deteksi CB status (52A/52B, PMT) | Selesai | Digunakan untuk konfirmasi trip/reclose DFR tanpa sinyal rele |
-| Tier 1 rule engine | Selesai | 3 aturan deterministik KONDUKTOR/PERMANEN |
+| Tier 1 rule engine | Selesai | 3 aturan deterministik KONDUKTOR/PERMANEN + Rule 0 CT anomaly + Rule 1b SOE mismatch |
+| **Tier 1 wired ke UI endpoint** | Selesai | `webapp/api/ml_predict.run_ml_prediction` panggil `apply_rules()` sebelum LightGBM; response berisi `tier1: {fired, rule_name, label, evidence}` |
 | Multi-class fault classifier (line) | Selesai | **LightGBM 7-class**, F1-macro 0.407 / weighted 0.757; POHON butuh data lebih |
 | **PETIR sub-mechanism (SF / BFO)** | Selesai | Heuristik data-driven (fasa + kA puncak), reasoning ditampilkan di evidence |
+| **Probability calibration (Platt/isotonic)** | Selesai | `models/calibrate.py` hasilkan `proba_calibrator.pkl` dari held-out split; webapp auto-detect, fallback ke T=1.5 |
+| **Structured evidence + Provenance panel** | Selesai | Evidence sekarang `{text, severity, weight, kind}`; UI render badge berwarna + tampilkan applied caps + Tier 1 + model metadata |
+| **API & JSON Inspector di UI** | Selesai | Collapsible panel di bawah AI fault result — tampilkan endpoint, request/response JSON, latency, status |
+| **Model versioning + introspection** | Selesai | `meta.model_version` = `<trained_at_date>+<sha8>`, `feature_version`, `model_sha256_prefix`, `calibration_method_used`, `class_counts` di-expose di response |
+| **Eager model preload (lifespan)** | Selesai | Opsi A #2 — first request tidak bayar cold-start pickle load |
+| **GZip response compression** | Selesai | Opsi A α — waveform JSON dikompres untuk endpoint besar |
 | Transformer differential (87T) — diff/restraint visualisasi | Selesai | Dual-slope characteristic + operated/not_operated/fast_operated status per fasa |
 | Transformer event AI classifier (inrush / internal / through / dll.) | Belum di-wire ke UI | `models/transformer_classifier.py` jalan dari CLI saja; React 87T workspace belum memanggilnya. Perlu integrasi + filosofi layered (event → origin → root cause) |
 | Distance (relay 21) impedance locus | Selesai | DFT phasor R-X plane, k0 + CT/VT override, RIO/XRIO zone overlay |
@@ -543,6 +619,7 @@ base_ai_tfa/                          ← repo root
 | **Siemens 7UT side suffix (.a / .b / .c)** | Selesai | HV vs LV current panels terpisah di COMTRADE Explorer (bukan overlay per fasa) |
 | Backend FastAPI + frontend React/Vite | Selesai | Migrasi dari Flask + Jinja templates (legacy app dihapus April 2026) |
 | Batch extraction pipeline | Selesai | ZIP/RAR via 7-Zip, skip duplikat, error log, simpan corpus 87L |
+| **Profiling instrumentation (py-spy)** | Selesai | Opsi A #1 — helper script + flamegraph output |
 | Kurasi data stakeholder | Berlanjut | Isi `correct`/`notes` di `labeled_features.csv` |
 | Data kelas POHON | Kurang | Perlu minimal 10+ rekaman berlabel POHON untuk training |
 

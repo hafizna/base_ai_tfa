@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { aiFaultAnalysis87L } from "../../../api/client";
 import styles from "../../panels/Panel.module.css";
-import AIFaultResultView, { type AIFaultResult } from "../shared/AIFaultResultView";
+import AIFaultResultView, { type AIApiTrace, type AIFaultResult } from "../shared/AIFaultResultView";
 
 interface Props {
   analysisId: string;
@@ -21,12 +21,38 @@ const DEFAULT_PARAMS = {
 export default function AIFaultAnalysis87L({ analysisId }: Props) {
   const [result, setResult] = useState<AIFaultResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [apiTrace, setApiTrace] = useState<AIApiTrace | null>(null);
 
   async function run() {
     setLoading(true);
+    const requestPayload = {
+      analysis_id: analysisId,
+      params: DEFAULT_PARAMS,
+      relay_type: "87L",
+    };
+    const startedAt = new Date();
+    const t0 = performance.now();
     try {
       const res = await aiFaultAnalysis87L(analysisId, DEFAULT_PARAMS);
       setResult(res);
+      setApiTrace({
+        method: "POST",
+        endpoint: "/api/analyze/87l/ai-analysis",
+        requestPayload,
+        responsePayload: res,
+        startedAt: startedAt.toISOString(),
+        durationMs: performance.now() - t0,
+        status: 200,
+      });
+    } catch (err) {
+      setApiTrace({
+        method: "POST",
+        endpoint: "/api/analyze/87l/ai-analysis",
+        requestPayload,
+        responsePayload: { error: String(err) },
+        startedAt: startedAt.toISOString(),
+        durationMs: performance.now() - t0,
+      });
     } finally {
       setLoading(false);
     }
@@ -52,6 +78,7 @@ export default function AIFaultAnalysis87L({ analysisId }: Props) {
           classificationTitle="Differential Classification"
           permanentLabel="Permanent / internal fault"
           transientLabel="Transient / external fault"
+          apiTrace={apiTrace ?? undefined}
         />
       )}
     </div>
