@@ -53,7 +53,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="COMTRADE Fault Analyser",
-    version="2.0.0",
+    version="2.1.0",
     description="Relay-type-aware COMTRADE analysis platform for DFR UIT JBT",
     lifespan=lifespan,
 )
