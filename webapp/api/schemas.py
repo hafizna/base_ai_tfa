@@ -177,10 +177,19 @@ class AIFaultFeatures(BaseModel):
 
 
 class AIFaultResult(BaseModel):
-    cause_ranking: List[Dict[str, Any]]   # [{cause, label_id, confidence}]
+    cause_ranking: List[Dict[str, Any]]   # [{cause, label, confidence}]
     fault_type: str                        # "transient" | "permanent"
     overall_confidence: float
-    evidence: List[str]
+    # Evidence can be plain strings (legacy responses) or structured items
+    # {text, severity, weight, kind}. UI handles both shapes.
+    evidence: List[Any]
+    # --- Introspection fields (all optional for backwards compatibility) ---
+    tier1: Optional[Dict[str, Any]] = None
+    raw_probabilities: Optional[Dict[str, float]] = None
+    calibrated_probabilities: Optional[Dict[str, float]] = None
+    applied_caps: List[Dict[str, Any]] = []
+    feature_vector_used: Optional[Dict[str, float]] = None
+    meta: Optional[Dict[str, Any]] = None
 
 
 # --- Relay 87L / 87T ---
