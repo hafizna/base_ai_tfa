@@ -673,6 +673,57 @@ def _classify_locus_event(name: str) -> Optional[tuple[str, str]]:
     return None
 
 
+def _compute_full_soe_events(payload: dict) -> dict:
+    """All digital channel state transitions, anchored to fault inception.
+
+    Unlike _compute_locus_events (which only keeps protection-relevant
+    channels for the impedance overlay), this emits every 0<->1 transition
+    across every digital channel — used by the PDF report's SOE table.
+    """
+    time, inception_idx = _inception_idx_from_payload(payload)
+    if len(time) == 0:
+        return {"inception_time_ms": None, "events": []}
+
+    inception_s = float(time[inception_idx]) if inception_idx < len(time) else float(time[0])
+    events: list[dict] = []
+
+    for sch in payload.get("status_channels", []):
+        name = str(sch.get("name", "") or "").strip()
+        if not name:
+            continue
+        samples = sch.get("samples") or []
+        n = min(len(samples), len(time))
+        if n < 2:
+            continue
+
+        classified = _classify_locus_event(name)
+        if classified is not None:
+            category, label = classified
+        else:
+            category, label = "other", ""
+
+        prev = int(samples[0])
+        for idx in range(1, n):
+            val = int(samples[idx])
+            if val != prev:
+                t_s = float(time[idx])
+                events.append({
+                    "time_ms": round(t_s * 1000.0, 2),
+                    "rel_ms": round((t_s - inception_s) * 1000.0, 2),
+                    "channel": name,
+                    "state": val,
+                    "category": category,
+                    "label": label,
+                })
+            prev = val
+
+    events.sort(key=lambda e: (e["time_ms"], e["channel"]))
+    return {
+        "inception_time_ms": round(inception_s * 1000.0, 2),
+        "events": events,
+    }
+
+
 def _compute_locus_events(payload: dict) -> dict:
     """Curated digital events with timestamps, anchored to fault inception."""
     time, inception_idx = _inception_idx_from_payload(payload)
@@ -756,6 +807,17 @@ async def locus_events(analysis_id: str):
         raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(None, _compute_locus_events, payload)
+    return result
+
+
+@router.get("/full-soe", response_model=LocusEventsResponse)
+async def full_soe(analysis_id: str):
+    """All digital channel transitions for the PDF report SOE table."""
+    payload = load_analysis(analysis_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _compute_full_soe_events, payload)
     return result
 
 

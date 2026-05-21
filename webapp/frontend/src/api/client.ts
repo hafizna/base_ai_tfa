@@ -260,6 +260,14 @@ export async function fetchLocusEvents21(analysisId: string) {
   };
 }
 
+export async function fetchFullSoe21(analysisId: string) {
+  const { data } = await api.get(`/api/analyze/21/full-soe?analysis_id=${analysisId}`);
+  return data as {
+    inception_time_ms: number | null;
+    events: LocusEvent[];
+  };
+}
+
 export async function extractFeatures21(analysisId: string) {
   const { data } = await api.get(`/api/analyze/21/extract-features?analysis_id=${analysisId}`);
   return data as {

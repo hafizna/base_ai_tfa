@@ -16,7 +16,7 @@ import {
   aiFaultAnalysis21,
   extractFeatures21,
   fetchAnalysis,
-  fetchLocusEvents21,
+  fetchFullSoe21,
   generateReport,
   type ReportChart,
   type ReportSoeEvent,
@@ -226,7 +226,10 @@ export default function Workspace() {
   async function fetchSoeEventsSafe(): Promise<ReportSoeEvent[]> {
     if (relayType !== "21") return [];
     try {
-      const { events } = await fetchLocusEvents21(currentAnalysisId);
+      // Full SOE (every digital transition) — the curated /locus-events
+      // endpoint only emits protection-relevant channels, which is too
+      // narrow for the report's SOE section.
+      const { events } = await fetchFullSoe21(currentAnalysisId);
       return events.map((e) => ({
         time_ms: e.time_ms,
         rel_ms: e.rel_ms,
