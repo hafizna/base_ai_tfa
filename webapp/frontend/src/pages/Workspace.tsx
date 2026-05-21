@@ -16,8 +16,10 @@ import {
   aiFaultAnalysis21,
   extractFeatures21,
   fetchAnalysis,
+  fetchLocusEvents21,
   generateReport,
   type ReportChart,
+  type ReportSoeEvent,
 } from "../api/client";
 import COMTRADEExplorer from "../components/panels/COMTRADEExplorer";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
@@ -123,12 +125,6 @@ export default function Workspace() {
     navigate("/");
   }
 
-  function handlePrint() {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
-  }
-
   async function captureWorkspaceCharts(): Promise<ReportChart[]> {
     const toImage = getPlotlyToImage();
     if (!toImage) {
@@ -173,6 +169,8 @@ export default function Workspace() {
       }
 
       if (!id) continue;
+      // Digital status is rendered as an SOE table in the PDF, not a chart.
+      if (id === "digital_status") continue;
       // Skip duplicates (e.g. when the user is in a multi-tab UI that
       // accidentally double-mounts the same chart).
       if (seenIds.has(id)) continue;
@@ -192,8 +190,9 @@ export default function Workspace() {
       }
     }
 
-    // Preferred order in the report: locus first, then waveforms, then digital,
-    // then differential/overcurrent overlays. Anything unknown trails.
+    // Preferred order in the report: locus first, then waveforms, then
+    // differential/overcurrent overlays. Anything unknown trails. Digital
+    // status is rendered as a SOE table, not a chart.
     const order = [
       "impedance_locus",
       "impedance_locus_ground",
@@ -201,7 +200,6 @@ export default function Workspace() {
       "waveform_voltage",
       "waveform_current",
       "waveform_strip",
-      "digital_status",
       "diff_restraint",
       "overcurrent_overlay",
     ];
@@ -225,19 +223,39 @@ export default function Workspace() {
     }
   }
 
+  async function fetchSoeEventsSafe(): Promise<ReportSoeEvent[]> {
+    if (relayType !== "21") return [];
+    try {
+      const { events } = await fetchLocusEvents21(currentAnalysisId);
+      return events.map((e) => ({
+        time_ms: e.time_ms,
+        rel_ms: e.rel_ms,
+        channel: e.channel,
+        state: e.state,
+        category: e.category,
+        label: e.label,
+      }));
+    } catch (err) {
+      console.warn("Failed to fetch SOE events for report:", err);
+      return [];
+    }
+  }
+
   async function handleDownloadPdf() {
     if (isGeneratingPdf) return;
     setIsGeneratingPdf(true);
     try {
-      const [charts, aiAnalysis] = await Promise.all([
+      const [charts, aiAnalysis, soeEvents] = await Promise.all([
         captureWorkspaceCharts(),
         fetchAiAnalysisSafe(),
+        fetchSoeEventsSafe(),
       ]);
 
       const blob = await generateReport(currentAnalysisId, {
         relay_type: relayType,
         ai_analysis: aiAnalysis,
         charts,
+        soe_events: soeEvents,
       });
 
       const stationSlug = (comtrade?.station_name || "report")
@@ -393,9 +411,6 @@ export default function Workspace() {
                 {isGeneratingPdf ? "Menyiapkan PDF…" : "📄 Download PDF Report"}
               </button>
             )}
-            <button className={styles.printBtn} onClick={handlePrint} type="button">
-              Print / PDF
-            </button>
           </div>
         )}
       </header>

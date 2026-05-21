@@ -304,10 +304,20 @@ export interface ReportChart {
   image_b64: string;
 }
 
+export interface ReportSoeEvent {
+  time_ms: number;
+  rel_ms?: number | null;
+  channel: string;
+  state: number;
+  category?: string | null;
+  label?: string | null;
+}
+
 export interface ReportRequest {
   relay_type: string;
   ai_analysis?: Record<string, unknown> | null;
   charts: ReportChart[];
+  soe_events?: ReportSoeEvent[];
 }
 
 export async function generateReport(analysisId: string, body: ReportRequest): Promise<Blob> {

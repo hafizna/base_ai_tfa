@@ -86,10 +86,20 @@ class ChartImage(BaseModel):
     image_b64: str  # base64 PNG (no data: prefix)
 
 
+class SoeEvent(BaseModel):
+    time_ms: float
+    rel_ms: Optional[float] = None
+    channel: str
+    state: int
+    category: Optional[str] = None
+    label: Optional[str] = None
+
+
 class ReportRequest(BaseModel):
     relay_type: str
     ai_analysis: Optional[dict] = None
     charts: list[ChartImage] = []
+    soe_events: list[SoeEvent] = []
 
 
 # ---------------------------------------------------------------------------
@@ -409,24 +419,27 @@ def _build_conclusion(
             z_line += f" ∠ {z_angle:.1f}°"
         narrative_lines.append(z_line)
 
+    # Right-side chip column: vertical [label, value] pairs to fit the
+    # narrow ~77mm slot inside the conclusion box without clipping.
     summary_chips = [
-        ["JENIS GANGGUAN", fault_code, "FASA", phases_label],
-        ["ZONE", str(zone), "TRIP TYPE", str(trip_type)],
-        ["DURASI GANGGUAN", f"{fault_ms:.1f} ms", "AUTORECLOSE", ar_label],
+        ("JENIS GANGGUAN", fault_code),
+        ("FASA", phases_label),
+        ("ZONE", str(zone)),
+        ("TRIP TYPE", str(trip_type)),
+        ("DURASI GANGGUAN", f"{fault_ms:.1f} ms"),
+        ("AUTORECLOSE", ar_label),
     ]
 
     chips_data = []
-    for left_label, left_val, right_label, right_val in summary_chips:
+    for label, val in summary_chips:
         chips_data.append([
-            Paragraph(f"<font size=6.5 color='#64748b'><b>{left_label}</b></font>", styles["body"]),
-            Paragraph(f"<font size=9.5 color='#0f172a'><b>{left_val}</b></font>", styles["body"]),
-            Paragraph(f"<font size=6.5 color='#64748b'><b>{right_label}</b></font>", styles["body"]),
-            Paragraph(f"<font size=9.5 color='#0f172a'><b>{right_val}</b></font>", styles["body"]),
+            Paragraph(f"<font size=6.5 color='#64748b'><b>{label}</b></font>", styles["body"]),
+            Paragraph(f"<font size=9.5 color='#0f172a'><b>{val}</b></font>", styles["body"]),
         ])
 
     chips_table = Table(
         chips_data,
-        colWidths=[28 * mm, 38 * mm, 28 * mm, 38 * mm],
+        colWidths=[30 * mm, 40 * mm],
         hAlign="LEFT",
     )
     chips_table.setStyle(TableStyle([
@@ -715,6 +728,106 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
     return flowables
 
 
+CATEGORY_HEX = {
+    "trip":    "#dc2626",
+    "zone":    "#7c3aed",
+    "reclose": "#0891b2",
+    "breaker": "#ea580c",
+    "comms":   "#16a34a",
+    "other":   "#64748b",
+}
+CATEGORY_LABEL = {
+    "trip":    "Trip",
+    "zone":    "Zona",
+    "reclose": "Auto-Reclose",
+    "breaker": "PMT / CB",
+    "comms":   "Teleproteksi",
+    "other":   "Lain",
+}
+
+
+def _build_soe_section(styles: dict, events: list) -> list:
+    """Render Sequence of Events as a tabular section.
+
+    Replaces the digital-status strip plot — table form is more readable in a
+    static PDF and preserves precise timestamps.
+    """
+    if not events:
+        return []
+
+    flowables: list = []
+    flowables.extend(_section_header(styles, "SECTION 4", "Sequence of Events (SOE)"))
+
+    header = [
+        Paragraph("<b>Time (ms)</b>", styles["body_muted"]),
+        Paragraph("<b>Δt (ms)</b>", styles["body_muted"]),
+        Paragraph("<b>Kanal</b>", styles["body_muted"]),
+        Paragraph("<b>State</b>", styles["body_muted"]),
+        Paragraph("<b>Kategori</b>", styles["body_muted"]),
+        Paragraph("<b>Keterangan</b>", styles["body_muted"]),
+    ]
+    data = [header]
+
+    for ev in events:
+        if hasattr(ev, "model_dump"):
+            ev = ev.model_dump()
+        elif hasattr(ev, "dict"):
+            ev = ev.dict()
+        if not isinstance(ev, dict):
+            continue
+
+        time_ms = ev.get("time_ms")
+        rel_ms = ev.get("rel_ms")
+        channel = str(ev.get("channel") or "—")
+        state = ev.get("state")
+        category = (ev.get("category") or "other").lower()
+        label = ev.get("label") or ""
+
+        time_str = f"{time_ms:.2f}" if isinstance(time_ms, (int, float)) else "—"
+        rel_str = f"{rel_ms:+.2f}" if isinstance(rel_ms, (int, float)) else "—"
+        state_str = "ON (1)" if state == 1 else ("OFF (0)" if state == 0 else "—")
+        cat_hex = CATEGORY_HEX.get(category, CATEGORY_HEX["other"])
+        cat_label = CATEGORY_LABEL.get(category, category)
+
+        data.append([
+            Paragraph(time_str, styles["body"]),
+            Paragraph(rel_str, styles["body_muted"]),
+            Paragraph(channel, styles["body"]),
+            Paragraph(state_str, styles["body"]),
+            Paragraph(f"<font color='{cat_hex}'><b>{cat_label}</b></font>", styles["body"]),
+            Paragraph(label or "", styles["body"]),
+        ])
+
+    usable = PAGE_W - 2 * MARGIN
+    soe_table = Table(
+        data,
+        colWidths=[
+            18 * mm,  # time
+            18 * mm,  # delta
+            32 * mm,  # channel
+            18 * mm,  # state
+            24 * mm,  # category
+            usable - (18 + 18 + 32 + 18 + 24) * mm,  # label fills the rest
+        ],
+        hAlign="LEFT",
+        repeatRows=1,
+    )
+    soe_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("FONT", (0, 0), (-1, -1), "Helvetica", 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("BACKGROUND", (0, 0), (-1, 0), BRAND_BG_SOFT),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_BG_SOFT]),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.2, BRAND_BORDER),
+        ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
+    ]))
+    flowables.append(soe_table)
+    return flowables
+
+
 def _build_chart_block(styles: dict, kicker: str, chart: ChartImage, max_height_mm: float = 90) -> list:
     """Decode base64 PNG and add as a sized Image flowable."""
     try:
@@ -805,6 +918,11 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         story.extend(ai_section)
         story.append(Spacer(1, 8))
 
+    soe_section = _build_soe_section(styles, request.soe_events)
+    if soe_section:
+        story.extend(soe_section)
+        story.append(Spacer(1, 8))
+
     chart_titles = {
         "impedance_locus":        ("VISUALISASI", "Impedance Locus (R-X Trajectory)"),
         "impedance_locus_ground": ("VISUALISASI", "Impedance Locus — Phase-to-Ground"),
@@ -812,7 +930,6 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         "waveform_strip":         ("VISUALISASI", "Strip Waveform & Locus Events"),
         "waveform_voltage":       ("VISUALISASI", "Waveform Tegangan"),
         "waveform_current":       ("VISUALISASI", "Waveform Arus"),
-        "digital_status":         ("VISUALISASI", "Digital Status Snapshot"),
         "diff_restraint":         ("VISUALISASI", "Diff / Restraint Plot"),
         "overcurrent_overlay":    ("VISUALISASI", "Overcurrent Overlay"),
     }
