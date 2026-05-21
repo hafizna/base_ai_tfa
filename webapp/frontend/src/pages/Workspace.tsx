@@ -2,7 +2,15 @@ import { Component, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 
-import Plotly from "plotly.js";
+type PlotlyToImageFn = (
+  gd: HTMLElement,
+  opts: { format: "png"; width: number; height: number; scale: number },
+) => Promise<string>;
+
+function getPlotlyToImage(): PlotlyToImageFn | null {
+  const plotly = (window as unknown as { Plotly?: { toImage?: PlotlyToImageFn } }).Plotly;
+  return plotly?.toImage ?? null;
+}
 
 import {
   aiFaultAnalysis21,
@@ -122,6 +130,11 @@ export default function Workspace() {
   }
 
   async function captureWorkspaceCharts(): Promise<ReportChart[]> {
+    const toImage = getPlotlyToImage();
+    if (!toImage) {
+      console.warn("Plotly runtime not available — chart export skipped.");
+      return [];
+    }
     const nodes = Array.from(
       document.querySelectorAll<HTMLElement>(".js-plotly-plot"),
     );
@@ -152,7 +165,7 @@ export default function Workspace() {
       if (!id) continue;
 
       try {
-        const dataUrl = await Plotly.toImage(gd as Parameters<typeof Plotly.toImage>[0], {
+        const dataUrl = await toImage(gd, {
           format: "png",
           width: 1400,
           height: 900,
