@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Optional
 from xml.sax.saxutils import escape as xml_escape
 
+import numpy as np
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -40,6 +41,7 @@ from reportlab.platypus import (
     Frame,
     Image,
     PageTemplate,
+    PageBreak,
     Paragraph,
     Spacer,
     Table,
@@ -620,6 +622,194 @@ def _build_metadata_section(styles: dict, payload: dict) -> list:
     return _section_header(styles, "SECTION 1", "Metadata Rekaman") + [_kv_table(rows)]
 
 
+def _event_center_ms(payload: dict) -> float:
+    time_values = payload.get("time") or []
+    if not time_values:
+        return 0.0
+
+    trigger_ms = float(payload.get("trigger_time") or 0.0) * 1000.0
+    if 0 < trigger_ms < float(time_values[-1]) * 1000.0:
+        return trigger_ms
+
+    for status in payload.get("status_channels", []):
+        samples = status.get("samples") or []
+        n = min(len(samples), len(time_values))
+        if n < 2:
+            continue
+        previous = int(samples[0])
+        for idx in range(1, n):
+            value = int(samples[idx])
+            if value != previous:
+                return float(time_values[idx]) * 1000.0
+            previous = value
+
+    return float(time_values[0]) * 1000.0
+
+
+def _status_activity_score(channel: dict) -> tuple[int, int, str]:
+    samples = channel.get("samples") or []
+    on_count = int(sum(1 for value in samples if int(value) == 1))
+    transitions = sum(1 for idx in range(1, len(samples)) if samples[idx] != samples[idx - 1])
+    return (-transitions, -on_count, str(channel.get("name") or channel.get("id") or ""))
+
+
+def _digital_segments(time_ms: np.ndarray, samples: list, start_ms: float, end_ms: float) -> list[tuple[float, float]]:
+    n = min(len(samples), len(time_ms))
+    if n < 2:
+        return []
+
+    segments: list[tuple[float, float]] = []
+    active_start: Optional[float] = None
+    previous = int(samples[0])
+    if previous == 1:
+        active_start = float(time_ms[0])
+
+    for idx in range(1, n):
+        value = int(samples[idx])
+        t_ms = float(time_ms[idx])
+        if value != previous:
+            if value == 1:
+                active_start = t_ms
+            elif active_start is not None:
+                segments.append((active_start, t_ms))
+                active_start = None
+            previous = value
+
+    if active_start is not None:
+        segments.append((active_start, float(time_ms[n - 1])))
+
+    clipped: list[tuple[float, float]] = []
+    for left, right in segments:
+        left = max(left, start_ms)
+        right = min(right, end_ms)
+        if right > left:
+            clipped.append((left, right - left))
+    return clipped
+
+
+def _render_binary_time_diagram(payload: dict, channels: list[dict], page_no: int) -> bytes:
+    """Render an ABB-style compact binary channel timing diagram as a PNG."""
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    from matplotlib.figure import Figure
+
+    time_values = np.asarray(payload.get("time") or [], dtype=float) * 1000.0
+    if time_values.size < 2 or not channels:
+        return b""
+
+    center_ms = _event_center_ms(payload)
+    rel_time = time_values - center_ms
+    start_ms = max(float(rel_time[0]), -20.0)
+    end_ms = min(float(rel_time[-1]), 240.0)
+    if end_ms <= start_ms + 5:
+        start_ms = float(rel_time[0])
+        end_ms = float(rel_time[-1])
+
+    row_h = 0.24
+    fig_h = max(2.4, 0.9 + row_h * len(channels))
+    fig = Figure(figsize=(7.6, fig_h), dpi=180)
+    ax = fig.subplots(1, 1)
+
+    y_positions = list(range(len(channels)))
+    for row_idx, channel in enumerate(channels):
+        samples = channel.get("samples") or []
+        segments = _digital_segments(rel_time, samples, start_ms, end_ms)
+        if segments:
+            ax.broken_barh(
+                segments,
+                (row_idx - 0.12, 0.24),
+                facecolors="#008000",
+                edgecolors="#008000",
+                linewidth=0.4,
+            )
+
+    ax.axvline(0, color="#ff0000", linewidth=0.8)
+    ax.set_xlim(start_ms, end_ms)
+    ax.set_ylim(-0.6, len(channels) - 0.4)
+    ax.invert_yaxis()
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels([])
+    ax.xaxis.set_ticks_position("top")
+    ax.xaxis.set_label_position("top")
+    ax.set_xlabel("ms", fontsize=7, labelpad=4)
+    ax.tick_params(axis="x", labelsize=6, length=2, pad=1)
+    ax.tick_params(axis="y", length=0)
+    ax.grid(True, which="major", axis="both", color="#5f5f5f", linestyle=":", linewidth=0.45)
+
+    for row_idx, channel in enumerate(channels):
+        name = str(channel.get("name") or channel.get("id") or "")
+        ax.text(
+            1.005,
+            row_idx,
+            name[:38],
+            transform=ax.get_yaxis_transform(),
+            va="center",
+            ha="left",
+            fontsize=6.2,
+            color="#111111",
+        )
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(0.45)
+        spine.set_color("#111111")
+
+    fig.suptitle(f"Binary Time Diagram {page_no}", x=0.01, y=0.995, ha="left", va="top", fontsize=9, fontweight="bold")
+    fig.subplots_adjust(left=0.08, right=0.78, top=0.86, bottom=0.08)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=180, facecolor="white")
+    return buf.getvalue()
+
+
+def _build_binary_time_diagram_section(styles: dict, payload: dict) -> list:
+    status_channels = [
+        ch for ch in payload.get("status_channels", [])
+        if any(int(value) == 1 for value in (ch.get("samples") or []))
+    ]
+    status_channels = sorted(status_channels, key=_status_activity_score)
+    if not status_channels:
+        return []
+
+    flowables: list = []
+    channels_per_page = 30
+    chunks = [
+        status_channels[idx: idx + channels_per_page]
+        for idx in range(0, len(status_channels), channels_per_page)
+    ]
+
+    for idx, chunk in enumerate(chunks, start=1):
+        if idx > 1:
+            flowables.append(PageBreak())
+        flowables.extend(_section_header(styles, "COMTRADE", "Binary Time Diagram"))
+        if idx == 1:
+            flowables.append(Paragraph(
+                "Kanal digital aktif dirender ringkas seperti disturbance report. Garis merah menunjukkan trigger/event reference.",
+                styles["body_muted"],
+            ))
+            flowables.append(Spacer(1, 4))
+
+        raw = _render_binary_time_diagram(payload, chunk, idx)
+        if not raw:
+            continue
+        img = Image(io.BytesIO(raw))
+        max_w = PAGE_W - 2 * MARGIN
+        max_h = 190 * mm
+        aspect = img.imageHeight / img.imageWidth if img.imageWidth else 1
+        target_w = max_w
+        target_h = target_w * aspect
+        if target_h > max_h:
+            target_h = max_h
+            target_w = target_h / aspect if aspect > 0 else max_w
+        img.drawWidth = target_w
+        img.drawHeight = target_h
+        img.hAlign = "LEFT"
+        flowables.append(img)
+        flowables.append(Spacer(1, 8))
+
+    return flowables
+
+
 def _build_electrical_section(styles: dict, elec: dict) -> list:
     rows = [
         ("Waktu inception", f"{elec['inception_time_ms']:.1f} ms" if elec.get("inception_time_ms") is not None else "—"),
@@ -1080,6 +1270,11 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
 
     story.extend(_build_metadata_section(styles, payload))
     story.append(Spacer(1, 8))
+
+    binary_section = _build_binary_time_diagram_section(styles, payload)
+    if binary_section:
+        story.extend(binary_section)
+        story.append(Spacer(1, 8))
 
     if relay_type == "21":
         story.extend(_build_electrical_section(styles, elec))
