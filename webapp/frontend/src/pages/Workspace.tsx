@@ -14,6 +14,7 @@ function getPlotlyToImage(): PlotlyToImageFn | null {
 
 import {
   aiFaultAnalysis21,
+  aiFaultAnalysis87L,
   extractFeatures21,
   fetchAnalysis,
   fetchFullSoe21,
@@ -31,6 +32,7 @@ import AIFaultAnalysis87L from "../components/relay/relay87l/AIFaultAnalysis87L"
 import DiffRestraintPlot from "../components/relay/relay87l/DiffRestraintPlot";
 import FaultRecap87T from "../components/relay/relay87t/FaultRecap87T";
 import OvercurrentOverlay from "../components/relay/relay_ocr/OvercurrentOverlay";
+import type { OCRReportSettings } from "../components/relay/relay_ocr/OvercurrentOverlay";
 import { useAnalysis } from "../context/AnalysisContext";
 import type { ComtradeData } from "../context/AnalysisContext";
 
@@ -79,6 +81,16 @@ const RELAY_LABELS: Record<string, string> = {
   SBEF: "SBEF",
 };
 
+const DEFAULT_DIFF_PARAMS = {
+  device_type: "SP5",
+  idiff_pickup: 0.20,
+  slope1: 0.30,
+  intersection1: 0.30,
+  slope2: 0.70,
+  intersection2: 2.50,
+  idiff_fast: 7.50,
+};
+
 function formatDurationMs(time: number[]) {
   if (time.length < 2) return "-";
   return ((time[time.length - 1] - time[0]) * 1000).toFixed(1);
@@ -102,12 +114,14 @@ export default function Workspace() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [ocrReportSettings, setOcrReportSettings] = useState<OCRReportSettings | null>(null);
 
   useEffect(() => {
     if (!analysisId) return;
 
     setLoading(true);
     setError(null);
+    setOcrReportSettings(null);
     fetchAnalysis(analysisId)
       .then(setComtrade)
       .catch(() => setError("Failed to load analysis data. The session may have expired."))
@@ -149,6 +163,8 @@ export default function Workspace() {
       const tagged = (node.closest("[data-pdf-chart-id]") as HTMLElement | null);
       let id: string | null = tagged?.dataset.pdfChartId ?? null;
       let title: string = tagged?.dataset.pdfChartTitle ?? "";
+
+      if (tagged?.dataset.pdfReady === "false") continue;
 
       if (!id) {
         const rawTitle =
@@ -212,11 +228,17 @@ export default function Workspace() {
   }
 
   async function fetchAiAnalysisSafe(): Promise<Record<string, unknown> | null> {
-    if (relayType !== "21") return null;
     try {
-      const features = await extractFeatures21(currentAnalysisId);
-      const result = await aiFaultAnalysis21(currentAnalysisId, features);
-      return result as Record<string, unknown>;
+      if (relayType === "21") {
+        const features = await extractFeatures21(currentAnalysisId);
+        const result = await aiFaultAnalysis21(currentAnalysisId, features);
+        return result as Record<string, unknown>;
+      }
+      if (relayType === "87L") {
+        const result = await aiFaultAnalysis87L(currentAnalysisId, DEFAULT_DIFF_PARAMS);
+        return result as Record<string, unknown>;
+      }
+      return null;
     } catch (err) {
       console.warn("Failed to fetch AI analysis for report:", err);
       return null;
@@ -224,7 +246,6 @@ export default function Workspace() {
   }
 
   async function fetchSoeEventsSafe(): Promise<ReportSoeEvent[]> {
-    if (relayType !== "21") return [];
     try {
       // Full SOE (every digital transition) — the curated /locus-events
       // endpoint only emits protection-relevant channels, which is too
@@ -253,12 +274,16 @@ export default function Workspace() {
         fetchAiAnalysisSafe(),
         fetchSoeEventsSafe(),
       ]);
+      const relaySettings = (relayType === "OCR" || relayType === "SBEF") && ocrReportSettings
+        ? { ocr: ocrReportSettings }
+        : null;
 
       const blob = await generateReport(currentAnalysisId, {
         relay_type: relayType,
         ai_analysis: aiAnalysis,
         charts,
         soe_events: soeEvents,
+        relay_settings: relaySettings,
       });
 
       const stationSlug = (comtrade?.station_name || "report")
@@ -332,6 +357,7 @@ export default function Workspace() {
           <OvercurrentOverlay
             analysisId={currentAnalysisId}
             relayType={relayType === "SBEF" ? "SBEF" : "OCR"}
+            onReportSettingsChange={setOcrReportSettings}
           />
         </PanelErrorBoundary>
       </>
@@ -404,7 +430,7 @@ export default function Workspace() {
             <span className={styles.meta}>{comtrade.frequency} Hz nominal</span>
             <span className={styles.meta}>{comtrade.analog_channels.length} analog</span>
             <span className={styles.meta}>{comtrade.status_channels.length} digital</span>
-            {relayType === "21" && (
+            {comtrade && (
               <button
                 className={styles.downloadPdfBtn}
                 onClick={handleDownloadPdf}

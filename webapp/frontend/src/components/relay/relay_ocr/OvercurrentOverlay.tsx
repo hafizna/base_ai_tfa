@@ -6,6 +6,15 @@ import styles from "../../panels/Panel.module.css";
 interface Props {
   analysisId: string;
   relayType?: "OCR" | "SBEF";
+  onReportSettingsChange?: (settings: OCRReportSettings | null) => void;
+}
+export interface OCRReportSettings {
+  curve_type: string;
+  is_pickup_a: number;
+  tms: number;
+  measured_current_a: number;
+  measured_trip_time_s: number | null;
+  intersection_ratio: number | null;
 }
 interface CurvePoint { current_ratio: number; trip_time_s: number; }
 interface OCRResult {
@@ -22,18 +31,31 @@ const CURVE_LABELS: Record<string, string> = {
   LTI: "Long Time Inverse",
 };
 
-export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Props) {
+export default function OvercurrentOverlay({ analysisId, relayType = "OCR", onReportSettingsChange }: Props) {
   const [curveType, setCurveType] = useState("NI");
   const [pickup, setPickup] = useState(1.0);
   const [tms, setTms] = useState(0.1);
   const [result, setResult] = useState<OCRResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+  function clearComputedResult() {
+    setResult(null);
+    onReportSettingsChange?.(null);
+  }
+
   async function fetchCurve() {
     setLoading(true);
     try {
       const res = await overCurrentCharacteristic(analysisId, curveType, pickup, tms);
       setResult(res);
+      onReportSettingsChange?.({
+        curve_type: curveType,
+        is_pickup_a: pickup,
+        tms,
+        measured_current_a: res.measured_current_a,
+        measured_trip_time_s: res.measured_trip_time_s,
+        intersection_ratio: res.intersection_ratio,
+      });
     } finally {
       setLoading(false);
     }
@@ -101,7 +123,14 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
       <div className={styles.panelHeader}>
         <h2 className={styles.panelTitle}>{panelTitle}</h2>
         <div className={styles.controls}>
-          <select className={styles.selectField} value={curveType} onChange={(e) => setCurveType(e.target.value)}>
+          <select
+            className={styles.selectField}
+            value={curveType}
+            onChange={(e) => {
+              setCurveType(e.target.value);
+              clearComputedResult();
+            }}
+          >
             {Object.entries(CURVE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
@@ -118,15 +147,37 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
 
       <div className={styles.row}>
         <label className={styles.label}>Is Pickup (A)</label>
-        <input className={styles.inputField} type="number" step={0.1} value={pickup} onChange={(e) => setPickup(parseFloat(e.target.value))} />
+        <input
+          className={styles.inputField}
+          type="number"
+          step={0.1}
+          value={pickup}
+          onChange={(e) => {
+            setPickup(parseFloat(e.target.value));
+            clearComputedResult();
+          }}
+        />
         <label className={styles.label}>TMS</label>
-        <input className={styles.inputField} type="number" step={0.01} value={tms} onChange={(e) => setTms(parseFloat(e.target.value))} />
+        <input
+          className={styles.inputField}
+          type="number"
+          step={0.01}
+          value={tms}
+          onChange={(e) => {
+            setTms(parseFloat(e.target.value));
+            clearComputedResult();
+          }}
+        />
         <button className={styles.applyBtn} onClick={fetchCurve} disabled={loading}>
           {loading ? "Computing…" : "Plot Curve"}
         </button>
       </div>
 
-      <div data-pdf-chart-id="overcurrent_overlay" data-pdf-chart-title="Overcurrent Overlay (TCC)">
+      <div
+        data-pdf-chart-id="overcurrent_overlay"
+        data-pdf-chart-title="Overcurrent Overlay (TCC)"
+        data-pdf-ready={result ? "true" : "false"}
+      >
         <Plot
           data={[curveTrace, measuredTrace] as Plotly.Data[]}
           layout={layout}

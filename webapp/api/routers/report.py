@@ -24,6 +24,7 @@ import io
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -47,6 +48,9 @@ from reportlab.platypus import (
 
 from ..storage import load_analysis
 from .relay_21 import _compute_electrical_params, _compute_fault_classification
+from .relay_87l import _compute_diff_restraint
+from .relay_87t import _compute_87t
+from .relay_ocr import _find_max_current, _trip_time
 
 router = APIRouter(prefix="/api/report", tags=["report"])
 
@@ -100,6 +104,7 @@ class ReportRequest(BaseModel):
     ai_analysis: Optional[dict] = None
     charts: list[ChartImage] = []
     soe_events: list[SoeEvent] = []
+    relay_settings: Optional[dict] = None
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +224,10 @@ def _format_number(value, suffix: str = "", digits: int = 2) -> str:
         return f"{float(value):.{digits}f}{suffix}"
     except (TypeError, ValueError):
         return str(value)
+
+
+def _safe_text(value) -> str:
+    return xml_escape(str(value if value is not None else ""))
 
 
 def _format_duration_ms(time_arr: list) -> str:
@@ -511,6 +520,112 @@ def _kv_table(rows: list[tuple[str, str]], col_widths: tuple[float, float] = (45
     return table
 
 
+def _transition_count(samples: list) -> int:
+    if not samples:
+        return 0
+    return sum(1 for idx in range(1, len(samples)) if samples[idx] != samples[idx - 1])
+
+
+def _peak_abs(samples: list) -> float:
+    if not samples:
+        return 0.0
+    try:
+        return float(max(abs(float(v)) for v in samples))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _rms(samples: list) -> float:
+    if not samples:
+        return 0.0
+    try:
+        vals = [float(v) for v in samples]
+    except (TypeError, ValueError):
+        return 0.0
+    return float((sum(v * v for v in vals) / len(vals)) ** 0.5)
+
+
+def _default_diff_params() -> dict:
+    return {
+        "device_type": "SP5",
+        "idiff_pickup": 0.20,
+        "slope1": 0.30,
+        "intersection1": 0.30,
+        "slope2": 0.70,
+        "intersection2": 2.50,
+        "idiff_fast": 7.50,
+    }
+
+
+def _build_generic_conclusion(styles: dict, payload: dict, relay_label: str, ai_analysis: Optional[dict]) -> Table:
+    duration = _format_duration_ms(payload.get("time", []))
+    narrative_lines = [
+        f"<b>Jenis analisis:</b> {_safe_text(relay_label)}",
+        f"<b>Durasi rekaman:</b> {_safe_text(duration)}",
+        f"<b>Kanal:</b> {len(payload.get('analog_channels', []))} analog / {len(payload.get('status_channels', []))} digital",
+    ]
+
+    if ai_analysis:
+        cause_ranking = ai_analysis.get("cause_ranking") or []
+        top = cause_ranking[0] if isinstance(cause_ranking, list) and cause_ranking else None
+        if isinstance(top, dict):
+            label = top.get("label") or top.get("cause")
+            conf = top.get("confidence")
+            if label:
+                line = f"<b>Penyebab (AI):</b> {_safe_text(label)}"
+                if isinstance(conf, (int, float)):
+                    pct = conf * 100 if conf <= 1 else conf
+                    line += f" <font color='#64748b'>(confidence {pct:.0f}%)</font>"
+                narrative_lines.append(line)
+
+    summary_chips = [
+        ("RELAY", relay_label),
+        ("STATION", payload.get("station_name") or "N/A"),
+        ("DEVICE", payload.get("rec_dev_id") or "N/A"),
+        ("SAMPLES", str(payload.get("total_samples", 0))),
+    ]
+
+    chips_table = Table(
+        [[
+            Paragraph(f"<font size=6.5 color='#64748b'><b>{label}</b></font>", styles["body"]),
+            Paragraph(f"<font size=9.5 color='#0f172a'><b>{_safe_text(value)}</b></font>", styles["body"]),
+        ] for label, value in summary_chips],
+        colWidths=[24 * mm, 48 * mm],
+        hAlign="LEFT",
+    )
+    chips_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.3, BRAND_BORDER),
+    ]))
+
+    narrative_cells = [
+        Paragraph("KONKLUSI", styles["conclusion_kicker"]),
+        Paragraph("Ringkasan Analisis COMTRADE", styles["conclusion_head"]),
+    ]
+    for line in narrative_lines:
+        narrative_cells.append(Paragraph(line, styles["conclusion_body"]))
+        narrative_cells.append(Spacer(1, 2))
+
+    inner = Table(
+        [[narrative_cells, chips_table]],
+        colWidths=[(PAGE_W - 2 * MARGIN) * 0.55 - 4, (PAGE_W - 2 * MARGIN) * 0.45 - 4],
+    )
+    inner.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_BG_HIGHLIGHT),
+        ("BOX", (0, 0), (-1, -1), 0.6, BRAND_BLUE),
+    ]))
+    return inner
+
+
 def _build_metadata_section(styles: dict, payload: dict) -> list:
     duration = _format_duration_ms(payload.get("time", []))
     sampling = payload.get("sampling_rates") or [[0]]
@@ -528,6 +643,98 @@ def _build_metadata_section(styles: dict, payload: dict) -> list:
         ("Kanal digital", f"{len(payload.get('status_channels', []))} kanal"),
     ]
     return _section_header(styles, "SECTION 1", "Metadata Rekaman") + [_kv_table(rows)]
+
+
+def _build_comtrade_channel_section(styles: dict, payload: dict) -> list:
+    flowables: list = []
+    flowables.extend(_section_header(styles, "COMTRADE", "Ringkasan Kanal Rekaman"))
+
+    analog_rows = []
+    for ch in payload.get("analog_channels", [])[:18]:
+        ratio = "N/A"
+        primary = ch.get("ct_primary")
+        secondary = ch.get("ct_secondary")
+        if primary not in (None, 0) and secondary not in (None, 0):
+            try:
+                ratio = f"{float(primary):g}/{float(secondary):g}"
+            except (TypeError, ValueError):
+                ratio = "N/A"
+        analog_rows.append([
+            Paragraph(_safe_text(ch.get("name") or ch.get("id") or "N/A"), styles["body"]),
+            Paragraph(_safe_text(ch.get("measurement") or "N/A"), styles["body_muted"]),
+            Paragraph(_safe_text(ch.get("phase") or "-"), styles["body"]),
+            Paragraph(_safe_text(ch.get("unit") or "-"), styles["body"]),
+            Paragraph(_safe_text(ratio), styles["body"]),
+            Paragraph(_format_number(_peak_abs(ch.get("samples") or []), "", 2), styles["body"]),
+            Paragraph(_format_number(_rms(ch.get("samples") or []), "", 2), styles["body"]),
+        ])
+
+    if analog_rows:
+        data = [[
+            Paragraph("<b>Kanal Analog</b>", styles["body_muted"]),
+            Paragraph("<b>Tipe</b>", styles["body_muted"]),
+            Paragraph("<b>Fasa</b>", styles["body_muted"]),
+            Paragraph("<b>Unit</b>", styles["body_muted"]),
+            Paragraph("<b>Rasio</b>", styles["body_muted"]),
+            Paragraph("<b>Peak</b>", styles["body_muted"]),
+            Paragraph("<b>RMS</b>", styles["body_muted"]),
+        ]] + analog_rows
+        table = Table(data, colWidths=[42 * mm, 22 * mm, 13 * mm, 13 * mm, 24 * mm, 28 * mm, 28 * mm], repeatRows=1)
+        table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BG_SOFT),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_BG_SOFT]),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.2, BRAND_BORDER),
+            ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        flowables.append(table)
+        flowables.append(Spacer(1, 6))
+
+    status_rows = []
+    for ch in payload.get("status_channels", [])[:18]:
+        samples = ch.get("samples") or []
+        status_rows.append([
+            Paragraph(_safe_text(ch.get("name") or ch.get("id") or "N/A"), styles["body"]),
+            Paragraph(str(len(samples)), styles["body"]),
+            Paragraph(str(int(sum(samples))) if samples else "0", styles["body"]),
+            Paragraph(str(_transition_count(samples)), styles["body"]),
+        ])
+
+    if status_rows:
+        data = [[
+            Paragraph("<b>Kanal Digital</b>", styles["body_muted"]),
+            Paragraph("<b>Sample</b>", styles["body_muted"]),
+            Paragraph("<b>ON Count</b>", styles["body_muted"]),
+            Paragraph("<b>Transisi</b>", styles["body_muted"]),
+        ]] + status_rows
+        table = Table(data, colWidths=[92 * mm, 24 * mm, 27 * mm, 27 * mm], repeatRows=1)
+        table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BG_SOFT),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_BG_SOFT]),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.2, BRAND_BORDER),
+            ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        flowables.append(table)
+
+    remaining_analog = max(0, len(payload.get("analog_channels", [])) - 18)
+    remaining_status = max(0, len(payload.get("status_channels", [])) - 18)
+    if remaining_analog or remaining_status:
+        flowables.append(Spacer(1, 4))
+        flowables.append(Paragraph(
+            f"Catatan: ringkasan dibatasi ke 18 kanal pertama per tipe. Sisa kanal: {remaining_analog} analog, {remaining_status} digital.",
+            styles["body_muted"],
+        ))
+
+    return flowables
 
 
 def _build_electrical_section(styles: dict, elec: dict) -> list:
@@ -728,6 +935,85 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
     return flowables
 
 
+def _build_diff_relay_section(styles: dict, payload: dict, relay_type: str, settings: Optional[dict]) -> list:
+    params = _default_diff_params()
+    diff_settings = (settings or {}).get("diff") if isinstance(settings, dict) else None
+    if isinstance(diff_settings, dict):
+        params.update({k: v for k, v in diff_settings.items() if k in params})
+
+    try:
+        result = _compute_87t(payload, params) if relay_type in ("87T", "REF") else _compute_diff_restraint(payload, params)
+    except Exception as exc:
+        return _section_header(styles, "RELAY", "Differential / Restraint") + [
+            Paragraph(f"<i>Ringkasan differential tidak dapat dihitung: {_safe_text(exc)}</i>", styles["body_muted"])
+        ]
+
+    operated_status = result.get("operated_status") or "N/A"
+    phases = result.get("operated_phases") or []
+    samples = result.get("samples") or []
+    max_diff = max((float(s.get("i_diff") or 0) for s in samples), default=0.0)
+    max_rest = max((float(s.get("i_rest") or 0) for s in samples), default=0.0)
+
+    title = "Differential / Restraint Summary"
+    rows = [
+        ("Relay type", relay_type),
+        ("Operate status", operated_status),
+        ("Operated phases", ", ".join(phases) if phases else "N/A"),
+        ("Max I-diff", _format_number(max_diff, " pu", 3)),
+        ("Max I-restraint", _format_number(max_rest, " pu", 3)),
+        ("I-DIFF> pickup", _format_number(params.get("idiff_pickup"), " pu", 2)),
+        ("Slope 1 / Slope 2", f"{float(params.get('slope1', 0)):.2f} / {float(params.get('slope2', 0)):.2f}"),
+        ("I-DIFF>> fast", _format_number(params.get("idiff_fast"), " pu", 2)),
+    ]
+    return _section_header(styles, "RELAY", title) + [_kv_table(rows, (55 * mm, 70 * mm))]
+
+
+def _build_ocr_section(styles: dict, payload: dict, settings: Optional[dict]) -> list:
+    if not isinstance(settings, dict):
+        return []
+    ocr = settings.get("ocr")
+    if not isinstance(ocr, dict):
+        return []
+
+    curve_type = str(ocr.get("curve_type") or "NI")
+    try:
+        pickup = float(ocr.get("is_pickup_a"))
+        tms = float(ocr.get("tms"))
+    except (TypeError, ValueError):
+        return []
+
+    measured = ocr.get("measured_current_a")
+    if not isinstance(measured, (int, float)):
+        measured = _find_max_current(
+            payload.get("analog_channels", []),
+            payload.get("time", []),
+            float(payload.get("frequency") or 50.0),
+        )
+
+    ratio = float(measured) / pickup if pickup > 0 else None
+    trip_time = ocr.get("measured_trip_time_s")
+    if not isinstance(trip_time, (int, float)) and ratio is not None:
+        trip_time = _trip_time(ratio, tms, curve_type)
+
+    rows = [
+        ("Curve", curve_type),
+        ("Pickup Is", _format_number(pickup, " A", 2)),
+        ("TMS", _format_number(tms, "", 3)),
+        ("Max 1-cycle RMS", _format_number(measured, " A", 2)),
+        ("I / Is", _format_number(ratio, " x", 2) if ratio is not None else "N/A"),
+        ("Theoretical trip time", _format_number(trip_time, " s", 3) if trip_time is not None else "N/A"),
+    ]
+    return _section_header(styles, "RELAY", "Overcurrent / SBEF Setting Summary") + [_kv_table(rows, (55 * mm, 70 * mm))]
+
+
+def _build_relay_specific_section(styles: dict, payload: dict, relay_type: str, settings: Optional[dict]) -> list:
+    if relay_type in ("87L", "CCP", "87T", "REF"):
+        return _build_diff_relay_section(styles, payload, relay_type, settings)
+    if relay_type in ("OCR", "SBEF"):
+        return _build_ocr_section(styles, payload, settings)
+    return []
+
+
 CATEGORY_HEX = {
     "trip":    "#dc2626",
     "zone":    "#7c3aed",
@@ -874,8 +1160,8 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     station = payload.get("station_name") or "Stasiun Tidak Diketahui"
     device = payload.get("rec_dev_id") or "Device Tidak Diketahui"
 
-    fault_class = _compute_fault_classification(payload)
-    elec = _compute_electrical_params(payload)
+    fault_class = _compute_fault_classification(payload) if relay_type == "21" else None
+    elec = _compute_electrical_params(payload) if relay_type == "21" else {}
 
     buf = io.BytesIO()
     header_top_clearance = 22 * mm + 4 * mm  # header band + gap
@@ -903,14 +1189,25 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     styles = _build_styles()
 
     story: list = []
-    story.append(_build_conclusion(styles, fault_class, request.ai_analysis, elec))
+    if relay_type == "21" and fault_class is not None:
+        story.append(_build_conclusion(styles, fault_class, request.ai_analysis, elec))
+    else:
+        story.append(_build_generic_conclusion(styles, payload, relay_label, request.ai_analysis))
     story.append(Spacer(1, 10))
 
     story.extend(_build_metadata_section(styles, payload))
     story.append(Spacer(1, 8))
 
+    story.extend(_build_comtrade_channel_section(styles, payload))
+    story.append(Spacer(1, 8))
+
     if relay_type == "21":
         story.extend(_build_electrical_section(styles, elec))
+        story.append(Spacer(1, 8))
+
+    relay_section = _build_relay_specific_section(styles, payload, relay_type, request.relay_settings)
+    if relay_section:
+        story.extend(relay_section)
         story.append(Spacer(1, 8))
 
     ai_section = _build_ai_analysis_section(styles, request.ai_analysis)

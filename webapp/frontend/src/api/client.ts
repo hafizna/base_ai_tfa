@@ -326,6 +326,7 @@ export interface ReportRequest {
   ai_analysis?: Record<string, unknown> | null;
   charts: ReportChart[];
   soe_events?: ReportSoeEvent[];
+  relay_settings?: Record<string, unknown> | null;
 }
 
 export async function generateReport(analysisId: string, body: ReportRequest): Promise<Blob> {
