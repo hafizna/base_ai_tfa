@@ -584,15 +584,27 @@ Profile dulu (#1), lalu putuskan step berikutnya berdasar data, bukan asumsi.
 | **2** | Eager model + LightGBM preload di startup | ✅ Selesai | FastAPI `lifespan` panggil `ml_predict.warmup()` — pickle load + sklearn/LightGBM import ditelan ~30 ms di boot. Status di `GET /api/health → warmup` |
 | **5** | uvicorn `--workers` configurable via env | ✅ Selesai | `start.sh` baca `WEB_CONCURRENCY` (default 2). Tiap worker ~180 MB RSS; tune sesuai RAM |
 | **α** | GZipMiddleware untuk response JSON besar | ✅ Selesai | `minimum_size=10KB`, `compresslevel=6`. 2–5× reduction untuk waveform JSON di `/api/analysis/{id}` dan `/api/recalculate-ratio`. Health checks bypass |
-| **6** | mmap `.dat` di `core/comtrade_parser.py` | ⏸️ Pending | Tunggu profile data. Marginal kalau `np.fromfile` sudah cukup cepat |
-| **3** | ONNX convert + `onnxruntime` inference | ⏸️ Pending | Tunggu profile data. 2–3× speedup di langkah inference (~1 ms → ~0.3 ms); marginal absolut tapi rapi |
-| **4** | Vectorize `_digital_sequence_features` loop | ⚠️ Hold | Effort:risk ratio buruk (logika bounce rejection + 1.5-breaker rumit). Sentuh hanya kalau profile dominan |
-| **β** | Binary endpoint (Float32 buffer) untuk `/api/analysis/{id}` | ⏸️ Pending | ~10× reduction tambahan di atas GZip; perlu refactor decoder Plotly |
-| **γ** | Per-channel lazy load (`/channels/{id}/samples`) | ⏸️ Pending | Hanya berguna kalau profile menunjukkan banyak record multi-kanal yang user lihat selektif |
+| **6** | mmap `.dat` di `core/comtrade_parser.py` | ⏸️ Re-evaluate dgn file production | Profile sintesis menunjukkan parser ~10% dari active CPU tapi file uji terlalu kecil (26 KB). Worth re-test dengan `.dat` produksi (MB-sized) sebelum decide |
+| **3** | ONNX convert + `onnxruntime` inference | ❌ Skip | Profile membuktikan inference < 0.1% active CPU. Effort tinggi untuk savings ~0.7 ms; risiko numerical drift di kalibrasi Platt/isotonic. Drop kecuali ada bukti baru |
+| **4** | Vectorize `_digital_sequence_features` loop | ❌ Skip | Tidak muncul di flamegraph; logika bounce rejection + 1.5-breaker sudah teruji. Effort:risk buruk |
+| **β** | Binary endpoint (Float32 buffer) untuk `/api/analysis/{id}` | ❌ Skip | JSON serialization tidak terdeteksi sebagai hot path di profile. GZip + Float64 sudah cukup; binary path tidak akan terasa di p50 |
+| **γ** | Per-channel lazy load (`/channels/{id}/samples`) | ❌ Skip | Bandwidth bukan masalah dengan GZip aktif; tidak ada data yang menunjukkan user load record besar selektif |
 
-**Yang menunggu data profile** sebelum diputuskan: step #3, #6, β, γ. Step #4 sengaja
-di-hold (risiko regresi tinggi terhadap logika yang sudah teruji). Step #1 + #2 + #5 +
-α dieksekusi karena risk rendah dan ROI jelas tanpa profile.
+**Hasil profile (2026-05-21):** 30 s sample @ 6× upload synthetic INRUSH (26 KB). Total 5996 samples,
+~98% idle (uvicorn waiting). Active CPU breakdown (top non-framework hits):
+
+| Function | % Active CPU |
+|---|---|
+| `core/comtrade_parser.py::parse_comtrade` (sample loop + CFG load) | ~10% |
+| `shutil.copy2` (multipart temp upload) | ~5% |
+| `comtrade.py::load` (third-party lib) | ~4% |
+| `_compute_locus`, `_compute_electrical_params`, `_digital_sequence_features`, LightGBM `predict_proba`, JSON serialization | tidak muncul di top — bukan bottleneck |
+
+**Keputusan pasca-profile:** sistem sudah well-tuned. Step #1, #2, #5, α yang sudah dieksekusi
+sudah meng-cover hot path utama. Optimasi tambahan (#3, #4, β, γ) marginal dan di-skip kecuali
+ada bukti baru dari production traffic. Step #6 menunggu re-test dengan `.dat` produksi (>1 MB)
+karena synthetic file terlalu kecil untuk men-eksekusi parser scaling. Fokus engineering bergeser
+ke feature & correctness.
 
 ---
 
