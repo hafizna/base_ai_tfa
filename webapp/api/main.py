@@ -110,6 +110,10 @@ if frontend_dist.exists():
         # Serve specific files (favicon, manifest, etc.) if they exist
         candidate = frontend_dist / full_path
         if candidate.is_file():
-            return FileResponse(str(candidate))
+            headers = {"Cache-Control": "no-store"} if candidate.name == "index.html" else None
+            return FileResponse(str(candidate), headers=headers)
         # All other paths → index.html (React Router handles routing)
-        return FileResponse(str(frontend_dist / "index.html"))
+        return FileResponse(
+            str(frontend_dist / "index.html"),
+            headers={"Cache-Control": "no-store"},
+        )
