@@ -1334,7 +1334,11 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
           {analogViewMode === "grouped" && (
             <>
           {voltageTraces.length > 0 && (
-            <div className={styles.waveSubplot}>
+            <div
+              className={styles.waveSubplot}
+              data-pdf-chart-id="waveform_voltage"
+              data-pdf-chart-title="Waveform Tegangan"
+            >
               <div className={styles.waveSubplotTitle}>Tegangan</div>
               <Plot
                 data={voltageTraces}
@@ -1372,7 +1376,11 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
             })
           ) : (
             currentTraces.length > 0 && (
-              <div className={styles.waveSubplot}>
+              <div
+                className={styles.waveSubplot}
+                data-pdf-chart-id="waveform_current"
+                data-pdf-chart-title="Waveform Arus"
+              >
                 <div className={styles.waveSubplotTitle}>Arus</div>
                 <Plot
                   data={currentTraces}
@@ -1402,7 +1410,11 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
           )}
 
           {showDigital && selectedStatus.length > 0 && (
-            <div className={styles.waveSubplot}>
+            <div
+              className={styles.waveSubplot}
+              data-pdf-chart-id="digital_status"
+              data-pdf-chart-title="Sinyal Digital (Snapshot)"
+            >
               <div className={styles.waveSubplotTitle} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span>Sinyal Digital</span>
                 <span style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 400 }}>(bar = aktif)</span>

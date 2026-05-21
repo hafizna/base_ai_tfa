@@ -2043,7 +2043,11 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       )}
 
       <div className={styles.locusPlotStack}>
-        <div className={styles.locusPlotCard}>
+        <div
+          className={styles.locusPlotCard}
+          data-pdf-chart-id="impedance_locus_ground"
+          data-pdf-chart-title="Impedance Locus — Phase-to-Ground (ZA, ZB, ZC)"
+        >
           <div className={styles.locusPlotTitle}>Phase-to-Ground | ZA, ZB, ZC</div>
           <Plot
             data={groundTraces}
@@ -2054,7 +2058,11 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           />
         </div>
 
-        <div className={styles.locusPlotCard}>
+        <div
+          className={styles.locusPlotCard}
+          data-pdf-chart-id="impedance_locus_phase"
+          data-pdf-chart-title="Impedance Locus — Phase-to-Phase (ZAB, ZBC, ZCA)"
+        >
           <div className={styles.locusPlotTitle}>Phase-to-Phase | ZAB, ZBC, ZCA</div>
           <Plot
             data={phaseTraces}

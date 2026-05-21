@@ -61,6 +61,21 @@ BRAND_BORDER = colors.HexColor("#cbd5e1")
 BRAND_BG_SOFT = colors.HexColor("#f1f5f9")
 BRAND_BG_HIGHLIGHT = colors.HexColor("#eff6ff")
 
+SEVERITY_HEX = {
+    "verdict":  "#1d4ed8",
+    "critical": "#b91c1c",
+    "warning":  "#b45309",
+    "notable":  "#0f766e",
+    "info":     "#475569",
+}
+SEVERITY_BG = {
+    "verdict":  colors.HexColor("#eff6ff"),
+    "critical": colors.HexColor("#fef2f2"),
+    "warning":  colors.HexColor("#fffbeb"),
+    "notable":  colors.HexColor("#f0fdfa"),
+    "info":     colors.HexColor("#f8fafc"),
+}
+
 PAGE_W, PAGE_H = A4
 MARGIN = 15 * mm
 
@@ -322,19 +337,69 @@ def _build_conclusion(
         None: "A/R N/A",
     }.get(ar_status, "—")
 
-    # Build narrative paragraph from AI analysis if available
+    # Build narrative paragraph from AI analysis if available.
+    # Shape comes from AIFaultResult (schemas.py): cause_ranking, fault_type,
+    # overall_confidence, evidence. Legacy keys kept as fallback.
     narrative_lines = []
     if ai_analysis:
-        cause = ai_analysis.get("predicted_cause") or ai_analysis.get("cause") or ai_analysis.get("fault_cause")
-        confidence = ai_analysis.get("confidence")
-        if cause:
-            line = f"<b>Penyebab (AI):</b> {cause}"
+        cause_label = None
+        cause_code = None
+        confidence = None
+
+        cause_ranking = ai_analysis.get("cause_ranking") or []
+        if isinstance(cause_ranking, list) and cause_ranking:
+            top = cause_ranking[0] or {}
+            cause_label = top.get("label") or top.get("cause")
+            cause_code = top.get("cause")
+            confidence = top.get("confidence")
+
+        # Legacy fallbacks
+        if cause_label is None:
+            cause_label = (
+                ai_analysis.get("predicted_cause")
+                or ai_analysis.get("cause")
+                or ai_analysis.get("fault_cause")
+            )
+        if confidence is None:
+            confidence = ai_analysis.get("overall_confidence") or ai_analysis.get("confidence")
+
+        if cause_label:
+            line = f"<b>Penyebab (AI):</b> {cause_label}"
+            if cause_code and cause_code != cause_label:
+                line += f" <font color='#64748b'>[{cause_code}]</font>"
             if isinstance(confidence, (int, float)):
-                line += f" <font color='#64748b'>(confidence {confidence * 100:.0f}%)</font>" if confidence <= 1 else f" <font color='#64748b'>(confidence {confidence:.0f}%)</font>"
+                pct = confidence * 100 if confidence <= 1 else confidence
+                line += f" <font color='#64748b'>(confidence {pct:.0f}%)</font>"
             narrative_lines.append(line)
-        reasoning = ai_analysis.get("reasoning") or ai_analysis.get("explanation") or ai_analysis.get("narrative")
-        if isinstance(reasoning, str) and reasoning.strip():
-            narrative_lines.append(reasoning.strip())
+
+        fault_type = ai_analysis.get("fault_type")
+        if isinstance(fault_type, str) and fault_type.strip():
+            ft_label = {
+                "transient": "Transient (sementara)",
+                "permanent": "Permanent (menetap)",
+            }.get(fault_type.lower(), fault_type)
+            narrative_lines.append(f"<b>Jenis kejadian:</b> {ft_label}")
+
+        # Verdict-level evidence promoted to KONKLUSI summary
+        evidence = ai_analysis.get("evidence") or []
+        verdict_text = None
+        if isinstance(evidence, list):
+            for item in evidence:
+                if isinstance(item, dict) and item.get("severity") == "verdict":
+                    txt = (item.get("text") or "").strip()
+                    if txt:
+                        verdict_text = txt
+                        break
+        if verdict_text:
+            narrative_lines.append(verdict_text)
+        else:
+            reasoning = (
+                ai_analysis.get("reasoning")
+                or ai_analysis.get("explanation")
+                or ai_analysis.get("narrative")
+            )
+            if isinstance(reasoning, str) and reasoning.strip():
+                narrative_lines.append(reasoning.strip())
 
     z_inception = elec.get("z_at_inception_ohm")
     z_angle = elec.get("z_angle_deg")
@@ -511,6 +576,145 @@ def _build_electrical_section(styles: dict, elec: dict) -> list:
     return _section_header(styles, "SECTION 2", "Parameter Elektrikal") + [pair_table]
 
 
+def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> list:
+    """Render the AI fault-cause analysis as its own PDF section.
+
+    Includes top-N cause ranking (with confidence bars) and the structured
+    evidence list (color-coded by severity). Returns [] when no AI payload.
+    """
+    if not ai_analysis:
+        return []
+
+    cause_ranking = ai_analysis.get("cause_ranking") or []
+    evidence = ai_analysis.get("evidence") or []
+    fault_type = ai_analysis.get("fault_type")
+    overall_conf = ai_analysis.get("overall_confidence")
+
+    if not cause_ranking and not evidence and not fault_type:
+        return []
+
+    flowables: list = []
+    flowables.extend(_section_header(styles, "SECTION 3", "Analisis AI — Fault Cause"))
+
+    # Header summary line (fault type + overall confidence)
+    summary_bits = []
+    if isinstance(fault_type, str) and fault_type.strip():
+        ft_label = {
+            "transient": "Transient (sementara)",
+            "permanent": "Permanent (menetap)",
+        }.get(fault_type.lower(), fault_type)
+        summary_bits.append(f"<b>Jenis kejadian:</b> {ft_label}")
+    if isinstance(overall_conf, (int, float)):
+        pct = overall_conf * 100 if overall_conf <= 1 else overall_conf
+        summary_bits.append(f"<b>Confidence overall:</b> {pct:.0f}%")
+    if summary_bits:
+        flowables.append(Paragraph(" &nbsp;·&nbsp; ".join(summary_bits), styles["body"]))
+        flowables.append(Spacer(1, 4))
+
+    # Cause ranking table
+    if isinstance(cause_ranking, list) and cause_ranking:
+        top_n = cause_ranking[:5]
+        header = [
+            Paragraph("<b>#</b>", styles["body_muted"]),
+            Paragraph("<b>Cause</b>", styles["body_muted"]),
+            Paragraph("<b>Label</b>", styles["body_muted"]),
+            Paragraph("<b>Confidence</b>", styles["body_muted"]),
+        ]
+        data = [header]
+        for idx, item in enumerate(top_n, start=1):
+            if not isinstance(item, dict):
+                continue
+            cause = str(item.get("cause") or "—")
+            label = str(item.get("label") or cause)
+            conf = item.get("confidence")
+            if isinstance(conf, (int, float)):
+                pct = conf * 100 if conf <= 1 else conf
+                conf_str = f"{pct:.1f}%"
+            else:
+                conf_str = "—"
+            data.append([
+                Paragraph(str(idx), styles["body"]),
+                Paragraph(cause, styles["body"]),
+                Paragraph(label, styles["body"]),
+                Paragraph(f"<b>{conf_str}</b>", styles["body"]),
+            ])
+
+        rank_table = Table(
+            data,
+            colWidths=[10 * mm, 35 * mm, (PAGE_W - 2 * MARGIN) - 10 * mm - 35 * mm - 28 * mm, 28 * mm],
+            hAlign="LEFT",
+        )
+        rank_table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BG_SOFT),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.25, BRAND_BORDER),
+            ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
+            # Highlight the top row
+            ("BACKGROUND", (0, 1), (-1, 1), BRAND_BG_HIGHLIGHT),
+            ("FONT", (0, 1), (-1, 1), "Helvetica-Bold", 9),
+        ]))
+        flowables.append(rank_table)
+        flowables.append(Spacer(1, 6))
+
+    # Evidence list — structured items with severity coloring
+    if isinstance(evidence, list) and evidence:
+        flowables.append(Paragraph("<b>Bukti pendukung (evidence)</b>", styles["body"]))
+        flowables.append(Spacer(1, 2))
+
+        rows = []
+        for item in evidence:
+            if isinstance(item, dict):
+                text = (item.get("text") or "").strip()
+                severity = (item.get("severity") or "info").lower()
+                kind = item.get("kind")
+            elif isinstance(item, str):
+                text = item.strip()
+                severity = "info"
+                kind = None
+            else:
+                continue
+            if not text:
+                continue
+
+            sev_hex = SEVERITY_HEX.get(severity, SEVERITY_HEX["info"])
+            sev_bg = SEVERITY_BG.get(severity, SEVERITY_BG["info"])
+            sev_chip = Paragraph(
+                f"<font color='{sev_hex}'><b>{severity.upper()}</b></font>",
+                styles["body_muted"],
+            )
+            body_text = text
+            if kind:
+                body_text += f" <font color='#64748b'>· {kind}</font>"
+            rows.append((sev_chip, Paragraph(body_text, styles["body"]), sev_bg))
+
+        if rows:
+            ev_data = [[chip, body] for chip, body, _ in rows]
+            ev_table = Table(
+                ev_data,
+                colWidths=[20 * mm, (PAGE_W - 2 * MARGIN) - 20 * mm],
+                hAlign="LEFT",
+            )
+            style_cmds = [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
+                ("LINEBELOW", (0, 0), (-1, -2), 0.25, BRAND_BORDER),
+            ]
+            for i, (_, _, bg) in enumerate(rows):
+                style_cmds.append(("BACKGROUND", (0, i), (-1, i), bg))
+            ev_table.setStyle(TableStyle(style_cmds))
+            flowables.append(ev_table)
+
+    return flowables
+
+
 def _build_chart_block(styles: dict, kicker: str, chart: ChartImage, max_height_mm: float = 90) -> list:
     """Decode base64 PNG and add as a sized Image flowable."""
     try:
@@ -596,12 +800,21 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         story.extend(_build_electrical_section(styles, elec))
         story.append(Spacer(1, 8))
 
+    ai_section = _build_ai_analysis_section(styles, request.ai_analysis)
+    if ai_section:
+        story.extend(ai_section)
+        story.append(Spacer(1, 8))
+
     chart_titles = {
-        "impedance_locus": ("VISUALISASI", "Impedance Locus (R-X Trajectory)"),
-        "waveform_strip": ("VISUALISASI", "Strip Waveform & Locus Events"),
-        "digital_status": ("VISUALISASI", "Digital Status Snapshot"),
-        "diff_restraint": ("VISUALISASI", "Diff / Restraint Plot"),
-        "overcurrent_overlay": ("VISUALISASI", "Overcurrent Overlay"),
+        "impedance_locus":        ("VISUALISASI", "Impedance Locus (R-X Trajectory)"),
+        "impedance_locus_ground": ("VISUALISASI", "Impedance Locus — Phase-to-Ground"),
+        "impedance_locus_phase":  ("VISUALISASI", "Impedance Locus — Phase-to-Phase"),
+        "waveform_strip":         ("VISUALISASI", "Strip Waveform & Locus Events"),
+        "waveform_voltage":       ("VISUALISASI", "Waveform Tegangan"),
+        "waveform_current":       ("VISUALISASI", "Waveform Arus"),
+        "digital_status":         ("VISUALISASI", "Digital Status Snapshot"),
+        "diff_restraint":         ("VISUALISASI", "Diff / Restraint Plot"),
+        "overcurrent_overlay":    ("VISUALISASI", "Overcurrent Overlay"),
     }
 
     for chart in request.charts:

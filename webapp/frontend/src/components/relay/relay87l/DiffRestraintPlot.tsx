@@ -221,12 +221,14 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         </div>
       )}
 
-      <Plot
-        data={[operateRegion, charTrace, fastLine, ...phaseTraces] as Plotly.Data[]}
-        layout={layout}
-        config={{ displayModeBar: false, responsive: true }}
-        style={{ width: "100%" }}
-      />
+      <div data-pdf-chart-id="diff_restraint" data-pdf-chart-title="Diff / Restraint Plot">
+        <Plot
+          data={[operateRegion, charTrace, fastLine, ...phaseTraces] as Plotly.Data[]}
+          layout={layout}
+          config={{ displayModeBar: false, responsive: true }}
+          style={{ width: "100%" }}
+        />
+      </div>
       <div className={styles.row} style={{ marginTop: 12 }}>
         <span className={styles.badge}>{assessmentText}</span>
       </div>

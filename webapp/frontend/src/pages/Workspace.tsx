@@ -139,30 +139,43 @@ export default function Workspace() {
       document.querySelectorAll<HTMLElement>(".js-plotly-plot"),
     );
     const charts: ReportChart[] = [];
+    const seenIds = new Set<string>();
+
     for (const node of nodes) {
       const gd = node as HTMLElement & {
         _fullLayout?: { title?: { text?: string } | string };
         layout?: { title?: { text?: string } | string };
       };
-      const rawTitle =
-        (typeof gd._fullLayout?.title === "object" && gd._fullLayout?.title?.text) ||
-        (typeof gd._fullLayout?.title === "string" && gd._fullLayout?.title) ||
-        (typeof gd.layout?.title === "object" && gd.layout?.title?.text) ||
-        (typeof gd.layout?.title === "string" && gd.layout?.title) ||
-        "";
-      const title = String(rawTitle || "").trim();
-      const lowerTitle = title.toLowerCase();
 
-      let id: string | null = null;
-      if (/impedance|locus|r-?x/.test(lowerTitle)) {
-        id = "impedance_locus";
-      } else if (/diff|restraint/.test(lowerTitle)) {
-        id = "diff_restraint";
-      } else if (/overcurrent|ocr|inverse|tcc/.test(lowerTitle)) {
-        id = "overcurrent_overlay";
+      // Read explicit id/title from the nearest ancestor that carries
+      // data-pdf-chart-id (set by panel components). This is the source of
+      // truth — title-regex below is only a legacy fallback.
+      const tagged = (node.closest("[data-pdf-chart-id]") as HTMLElement | null);
+      let id: string | null = tagged?.dataset.pdfChartId ?? null;
+      let title: string = tagged?.dataset.pdfChartTitle ?? "";
+
+      if (!id) {
+        const rawTitle =
+          (typeof gd._fullLayout?.title === "object" && gd._fullLayout?.title?.text) ||
+          (typeof gd._fullLayout?.title === "string" && gd._fullLayout?.title) ||
+          (typeof gd.layout?.title === "object" && gd.layout?.title?.text) ||
+          (typeof gd.layout?.title === "string" && gd.layout?.title) ||
+          "";
+        title = String(rawTitle || "").trim();
+        const lowerTitle = title.toLowerCase();
+        if (/impedance|locus|r-?x|phase-to-/.test(lowerTitle)) {
+          id = "impedance_locus";
+        } else if (/diff|restraint/.test(lowerTitle)) {
+          id = "diff_restraint";
+        } else if (/overcurrent|ocr|inverse|tcc/.test(lowerTitle)) {
+          id = "overcurrent_overlay";
+        }
       }
 
       if (!id) continue;
+      // Skip duplicates (e.g. when the user is in a multi-tab UI that
+      // accidentally double-mounts the same chart).
+      if (seenIds.has(id)) continue;
 
       try {
         const dataUrl = await toImage(gd, {
@@ -173,10 +186,30 @@ export default function Workspace() {
         });
         const image_b64 = String(dataUrl).replace(/^data:image\/png;base64,/, "");
         charts.push({ id, title, image_b64 });
+        seenIds.add(id);
       } catch (err) {
-        console.warn(`Failed to export Plotly chart "${title}":`, err);
+        console.warn(`Failed to export Plotly chart "${title || id}":`, err);
       }
     }
+
+    // Preferred order in the report: locus first, then waveforms, then digital,
+    // then differential/overcurrent overlays. Anything unknown trails.
+    const order = [
+      "impedance_locus",
+      "impedance_locus_ground",
+      "impedance_locus_phase",
+      "waveform_voltage",
+      "waveform_current",
+      "waveform_strip",
+      "digital_status",
+      "diff_restraint",
+      "overcurrent_overlay",
+    ];
+    const rank = (id: string) => {
+      const i = order.indexOf(id);
+      return i === -1 ? order.length : i;
+    };
+    charts.sort((a, b) => rank(a.id) - rank(b.id));
     return charts;
   }
 

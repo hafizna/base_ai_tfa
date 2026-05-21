@@ -126,12 +126,14 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR" }: Pr
         </button>
       </div>
 
-      <Plot
-        data={[curveTrace, measuredTrace] as Plotly.Data[]}
-        layout={layout}
-        config={{ displayModeBar: false, responsive: true }}
-        style={{ width: "100%" }}
-      />
+      <div data-pdf-chart-id="overcurrent_overlay" data-pdf-chart-title="Overcurrent Overlay (TCC)">
+        <Plot
+          data={[curveTrace, measuredTrace] as Plotly.Data[]}
+          layout={layout}
+          config={{ displayModeBar: false, responsive: true }}
+          style={{ width: "100%" }}
+        />
+      </div>
 
       {result && result.intersection_ratio != null && (
         <div className={styles.row} style={{ marginTop: 12 }}>
