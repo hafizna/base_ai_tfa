@@ -934,10 +934,10 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     type: "line",
     x0: inceptionDisplayMs, x1: inceptionDisplayMs,
     yref: "paper", y0: 0, y1: 1,
-    line: { color: "#f97316", width: 1.5, dash: "dot" },
+    line: { color: "#dc2626", width: 1.6, dash: "dot" },
   } as Plotly.Shape : null;
 
-  // CFG trigger marker — amber dashed vertical line
+  // Distinct timeline markers shared by every analog/digital plot.
   const recordStartShape: Plotly.Shape = {
     type: "line",
     x0: displayRecordStartMs,
@@ -945,14 +945,14 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     yref: "paper",
     y0: 0,
     y1: 1,
-    line: { color: "#f59e0b", width: 1.4, dash: "dash" },
+    line: { color: "#64748b", width: 1.4, dash: "dash" },
   } as Plotly.Shape;
 
   const triggerShape: Plotly.Shape | null = displayTriggerMs !== null ? {
     type: "line",
     x0: displayTriggerMs, x1: displayTriggerMs,
     yref: "paper", y0: 0, y1: 1,
-    line: { color: "#b45309", width: 1.5, dash: "longdash" },
+    line: { color: "#7c3aed", width: 1.5, dash: "longdash" },
   } as Plotly.Shape : null;
 
   const digitalHoverShape: Plotly.Shape | null = digitalHoverMs !== null ? {
@@ -988,7 +988,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       showgrid: true,
       gridcolor: "#e2e8f0",
       zeroline: normalizeToInception,
-      zerolinecolor: "#f97316",
+      zerolinecolor: "#dc2626",
       zerolinewidth: 1.5,
     },
     yaxis: {
@@ -1037,7 +1037,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       autorange: activeRange ? undefined : true,
       range: activeRange ?? undefined,
       zeroline: normalizeToInception,
-      zerolinecolor: "#f97316",
+      zerolinecolor: "#dc2626",
       zerolinewidth: 1.5,
     },
     yaxis: {
@@ -1076,7 +1076,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       showgrid: true,
       gridcolor: "#e2e8f0",
       zeroline: normalizeToInception,
-      zerolinecolor: "#f97316",
+      zerolinecolor: "#dc2626",
       zerolinewidth: 1.5,
     },
     yaxis: {
@@ -1150,7 +1150,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
         <div>
           <div className={styles.waveTitle}>COMTRADE Explorer</div>
           <div className={styles.waveSub}>
-            Semua plot tersinkron. Garis amber (---) = awal rekaman. Garis amber gelap (-- --) = trigger CFG. Garis oranye (dot) = inception terdeteksi.
+            Semua plot tersinkron. Garis abu-abu (---) = awal rekaman. Garis ungu (-- --) = trigger CFG. Garis merah (dot) = inception terdeteksi.
           </div>
         </div>
         <div className={styles.waveBadges}>
@@ -1198,7 +1198,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
               type="button"
               className={styles.waveGhostBtn}
               onClick={() => { setNormalizeToInception((v) => !v); setSharedRange(null); }}
-              style={normalizeToInception ? { background: "#fff7ed", borderColor: "#f97316", color: "#c2410c" } : undefined}
+              style={normalizeToInception ? { background: "#fef2f2", borderColor: "#dc2626", color: "#b91c1c" } : undefined}
             >
               {normalizeToInception ? "t=0 @ inception ✓" : "Normalkan t=0"}
             </button>
@@ -1305,7 +1305,12 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
                 ? sharedCurrentYRange
                 : channelRange(samplesForDisplay(ch));
             return (
-              <div key={ch.id} className={styles.waveSubplot}>
+              <div
+                key={ch.id}
+                className={styles.waveSubplot}
+                data-pdf-chart-id={`waveform_analog_${ch.id}`}
+                data-pdf-chart-title={`Waveform Analog - ${label}`}
+              >
                 <div className={styles.waveSubplotTitle} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                     <span className={styles.waveDot} style={{ background: inferChannelColor(label, ch.measurement) }} />

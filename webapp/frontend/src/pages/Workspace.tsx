@@ -220,6 +220,7 @@ export default function Workspace() {
       "overcurrent_overlay",
     ];
     const rank = (id: string) => {
+      if (id.startsWith("waveform_analog_")) return order.indexOf("waveform_strip");
       const i = order.indexOf(id);
       return i === -1 ? order.length : i;
     };

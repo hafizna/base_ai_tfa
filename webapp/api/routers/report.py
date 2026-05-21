@@ -520,31 +520,6 @@ def _kv_table(rows: list[tuple[str, str]], col_widths: tuple[float, float] = (45
     return table
 
 
-def _transition_count(samples: list) -> int:
-    if not samples:
-        return 0
-    return sum(1 for idx in range(1, len(samples)) if samples[idx] != samples[idx - 1])
-
-
-def _peak_abs(samples: list) -> float:
-    if not samples:
-        return 0.0
-    try:
-        return float(max(abs(float(v)) for v in samples))
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def _rms(samples: list) -> float:
-    if not samples:
-        return 0.0
-    try:
-        vals = [float(v) for v in samples]
-    except (TypeError, ValueError):
-        return 0.0
-    return float((sum(v * v for v in vals) / len(vals)) ** 0.5)
-
-
 def _default_diff_params() -> dict:
     return {
         "device_type": "SP5",
@@ -643,98 +618,6 @@ def _build_metadata_section(styles: dict, payload: dict) -> list:
         ("Kanal digital", f"{len(payload.get('status_channels', []))} kanal"),
     ]
     return _section_header(styles, "SECTION 1", "Metadata Rekaman") + [_kv_table(rows)]
-
-
-def _build_comtrade_channel_section(styles: dict, payload: dict) -> list:
-    flowables: list = []
-    flowables.extend(_section_header(styles, "COMTRADE", "Ringkasan Kanal Rekaman"))
-
-    analog_rows = []
-    for ch in payload.get("analog_channels", [])[:18]:
-        ratio = "N/A"
-        primary = ch.get("ct_primary")
-        secondary = ch.get("ct_secondary")
-        if primary not in (None, 0) and secondary not in (None, 0):
-            try:
-                ratio = f"{float(primary):g}/{float(secondary):g}"
-            except (TypeError, ValueError):
-                ratio = "N/A"
-        analog_rows.append([
-            Paragraph(_safe_text(ch.get("name") or ch.get("id") or "N/A"), styles["body"]),
-            Paragraph(_safe_text(ch.get("measurement") or "N/A"), styles["body_muted"]),
-            Paragraph(_safe_text(ch.get("phase") or "-"), styles["body"]),
-            Paragraph(_safe_text(ch.get("unit") or "-"), styles["body"]),
-            Paragraph(_safe_text(ratio), styles["body"]),
-            Paragraph(_format_number(_peak_abs(ch.get("samples") or []), "", 2), styles["body"]),
-            Paragraph(_format_number(_rms(ch.get("samples") or []), "", 2), styles["body"]),
-        ])
-
-    if analog_rows:
-        data = [[
-            Paragraph("<b>Kanal Analog</b>", styles["body_muted"]),
-            Paragraph("<b>Tipe</b>", styles["body_muted"]),
-            Paragraph("<b>Fasa</b>", styles["body_muted"]),
-            Paragraph("<b>Unit</b>", styles["body_muted"]),
-            Paragraph("<b>Rasio</b>", styles["body_muted"]),
-            Paragraph("<b>Peak</b>", styles["body_muted"]),
-            Paragraph("<b>RMS</b>", styles["body_muted"]),
-        ]] + analog_rows
-        table = Table(data, colWidths=[42 * mm, 22 * mm, 13 * mm, 13 * mm, 24 * mm, 28 * mm, 28 * mm], repeatRows=1)
-        table.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BG_SOFT),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_BG_SOFT]),
-            ("LINEBELOW", (0, 0), (-1, -2), 0.2, BRAND_BORDER),
-            ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ]))
-        flowables.append(table)
-        flowables.append(Spacer(1, 6))
-
-    status_rows = []
-    for ch in payload.get("status_channels", [])[:18]:
-        samples = ch.get("samples") or []
-        status_rows.append([
-            Paragraph(_safe_text(ch.get("name") or ch.get("id") or "N/A"), styles["body"]),
-            Paragraph(str(len(samples)), styles["body"]),
-            Paragraph(str(int(sum(samples))) if samples else "0", styles["body"]),
-            Paragraph(str(_transition_count(samples)), styles["body"]),
-        ])
-
-    if status_rows:
-        data = [[
-            Paragraph("<b>Kanal Digital</b>", styles["body_muted"]),
-            Paragraph("<b>Sample</b>", styles["body_muted"]),
-            Paragraph("<b>ON Count</b>", styles["body_muted"]),
-            Paragraph("<b>Transisi</b>", styles["body_muted"]),
-        ]] + status_rows
-        table = Table(data, colWidths=[92 * mm, 24 * mm, 27 * mm, 27 * mm], repeatRows=1)
-        table.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BG_SOFT),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_BG_SOFT]),
-            ("LINEBELOW", (0, 0), (-1, -2), 0.2, BRAND_BORDER),
-            ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ]))
-        flowables.append(table)
-
-    remaining_analog = max(0, len(payload.get("analog_channels", [])) - 18)
-    remaining_status = max(0, len(payload.get("status_channels", [])) - 18)
-    if remaining_analog or remaining_status:
-        flowables.append(Spacer(1, 4))
-        flowables.append(Paragraph(
-            f"Catatan: ringkasan dibatasi ke 18 kanal pertama per tipe. Sisa kanal: {remaining_analog} analog, {remaining_status} digital.",
-            styles["body_muted"],
-        ))
-
-    return flowables
 
 
 def _build_electrical_section(styles: dict, elec: dict) -> list:
@@ -1196,9 +1079,6 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     story.append(Spacer(1, 10))
 
     story.extend(_build_metadata_section(styles, payload))
-    story.append(Spacer(1, 8))
-
-    story.extend(_build_comtrade_channel_section(styles, payload))
     story.append(Spacer(1, 8))
 
     if relay_type == "21":
