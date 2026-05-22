@@ -338,7 +338,7 @@ class _HeaderFooter:
             footer_y,
             f"Halaman {canvas.getPageNumber()}",
         )
-        canvas.drawCentredString(PAGE_W / 2, footer_y, "PLN — UIT JBT")
+        canvas.drawCentredString(PAGE_W / 2, footer_y, "TFA Analisis")
 
         canvas.restoreState()
 
@@ -1461,7 +1461,7 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         topMargin=MARGIN,
         bottomMargin=MARGIN,
         title=f"Laporan Analisis Gangguan — {station}",
-        author="PLN UIT JBT",
+        author="TFA Analisis",
     )
     doc.addPageTemplates([PageTemplate(id="main", frames=[frame], onPage=hf.on_page)])
 
@@ -1538,7 +1538,12 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     for chart in locus_charts:
         kicker, default_title = chart_titles.get(chart.id, ("VISUALISASI", chart.title))
         title = chart.title or default_title
-        story.extend(_build_chart_block(styles, kicker, ChartImage(id=chart.id, title=title, image_b64=chart.image_b64)))
+        story.extend(_build_chart_block(
+            styles,
+            kicker,
+            ChartImage(id=chart.id, title=title, image_b64=chart.image_b64),
+            max_height_mm=150,
+        ))
         story.append(Spacer(1, 8))
 
     doc.build(story)
