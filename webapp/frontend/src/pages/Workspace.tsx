@@ -187,6 +187,18 @@ export default function Workspace() {
       if (!id) continue;
       // Digital status is rendered as an SOE table in the PDF, not a chart.
       if (id === "digital_status") continue;
+      // Analog waveforms are rendered as a single report-native "Analog Time
+      // Diagram" (composite stacked strips) by the backend — skip the
+      // per-channel and aggregate waveform screenshots to keep the PDF concise
+      // and avoid shipping dozens of large base64 PNGs.
+      if (
+        id === "waveform_voltage" ||
+        id === "waveform_current" ||
+        id === "waveform_strip" ||
+        id.startsWith("waveform_analog_")
+      ) {
+        continue;
+      }
       // Skip duplicates (e.g. when the user is in a multi-tab UI that
       // accidentally double-mounts the same chart).
       if (seenIds.has(id)) continue;
@@ -206,21 +218,18 @@ export default function Workspace() {
       }
     }
 
-    // Preferred order in the report: locus first, then waveforms, then
-    // differential/overcurrent overlays. Anything unknown trails. Digital
-    // status is rendered as a SOE table, not a chart.
+    // Preferred capture order in the report: analysis overlays first, locus
+    // last. Analog waveform strips are rendered natively by the backend, and
+    // digital status is represented by SOE.
     const order = [
+      "diff_restraint",
+      "overcurrent_overlay",
       "impedance_locus",
       "impedance_locus_ground",
       "impedance_locus_phase",
-      "waveform_voltage",
-      "waveform_current",
-      "waveform_strip",
-      "diff_restraint",
-      "overcurrent_overlay",
     ];
     const rank = (id: string) => {
-      if (id.startsWith("waveform_analog_")) return order.indexOf("waveform_strip");
+      if (id.startsWith("waveform_analog_")) return order.length;
       const i = order.indexOf(id);
       return i === -1 ? order.length : i;
     };

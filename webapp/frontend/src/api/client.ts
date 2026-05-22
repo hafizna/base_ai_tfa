@@ -327,6 +327,9 @@ export interface ReportRequest {
   charts: ReportChart[];
   soe_events?: ReportSoeEvent[];
   relay_settings?: Record<string, unknown> | null;
+  // Opt-in: render the ABB-style binary timing diagram. Off by default since
+  // digital channels are already summarized in the SOE table.
+  include_binary_diagram?: boolean;
 }
 
 export async function generateReport(analysisId: string, body: ReportRequest): Promise<Blob> {

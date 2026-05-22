@@ -1,6 +1,6 @@
 """PDF report generator — structured A4 PDF for fault analysis (Opsi A2).
 
-Backend assembles metadata, fault classification, electrical params, and AI
+Backend assembles fault classification, electrical params, SOE, and AI
 fault analysis into a ReportLab PDF. Charts are sent by the frontend as base64
 PNGs (already-rendered Plotly figures) and embedded directly — avoids
 duplicating chart logic in matplotlib.
@@ -8,12 +8,16 @@ duplicating chart logic in matplotlib.
 Layout (relay 21 — Distance):
     Header bar (PLN logo + title + metadata)
     KONKLUSI callout (fault summary)
-    Section 1 — Metadata Recording (table)
-    Section 2 — Parameter Elektrikal (table)
-    Section 3 — Impedance Locus (chart)
-    Section 4 — Waveform + Locus Events (chart)
-    Section 5 — Digital Status Snapshot (chart, optional)
+    Analisis AI (cause ranking + evidence)
+    Parameter Elektrikal (table)
+    Sequence of Events (table)
+    Analog Time Diagram (report-native composite, ABB-style stacked strips)
+    Optional Binary Time Diagram (ABB-style compact timing)
+    Visualisasi locus last (charts from frontend)
     Footer (analysis ID + page N of M)
+
+Digital channels are summarized in the SOE table; the binary timing diagram
+is opt-in (ReportRequest.include_binary_diagram).
 """
 
 from __future__ import annotations
@@ -107,6 +111,9 @@ class ReportRequest(BaseModel):
     charts: list[ChartImage] = []
     soe_events: list[SoeEvent] = []
     relay_settings: Optional[dict] = None
+    # Digital channels are summarized in the SOE table; the binary timing
+    # diagram is opt-in and hidden by default.
+    include_binary_diagram: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -685,6 +692,205 @@ def _digital_segments(time_ms: np.ndarray, samples: list, start_ms: float, end_m
         if right > left:
             clipped.append((left, right - left))
     return clipped
+
+
+# ---------------------------------------------------------------------------
+# Analog Time Diagram — ABB-style report-native composite (replaces the per
+# channel webapp waveform screenshots). All important analog channels are
+# stacked into one tightly packed image with local per-row scaling, units on
+# the left, channel labels on the right, a thin grid, and a red trigger line;
+# the time window is cropped to ~-20..+200 ms around the event.
+# ---------------------------------------------------------------------------
+
+# Preferred channel order, ABB-style: phase currents, neutral current, then
+# phase voltages and neutral voltage. Relay-specific extras are appended.
+ANALOG_DIAGRAM_ORDER = ("IA", "IB", "IC", "IN", "VA", "VB", "VC", "VN")
+MAX_DIAGRAM_CHANNELS = 14
+
+
+def _select_analog_diagram_channels(payload: dict, relay_type: str) -> list[dict]:
+    """Pick the analog channels worth stacking into the report diagram.
+
+    Prefers canonical phase/neutral channels; for differential relays also
+    appends Idiff/Irestraint. Falls back to raw voltage/current channels when
+    canonical-name detection was poor (common for transformer/vendor files).
+    """
+    channels = payload.get("analog_channels") or []
+    if not channels:
+        return []
+
+    by_canon: dict[str, dict] = {}
+    for ch in channels:
+        canon = str(ch.get("canonical_name") or "").upper()
+        if canon and canon not in by_canon:
+            by_canon[canon] = ch
+
+    selected: list[dict] = []
+    seen: set = set()
+
+    def _add(ch: Optional[dict]) -> None:
+        if not ch:
+            return
+        marker = (ch.get("id"), ch.get("name"))
+        if marker in seen:
+            return
+        seen.add(marker)
+        selected.append(ch)
+
+    for canon in ANALOG_DIAGRAM_ORDER:
+        _add(by_canon.get(canon))
+
+    # Differential relays: include relay-computed diff / restraint magnitudes.
+    if relay_type in ("87L", "CCP", "87T", "REF"):
+        for ch in channels:
+            canon = str(ch.get("canonical_name") or "").upper()
+            if canon.startswith("IDIFF") or canon.startswith("IREST") or "IBIAS" in canon:
+                _add(ch)
+
+    # Fallback: canonical detection missed too much — take raw channels by type.
+    if len(selected) < 3:
+        currents = [c for c in channels if c.get("measurement") == "current"]
+        voltages = [c for c in channels if c.get("measurement") == "voltage"]
+        for ch in currents[:8] + voltages[:4]:
+            _add(ch)
+
+    return selected[:MAX_DIAGRAM_CHANNELS]
+
+
+def _nice_peak(value: float) -> float:
+    """Round a magnitude up to a clean 1/2/2.5/5-style tick value."""
+    import math
+
+    v = abs(float(value))
+    if v <= 0 or not math.isfinite(v):
+        return 1.0
+    exp = math.floor(math.log10(v))
+    base = 10.0 ** exp
+    for mult in (1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10):
+        if v <= mult * base + 1e-9:
+            return mult * base
+    return 10 * base
+
+
+def _fmt_peak(value: float) -> str:
+    """Compact tick label so a per-row scale fits in a few points of width."""
+    v = float(value)
+    a = abs(v)
+    if a >= 1000:
+        scaled = v / 1000.0
+        return f"{scaled:.0f}k" if abs(scaled) >= 10 or scaled == int(scaled) else f"{scaled:.1f}k"
+    if a >= 10:
+        return f"{v:.0f}"
+    if a >= 1:
+        return f"{v:.1f}"
+    return f"{v:.2f}"
+
+
+def _render_analog_time_diagram(payload: dict, channels: list[dict], center_ms: float) -> bytes:
+    """Render the stacked ABB-style analog time diagram as a PNG."""
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    from matplotlib.figure import Figure
+
+    time_values = np.asarray(payload.get("time") or [], dtype=float) * 1000.0
+    if time_values.size < 2 or not channels:
+        return b""
+
+    rel_time = time_values - center_ms
+    start_ms = max(float(rel_time[0]), -20.0)
+    end_ms = min(float(rel_time[-1]), 200.0)
+    if end_ms <= start_ms + 5:
+        start_ms = float(rel_time[0])
+        end_ms = float(rel_time[-1])
+
+    n = len(channels)
+    row_h = 0.46
+    fig_h = max(2.2, 0.7 + row_h * n)
+    fig = Figure(figsize=(7.6, fig_h), dpi=180)
+    axes = fig.subplots(n, 1, squeeze=False)[:, 0]
+
+    trace_color = "#0f7b3f"
+    for ax, channel in zip(axes, channels):
+        samples = np.asarray(channel.get("samples") or [], dtype=float)
+        m = min(samples.size, rel_time.size)
+        x = rel_time[:m]
+        y = samples[:m]
+        window = (x >= start_ms) & (x <= end_ms)
+        xw = x[window]
+        yw = y[window]
+        ax.plot(xw, yw, color=trace_color, linewidth=0.6)
+        ax.axvline(0, color="#d40000", linewidth=0.8, zorder=3)
+
+        peak = _nice_peak(float(np.max(np.abs(yw))) if yw.size else 1.0)
+        ax.set_ylim(-peak, peak)
+        ax.set_yticks([-peak, peak])
+        ax.set_yticklabels([_fmt_peak(-peak), _fmt_peak(peak)], fontsize=5.2)
+
+        unit = str(channel.get("unit") or "")
+        ax.set_ylabel(unit, fontsize=6.5, rotation=0, ha="right", va="center", labelpad=12, color="#333333")
+
+        name = str(channel.get("name") or channel.get("canonical_name") or channel.get("id") or "")
+        ax.text(
+            1.006, 0.5, name[:34],
+            transform=ax.transAxes, va="center", ha="left",
+            fontsize=6.2, color="#111111",
+        )
+
+        ax.grid(True, axis="both", color="#9aa0a6", linestyle=":", linewidth=0.4)
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.4)
+            spine.set_color("#444444")
+        ax.set_xlim(start_ms, end_ms)
+        ax.tick_params(axis="y", length=2, pad=1)
+
+    top = axes[0]
+    top.xaxis.set_ticks_position("top")
+    top.xaxis.set_label_position("top")
+    top.set_xlabel("ms", fontsize=7, labelpad=3)
+    top.tick_params(axis="x", labelsize=6, length=2, pad=1, top=True, labeltop=True, bottom=False, labelbottom=False)
+    for ax in axes[1:]:
+        ax.tick_params(axis="x", length=2, labeltop=False, labelbottom=False)
+
+    top_pad = min(0.45, 0.6 / fig_h)
+    fig.subplots_adjust(left=0.10, right=0.80, top=1 - top_pad, bottom=0.05, hspace=0.20)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=180, facecolor="white")
+    return buf.getvalue()
+
+
+def _build_analog_time_diagram_section(styles: dict, payload: dict, relay_type: str) -> list:
+    channels = _select_analog_diagram_channels(payload, relay_type)
+    if not channels:
+        return []
+    center_ms = _event_center_ms(payload)
+    raw = _render_analog_time_diagram(payload, channels, center_ms)
+    if not raw:
+        return []
+
+    flowables: list = _section_header(styles, "COMTRADE", "Analog Time Diagram")
+    flowables.append(Paragraph(
+        "Kanal analog penting (arus & tegangan) ditumpuk dalam satu diagram dengan skala lokal "
+        "per-kanal dan jendela waktu di sekitar gangguan. Garis merah menandai trigger/inception.",
+        styles["body_muted"],
+    ))
+    flowables.append(Spacer(1, 4))
+
+    img = Image(io.BytesIO(raw))
+    max_w = PAGE_W - 2 * MARGIN
+    max_h = 195 * mm
+    aspect = img.imageHeight / img.imageWidth if img.imageWidth else 1
+    target_w = max_w
+    target_h = target_w * aspect
+    if target_h > max_h:
+        target_h = max_h
+        target_w = target_h / aspect if aspect > 0 else max_w
+    img.drawWidth = target_w
+    img.drawHeight = target_h
+    img.hAlign = "LEFT"
+    flowables.append(img)
+    return flowables
 
 
 def _render_binary_time_diagram(payload: dict, channels: list[dict], page_no: int) -> bytes:
@@ -1268,12 +1474,9 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         story.append(_build_generic_conclusion(styles, payload, relay_label, request.ai_analysis))
     story.append(Spacer(1, 10))
 
-    story.extend(_build_metadata_section(styles, payload))
-    story.append(Spacer(1, 8))
-
-    binary_section = _build_binary_time_diagram_section(styles, payload)
-    if binary_section:
-        story.extend(binary_section)
+    ai_section = _build_ai_analysis_section(styles, request.ai_analysis)
+    if ai_section:
+        story.extend(ai_section)
         story.append(Spacer(1, 8))
 
     if relay_type == "21":
@@ -1285,15 +1488,19 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         story.extend(relay_section)
         story.append(Spacer(1, 8))
 
-    ai_section = _build_ai_analysis_section(styles, request.ai_analysis)
-    if ai_section:
-        story.extend(ai_section)
-        story.append(Spacer(1, 8))
-
     soe_section = _build_soe_section(styles, request.soe_events)
     if soe_section:
         story.extend(soe_section)
         story.append(Spacer(1, 8))
+
+    analog_section = _build_analog_time_diagram_section(styles, payload, relay_type)
+    if analog_section:
+        story.extend(analog_section)
+        story.append(Spacer(1, 8))
+
+    # Digital transitions are already represented by SOE. Keep the binary
+    # timing view as an optional bottom section for cases that need it.
+    binary_section = _build_binary_time_diagram_section(styles, payload) if request.include_binary_diagram else []
 
     chart_titles = {
         "impedance_locus":        ("VISUALISASI", "Impedance Locus (R-X Trajectory)"),
@@ -1306,7 +1513,29 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         "overcurrent_overlay":    ("VISUALISASI", "Overcurrent Overlay"),
     }
 
-    for chart in request.charts:
+    # The composite Analog Time Diagram replaces the per-channel webapp
+    # waveform screenshots — drop those so the PDF stays a concise summary.
+    redundant_chart_ids = {"waveform_voltage", "waveform_current", "waveform_strip"}
+
+    visible_charts = [
+        chart for chart in request.charts
+        if chart.id not in redundant_chart_ids and not chart.id.startswith("waveform_analog_")
+    ]
+    locus_ids = {"impedance_locus", "impedance_locus_ground", "impedance_locus_phase"}
+    non_locus_charts = [chart for chart in visible_charts if chart.id not in locus_ids]
+    locus_charts = [chart for chart in visible_charts if chart.id in locus_ids]
+
+    for chart in non_locus_charts:
+        kicker, default_title = chart_titles.get(chart.id, ("VISUALISASI", chart.title))
+        title = chart.title or default_title
+        story.extend(_build_chart_block(styles, kicker, ChartImage(id=chart.id, title=title, image_b64=chart.image_b64)))
+        story.append(Spacer(1, 8))
+
+    if binary_section:
+        story.extend(binary_section)
+        story.append(Spacer(1, 8))
+
+    for chart in locus_charts:
         kicker, default_title = chart_titles.get(chart.id, ("VISUALISASI", chart.title))
         title = chart.title or default_title
         story.extend(_build_chart_block(styles, kicker, ChartImage(id=chart.id, title=title, image_b64=chart.image_b64)))
