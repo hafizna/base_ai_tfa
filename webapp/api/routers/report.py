@@ -253,6 +253,7 @@ RELAY_LABELS = {
     "OCR": "50/51 — Overcurrent",
     "REF": "REF / GFR / SBEF",
     "SBEF": "SBEF / Ground Fault",
+    "TWS_FL": "TWS FL — Traveling Wave Fault Locator",
 }
 
 
@@ -608,6 +609,133 @@ def _build_generic_conclusion(styles: dict, payload: dict, relay_label: str, ai_
         ("BOX", (0, 0), (-1, -1), 0.6, BRAND_BLUE),
     ]))
     return inner
+
+
+def _build_tws_conclusion(styles: dict, payload: dict, relay_label: str) -> Table:
+    result = (payload.get("results") or [{}])[0]
+    endpoints = result.get("endpoints") or []
+    x_ep = next((ep for ep in endpoints if ep.get("role") == "X"), endpoints[0] if endpoints else {})
+    y_ep = next((ep for ep in endpoints if ep.get("role") == "Y"), endpoints[1] if len(endpoints) > 1 else {})
+
+    def ep_name(ep: dict, fallback: str) -> str:
+        return ep.get("station_display_name") or ep.get("station_name") or fallback
+
+    narrative_lines = [
+        f"<b>Jenis analisis:</b> {_safe_text(relay_label)}",
+        f"<b>Sirkuit:</b> {_safe_text(result.get('circuit_name') or result.get('segment_name') or 'N/A')}",
+        f"<b>Panjang saluran:</b> {_format_number(result.get('line_length_km'), ' km', 2)}",
+    ]
+    if x_ep:
+        narrative_lines.append(
+            f"<b>Lokasi dari {_safe_text(ep_name(x_ep, 'Terminal X'))}:</b> "
+            f"{_format_number(x_ep.get('fault_distance_km'), ' km', 3)}"
+        )
+    if y_ep:
+        narrative_lines.append(
+            f"<b>Lokasi dari {_safe_text(ep_name(y_ep, 'Terminal Y'))}:</b> "
+            f"{_format_number(y_ep.get('fault_distance_km'), ' km', 3)}"
+        )
+
+    summary_chips = [
+        ("RELAY", relay_label),
+        ("SOURCE", payload.get("source_file") or "N/A"),
+        ("RESULT", str(result.get("result_id") or "N/A")),
+        ("SAMPLES", str(payload.get("total_samples", 0))),
+    ]
+
+    chips_table = Table(
+        [[
+            Paragraph(f"<font size=6.5 color='#64748b'><b>{label}</b></font>", styles["body"]),
+            Paragraph(f"<font size=9.5 color='#0f172a'><b>{_safe_text(value)}</b></font>", styles["body"]),
+        ] for label, value in summary_chips],
+        colWidths=[24 * mm, 48 * mm],
+        hAlign="LEFT",
+    )
+    chips_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.3, BRAND_BORDER),
+    ]))
+
+    narrative_cells = [
+        Paragraph("KONKLUSI", styles["conclusion_kicker"]),
+        Paragraph("Ringkasan TWS Fault Locator", styles["conclusion_head"]),
+    ]
+    for line in narrative_lines:
+        narrative_cells.append(Paragraph(line, styles["conclusion_body"]))
+        narrative_cells.append(Spacer(1, 2))
+
+    inner = Table(
+        [[narrative_cells, chips_table]],
+        colWidths=[(PAGE_W - 2 * MARGIN) * 0.55 - 4, (PAGE_W - 2 * MARGIN) * 0.45 - 4],
+    )
+    inner.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_BG_HIGHLIGHT),
+        ("BOX", (0, 0), (-1, -1), 0.6, BRAND_BLUE),
+    ]))
+    return inner
+
+
+def _build_tws_result_section(styles: dict, payload: dict) -> list:
+    result = (payload.get("results") or [{}])[0]
+    endpoints = result.get("endpoints") or []
+    rows = [
+        ("Source file", payload.get("source_file") or "N/A"),
+        ("Circuit", result.get("circuit_name") or result.get("segment_name") or "N/A"),
+        ("Line length", _format_number(result.get("line_length_km"), " km", 3)),
+        ("Velocity factor", _format_number(result.get("velocity_factor"), " %", 3)),
+        ("Sample distance", _format_number(result.get("sample_distance_km"), " km", 6)),
+    ]
+    flowables = _section_header(styles, "TWS", "Result Summary")
+    flowables.append(_kv_table(rows, (45 * mm, 70 * mm)))
+
+    if endpoints:
+        data = [[
+            Paragraph("<b>Terminal</b>", styles["body"]),
+            Paragraph("<b>Station</b>", styles["body"]),
+            Paragraph("<b>Feeder</b>", styles["body"]),
+            Paragraph("<b>Record</b>", styles["body"]),
+            Paragraph("<b>GPS</b>", styles["body"]),
+            Paragraph("<b>Fault Distance</b>", styles["body"]),
+        ]]
+        for ep in endpoints:
+            data.append([
+                Paragraph(_safe_text(ep.get("role") or "-"), styles["body"]),
+                Paragraph(_safe_text(ep.get("station_display_name") or ep.get("station_name") or "-"), styles["body"]),
+                Paragraph(_safe_text(ep.get("feeder_display_name") or ep.get("feeder_name") or "-"), styles["body"]),
+                Paragraph(_safe_text(ep.get("record_number") or "-"), styles["body"]),
+                Paragraph("Locked" if ep.get("gps_locked") else "Unlocked", styles["body"]),
+                Paragraph(_format_number(ep.get("fault_distance_km"), " km", 3), styles["body"]),
+            ])
+        table = Table(
+            data,
+            colWidths=[18 * mm, 35 * mm, 35 * mm, 22 * mm, 20 * mm, 34 * mm],
+            hAlign="LEFT",
+            repeatRows=1,
+        )
+        table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("FONT", (0, 0), (-1, -1), "Helvetica", 8),
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BG_SOFT),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_BG_SOFT]),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.2, BRAND_BORDER),
+            ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        flowables.extend([Spacer(1, 6), table])
+
+    return flowables
 
 
 def _build_metadata_section(styles: dict, payload: dict) -> list:
@@ -1434,6 +1562,7 @@ def _build_chart_block(styles: dict, kicker: str, chart: ChartImage, max_height_
 
 def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes:
     relay_type = request.relay_type.upper() if request.relay_type else "21"
+    is_tws = relay_type == "TWS_FL" or payload.get("source_type") == "tws_cdb"
     relay_label = RELAY_LABELS.get(relay_type, relay_type)
     timestamp = _format_datetime()
     station = payload.get("station_name") or "Stasiun Tidak Diketahui"
@@ -1468,39 +1597,46 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     styles = _build_styles()
 
     story: list = []
-    if relay_type == "21" and fault_class is not None:
+    if is_tws:
+        story.append(_build_tws_conclusion(styles, payload, relay_label))
+    elif relay_type == "21" and fault_class is not None:
         story.append(_build_conclusion(styles, fault_class, request.ai_analysis, elec))
     else:
         story.append(_build_generic_conclusion(styles, payload, relay_label, request.ai_analysis))
     story.append(Spacer(1, 10))
 
-    ai_section = _build_ai_analysis_section(styles, request.ai_analysis)
-    if ai_section:
-        story.extend(ai_section)
+    if is_tws:
+        story.extend(_build_tws_result_section(styles, payload))
         story.append(Spacer(1, 8))
+        binary_section = []
+    else:
+        ai_section = _build_ai_analysis_section(styles, request.ai_analysis)
+        if ai_section:
+            story.extend(ai_section)
+            story.append(Spacer(1, 8))
 
-    if relay_type == "21":
-        story.extend(_build_electrical_section(styles, elec))
-        story.append(Spacer(1, 8))
+        if relay_type == "21":
+            story.extend(_build_electrical_section(styles, elec))
+            story.append(Spacer(1, 8))
 
-    relay_section = _build_relay_specific_section(styles, payload, relay_type, request.relay_settings)
-    if relay_section:
-        story.extend(relay_section)
-        story.append(Spacer(1, 8))
+        relay_section = _build_relay_specific_section(styles, payload, relay_type, request.relay_settings)
+        if relay_section:
+            story.extend(relay_section)
+            story.append(Spacer(1, 8))
 
-    soe_section = _build_soe_section(styles, request.soe_events)
-    if soe_section:
-        story.extend(soe_section)
-        story.append(Spacer(1, 8))
+        soe_section = _build_soe_section(styles, request.soe_events)
+        if soe_section:
+            story.extend(soe_section)
+            story.append(Spacer(1, 8))
 
-    analog_section = _build_analog_time_diagram_section(styles, payload, relay_type)
-    if analog_section:
-        story.extend(analog_section)
-        story.append(Spacer(1, 8))
+        analog_section = _build_analog_time_diagram_section(styles, payload, relay_type)
+        if analog_section:
+            story.extend(analog_section)
+            story.append(Spacer(1, 8))
 
-    # Digital transitions are already represented by SOE. Keep the binary
-    # timing view as an optional bottom section for cases that need it.
-    binary_section = _build_binary_time_diagram_section(styles, payload) if request.include_binary_diagram else []
+        # Digital transitions are already represented by SOE. Keep the binary
+        # timing view as an optional bottom section for cases that need it.
+        binary_section = _build_binary_time_diagram_section(styles, payload) if request.include_binary_diagram else []
 
     chart_titles = {
         "impedance_locus":        ("VISUALISASI", "Impedance Locus (R-X Trajectory)"),
@@ -1511,6 +1647,8 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         "waveform_current":       ("VISUALISASI", "Waveform Arus"),
         "diff_restraint":         ("VISUALISASI", "Diff / Restraint Plot"),
         "overcurrent_overlay":    ("VISUALISASI", "Overcurrent Overlay"),
+        "tws_waveform_x":          ("TWS", "Terminal X Waveform"),
+        "tws_waveform_y":          ("TWS", "Terminal Y Waveform"),
     }
 
     # The composite Analog Time Diagram replaces the per-channel webapp
@@ -1528,7 +1666,12 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     for chart in non_locus_charts:
         kicker, default_title = chart_titles.get(chart.id, ("VISUALISASI", chart.title))
         title = chart.title or default_title
-        story.extend(_build_chart_block(styles, kicker, ChartImage(id=chart.id, title=title, image_b64=chart.image_b64)))
+        story.extend(_build_chart_block(
+            styles,
+            kicker,
+            ChartImage(id=chart.id, title=title, image_b64=chart.image_b64),
+            max_height_mm=130 if is_tws else 90,
+        ))
         story.append(Spacer(1, 8))
 
     if binary_section:

@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
-import { fetchTwsAnalysis } from "../api/client";
-import type { TwsCdbData, TwsEndpoint, TwsResult } from "../api/client";
+import { fetchTwsAnalysis, generateReport } from "../api/client";
+import type { ReportChart, TwsCdbData, TwsEndpoint, TwsResult } from "../api/client";
 import Plot from "../components/plot/PlotlyChart";
 import styles from "./TwsViewer.module.css";
+
+type PlotlyToImageFn = (
+  gd: HTMLElement,
+  opts: { format: "png"; width: number; height: number; scale: number },
+) => Promise<string>;
+
+function getPlotlyToImage(): PlotlyToImageFn | null {
+  const plotly = (window as unknown as { Plotly?: { toImage?: PlotlyToImageFn } }).Plotly;
+  return plotly?.toImage ?? null;
+}
 
 const MAX_PLOT_POINTS = 3600;
 const WAVEFORM_RANGE_KM: [number, number] = [-40, 300];
@@ -159,7 +169,11 @@ function WaveformPane({
   };
 
   return (
-    <section className={styles.pane}>
+    <section
+      className={styles.pane}
+      data-pdf-chart-id={`tws_waveform_${endpoint.role.toLowerCase()}`}
+      data-pdf-chart-title={`TWS Waveform - Terminal ${endpoint.role} (${endpoint.station_display_name || endpoint.station_name})`}
+    >
       <div className={styles.faultBanner}>
         <span>Fault Occurred at</span>
         <strong>{formatKm(endpoint.fault_distance_km)} km</strong>
@@ -293,6 +307,7 @@ export default function TwsViewer() {
   const [data, setData] = useState<TwsCdbData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     if (!analysisId) return;
@@ -310,6 +325,71 @@ export default function TwsViewer() {
   const xEndpoint = result?.endpoints.find((endpoint) => endpoint.role === "X") ?? result?.endpoints[0];
   const yEndpoint = result?.endpoints.find((endpoint) => endpoint.role === "Y") ?? result?.endpoints[1];
 
+  async function captureTwsCharts(): Promise<ReportChart[]> {
+    const toImage = getPlotlyToImage();
+    if (!toImage) return [];
+
+    const details = document.querySelector(`.${styles.waveformDetails}`) as HTMLDetailsElement | null;
+    const wasOpen = details?.open ?? false;
+    if (details && !details.open) details.open = true;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+    const charts: ReportChart[] = [];
+    const seenIds = new Set<string>();
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-pdf-chart-id] .js-plotly-plot"));
+    for (const node of nodes) {
+      const tagged = node.closest("[data-pdf-chart-id]") as HTMLElement | null;
+      const id = tagged?.dataset.pdfChartId;
+      if (!id || seenIds.has(id)) continue;
+      try {
+        const dataUrl = await toImage(node, {
+          format: "png",
+          width: 1400,
+          height: 900,
+          scale: 2,
+        });
+        charts.push({
+          id,
+          title: tagged?.dataset.pdfChartTitle || id,
+          image_b64: String(dataUrl).replace(/^data:image\/png;base64,/, ""),
+        });
+        seenIds.add(id);
+      } catch (err) {
+        console.warn(`Failed to export TWS chart "${id}":`, err);
+      }
+    }
+    if (details && !wasOpen) details.open = false;
+    return charts;
+  }
+
+  async function handleDownloadPdf() {
+    if (!analysisId || !data || isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    try {
+      const charts = await captureTwsCharts();
+      const blob = await generateReport(analysisId, {
+        relay_type: "TWS_FL",
+        charts,
+      });
+      const sourceSlug = (data.source_file || "tws_report")
+        .replace(/\s+/g, "_")
+        .replace(/[\\/]/g, "-");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `laporan_tws_${sourceSlug}_${analysisId.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to generate TWS PDF report:", err);
+      alert("Gagal membuat laporan PDF TWS. Cek console untuk detail.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.titleBar}>
@@ -317,8 +397,13 @@ export default function TwsViewer() {
         <span>{data?.source_file ?? "Cashel .cdb export"}</span>
         <div className={styles.titleActions}>
           <Link to="/" className={styles.titleButton}>← Back to Home</Link>
-          <button type="button" className={styles.titleButton} onClick={() => window.print()}>
-            🖨 Print
+          <button
+            type="button"
+            className={styles.titleButton}
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf || !data}
+          >
+            {isGeneratingPdf ? "Generating..." : "Print PDF"}
           </button>
         </div>
       </header>
