@@ -115,6 +115,21 @@ def _compute_87t(comtrade_data: dict, params: dict) -> dict:
         _find_ch(channels, RELAY_DIFF_CHANNELS[ph]) is not None for ph in ["L1", "L2", "L3"]
     )
 
+    # A transformer differential needs at least two windings (HV + LV/MV) on the
+    # same relay. If only one winding side is present the diff is meaningless;
+    # flag it so the UI defers to the relay's own trip signals instead.
+    def _side_present(name_map, side):
+        return any(
+            _find_ch(channels, name_map[ph]) is not None or _find_winding_ch(channels, ph, side) is not None
+            for ph in ["L1", "L2", "L3"]
+        )
+    sides_present = sum([
+        _side_present(HV_CHANNELS, 1),
+        _side_present(LV_CHANNELS, 2),
+        _side_present(MV_CHANNELS, 3),
+    ])
+    diff_mode = "TWO_TERMINAL" if (relay_diff_available or sides_present >= 2) else "LOCAL_ONLY"
+
     samples = []
     operated_phases = []
 
@@ -206,8 +221,8 @@ def _compute_87t(comtrade_data: dict, params: dict) -> dict:
         "operated_phases": operated_phases,
         "trip_markers": _detect_trip_markers(comtrade_data, samples),
         "phase_classification": _classify_phases(samples, params),
-        # Transformer diff is computed from winding currents -> genuine differential.
-        "diff_data_mode": "TWO_TERMINAL",
+        # Genuine differential only when ≥2 winding sides are present.
+        "diff_data_mode": diff_mode,
         "relay_diff_phases": _relay_diff_phases(comtrade_data),
     }
 

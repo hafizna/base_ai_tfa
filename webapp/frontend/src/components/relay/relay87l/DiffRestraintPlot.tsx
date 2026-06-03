@@ -16,6 +16,7 @@ interface DiffParams {
   slope2: number;
   intersection2: number;
   idiff_fast: number;
+  in_base_a: number;   // base current In (A); 0 = auto-estimate
 }
 
 interface Preset {
@@ -30,25 +31,25 @@ const PRESETS: Preset[] = [
     key: "std-30-70",
     label: "Standar — s₁=30%, s₂=70%",
     hint: "Dual-slope dengan zona pickup flat 0→0.30 pu. Umum pada relay modern (Siemens 7UT8x, ABB RET670, GE T60).",
-    params: { device_type: "std-30-70", idiff_pickup: 0.20, slope1: 0.30, intersection1: 0.30, slope2: 0.70, intersection2: 2.50, idiff_fast: 7.50 },
+    params: { device_type: "std-30-70", idiff_pickup: 0.20, slope1: 0.30, intersection1: 0.30, slope2: 0.70, intersection2: 2.50, idiff_fast: 7.50, in_base_a: 0 },
   },
   {
     key: "cons-25-50",
     label: "Konservatif — s₁=25%, s₂=50%",
     hint: "Slope lebih rendah; tidak ada zona flat (langsung slope dari 0). Cocok untuk relay generasi lama (Siemens 7UT6x, GE T35).",
-    params: { device_type: "cons-25-50", idiff_pickup: 0.20, slope1: 0.25, intersection1: 0.0, slope2: 0.50, intersection2: 2.50, idiff_fast: 7.50 },
+    params: { device_type: "cons-25-50", idiff_pickup: 0.20, slope1: 0.25, intersection1: 0.0, slope2: 0.50, intersection2: 2.50, idiff_fast: 7.50, in_base_a: 0 },
   },
   {
     key: "agr-20-80",
     label: "Agresif — s₁=20%, s₂=80%",
     hint: "Slope rendah di tahap 1 (sensitif terhadap gangguan kecil), slope tinggi di tahap 2 (stabil saat arus inrush). Umum pada ABB RET650 / SEL-387.",
-    params: { device_type: "agr-20-80", idiff_pickup: 0.20, slope1: 0.20, intersection1: 0.0, slope2: 0.80, intersection2: 2.00, idiff_fast: 7.50 },
+    params: { device_type: "agr-20-80", idiff_pickup: 0.20, slope1: 0.20, intersection1: 0.0, slope2: 0.80, intersection2: 2.00, idiff_fast: 7.50, in_base_a: 0 },
   },
   {
     key: "custom",
     label: "Custom",
     hint: "Atur semua parameter secara manual sesuai setting aktual relay di lapangan.",
-    params: { device_type: "custom", idiff_pickup: 0.20, slope1: 0.30, intersection1: 0.30, slope2: 0.70, intersection2: 2.50, idiff_fast: 7.50 },
+    params: { device_type: "custom", idiff_pickup: 0.20, slope1: 0.30, intersection1: 0.30, slope2: 0.70, intersection2: 2.50, idiff_fast: 7.50, in_base_a: 0 },
   },
 ];
 
@@ -320,10 +321,25 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         </div>
       )}
 
+      {diffMode === "TWO_TERMINAL_RAW" && samples.length > 0 && (
+        <div
+          className={styles.row}
+          style={{ marginBottom: 12, padding: "8px 12px", background: "#ecfdf5", border: "1px solid #34d399", borderRadius: 6 }}
+        >
+          <span style={{ fontSize: "0.74rem", color: "#065f46", lineHeight: 1.5 }}>
+            ✓ <strong>Differential dua-terminal sejati.</strong> Kedua sisi arus terdeteksi otomatis
+            (uji fisika: fasa sehat melalui-arus saling meniadakan). Idiff = |I<sub>lokal</sub> + I<sub>remote</sub>|,
+            dinormalisasi ke In{params.in_base_a > 0 ? ` = ${params.in_base_a} A (input)` : " (estimasi otomatis — isi In di bawah untuk akurasi)"}.
+            Sumbu dalam p.u., kurva operate/restraint berlaku.
+          </span>
+        </div>
+      )}
+
       {status && (
         <div className={`${styles.statusBadge} ${localOnly ? localStatusClass : statusClass}`} style={{ marginBottom: 12 }}>
           {statusLabel}
           {!localOnly && operatedPhases.length > 0 && ` — Phase ${operatedPhases.join(", ")}`}
+          {!localOnly && relayDiffPhases.length > 0 && ` · Relay diff: ${relayDiffPhases.join(", ")}`}
         </div>
       )}
 
@@ -421,6 +437,14 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
           I-DIFF&gt;&gt; Fast (p.u.)
           <input className={styles.inputField} type="number" step={0.1} value={params.idiff_fast} onChange={(e) => updateParam("idiff_fast", parseFloat(e.target.value))} />
         </label>
+        <label className={styles.zoneLabel}>
+          In Base (A) — 0 = auto
+          <input className={styles.inputField} type="number" step={1} value={params.in_base_a} onChange={(e) => updateParam("in_base_a", parseFloat(e.target.value) || 0)} />
+        </label>
+      </div>
+      <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: 6, lineHeight: 1.5 }}>
+        In Base = arus nominal (CT primary / rated) untuk normalisasi p.u. pada differential dua-terminal.
+        Isi sesuai setting relay aktual agar Idiff/Irest p.u. akurat; biarkan 0 untuk estimasi otomatis dari arus beban prefault.
       </div>
     </div>
   );

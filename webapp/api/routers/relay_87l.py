@@ -45,13 +45,97 @@ def _find_ch(channels, candidates):
     return None
 
 
-def _detect_diff_mode(channels) -> str:
-    """TWO_TERMINAL if the relay recorded its own computed differential channel,
-    else LOCAL_ONLY (only local-terminal currents present — no true I-remote)."""
+def _find_ch_obj(channels, candidates):
+    for ch in channels:
+        if ch["canonical_name"] in candidates or ch["name"].upper() in candidates:
+            return ch
+    return None
+
+
+# Remote-terminal current candidates per phase. Differential ALWAYS needs two
+# sides on the same relay: line diff = local + remote, transformer diff = HV + LV.
+# A single-side record yields an absurd differential, so we look for the second
+# terminal explicitly. Common conventions: suffixed (Ia1, IA2, IA_REM, IAR) or
+# Siemens side tags (-S2). The local set is PHASE_CURRENT_MAP above.
+REMOTE_CURRENT_MAP = {
+    "L1": ["IA1", "IA2", "IA_REM", "IAR", "IL1-S2", "IA-S2", "I1R"],
+    "L2": ["IB1", "IB2", "IB_REM", "IBR", "IL2-S2", "IB-S2", "I2R"],
+    "L3": ["IC1", "IC2", "IC_REM", "ICR", "IL3-S2", "IC-S2", "I3R"],
+}
+
+
+def _rms_np(x: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(x ** 2))) if x.size else 0.0
+
+
+def _detect_terminal_pairs(channels, time, frequency):
+    """Find a local/remote current pair per phase for a TRUE two-terminal diff.
+
+    Physics-first: in a prefault window, healthy phases of the same line carry
+    pure through-current, so I_local + s*I_remote ≈ 0 for the correct polarity s.
+    We confirm a pair by finding a sign s in {+1,-1} that makes the prefault
+    differential small relative to the through-current. Name patterns are only a
+    fallback for locating the candidate remote channel.
+
+    Returns: (pairs, sign) where pairs = {phase: (local_arr, remote_arr)} and
+    sign is the shared polarity convention, or (None, +1) if no valid pair.
+    """
+    t = np.asarray(time, dtype=float)
+    n = t.size
+    if n < 8:
+        return None, 1
+    pf = max(4, n // 5)  # prefault window
+
+    pairs = {}
+    for ph in ("L1", "L2", "L3"):
+        local = _find_ch(channels, PHASE_CURRENT_MAP[ph])
+        remote = _find_ch(channels, REMOTE_CURRENT_MAP[ph])
+        if local is None or remote is None:
+            continue
+        pairs[ph] = (np.asarray(local, dtype=float), np.asarray(remote, dtype=float))
+
+    if len(pairs) < 2:
+        return None, 1  # need at least two phases to validate physically
+
+    # Determine polarity from the healthiest phase (smallest through-differential
+    # for its best sign) so a faulted phase doesn't pick the wrong convention.
+    best = None  # (residual_ratio, sign)
+    for ph, (loc, rem) in pairs.items():
+        lo, re = loc[:pf], rem[:pf]
+        through = _rms_np(lo) + _rms_np(re)
+        if through <= 0:
+            continue
+        for s in (1.0, -1.0):
+            resid = _rms_np(lo + s * re) / through
+            if best is None or resid < best[0]:
+                best = (resid, s)
+
+    if best is None:
+        return None, 1
+    resid_ratio, sign = best
+    # A genuine two-terminal pair: at least one phase balances to a small residual
+    # (healthy through-current cancels). Loose threshold tolerates CT mismatch.
+    if resid_ratio > 0.35:
+        return None, 1
+    return pairs, sign
+
+
+def _detect_diff_mode(channels, time=None, frequency=50.0) -> str:
+    """Decide how the differential will be computed:
+    - TWO_TERMINAL: relay recorded its own computed differential channel.
+    - TWO_TERMINAL_RAW: both terminal currents present -> we compute true diff.
+    - LOCAL_ONLY: only one side present (rare/chopped) -> diff cannot be trusted.
+    """
     has_relay_diff = any(
         _find_ch(channels, RELAY_DIFF_CHANNELS[ph]) is not None for ph in ("L1", "L2", "L3")
     )
-    return "TWO_TERMINAL" if has_relay_diff else "LOCAL_ONLY"
+    if has_relay_diff:
+        return "TWO_TERMINAL"
+    if time is not None:
+        pairs, _ = _detect_terminal_pairs(channels, time, frequency)
+        if pairs:
+            return "TWO_TERMINAL_RAW"
+    return "LOCAL_ONLY"
 
 
 # Per-phase differential-trip digital channels reported by the relay itself.
@@ -80,6 +164,7 @@ def _relay_diff_phases(comtrade_data: dict) -> list:
 def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
     channels = comtrade_data["analog_channels"]
     time = np.array(comtrade_data["time"])
+    freq = comtrade_data.get("frequency", 50.0)
     samples = []
     operated_phases = []
 
@@ -90,47 +175,67 @@ def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
     slope2 = params["slope2"]
     intersection2 = params["intersection2"]
 
-    for phase, candidates in PHASE_CURRENT_MAP.items():
-        i = _find_ch(channels, candidates)
-        if i is None:
-            continue
+    sr = 1.0 / (time[1] - time[0]) if len(time) > 1 else 1000.0
+    win = max(1, int(sr / freq))
+    n = len(time)
+    pf = max(4, n // 5)
 
-        sr = 1.0 / (time[1] - time[0]) if len(time) > 1 else 1000.0
-        freq = comtrade_data.get("frequency", 50.0)
-        win = max(1, int(sr / freq))
+    mode = _detect_diff_mode(channels, time, freq)
+    pairs, sign = _detect_terminal_pairs(channels, time, freq) if mode == "TWO_TERMINAL_RAW" else (None, 1.0)
 
-        for k in range(0, len(time), max(1, win // 4)):
-            s = max(0, k - win + 1)
-            i_w = i[s : k + 1]
-            i_rms = float(np.sqrt(np.mean(i_w**2))) if len(i_w) > 0 else 0.0
-            samples.append(
-                {
-                    "t": float(time[k]),
-                    "i_diff": abs(i_rms),
-                    "i_rest": abs(i_rms),
-                    "phase": phase,
-                }
-            )
+    if pairs:
+        # TRUE two-terminal differential. Idiff = |Ilocal + s*Iremote|,
+        # Irest = (|Ilocal| + |Iremote|) / 2, normalised to base current In so the
+        # p.u. dual-slope characteristic applies. In comes from the user (CT/relay
+        # setting) when provided, else auto-estimated from the healthiest phase's
+        # prefault through-current — a SHARED base for all phases so a distorted
+        # phase doesn't get its own (too-small) In and float above the slope.
+        in_user = float(params.get("in_base_a", 0.0) or 0.0)
+        if in_user > 0:
+            in_base = in_user
+        else:
+            healthiest = None  # (prefault residual, through-current)
+            for loc, rem in pairs.values():
+                through = _rms_np(loc[:pf]) + _rms_np(rem[:pf])
+                resid = _rms_np(loc[:pf] + sign * rem[:pf])
+                if through > 0 and (healthiest is None or resid / through < healthiest[0]):
+                    healthiest = (resid / through, through / 2.0)
+            in_base = max(healthiest[1] if healthiest else 1.0, 1.0)
 
-        phase_operated = False
-        for sample in samples:
-            if sample["phase"] != phase:
+        for phase, (loc, rem) in pairs.items():
+            for k in range(0, n, max(1, win // 4)):
+                s = max(0, k - win + 1)
+                lo = loc[s:k + 1]
+                re = rem[s:k + 1]
+                i_diff = _rms_np(lo + sign * re) / in_base
+                i_rest = (_rms_np(lo) + _rms_np(re)) / 2.0 / in_base
+                samples.append({"t": float(time[k]), "i_diff": i_diff, "i_rest": i_rest, "phase": phase})
+    else:
+        # Single side only — NOT a real differential. Plot local current so the
+        # waveform is at least visible; the frontend flags this as untrustworthy
+        # and defers the verdict to the relay's own diff trip signals.
+        for phase, candidates in PHASE_CURRENT_MAP.items():
+            i = _find_ch(channels, candidates)
+            if i is None:
                 continue
-            threshold = _characteristic_threshold(
-                sample["i_rest"],
-                idiff_pickup,
-                slope1,
-                intersection1,
-                slope2,
-                intersection2,
+            for k in range(0, n, max(1, win // 4)):
+                s = max(0, k - win + 1)
+                i_rms = _rms_np(i[s:k + 1])
+                samples.append({"t": float(time[k]), "i_diff": abs(i_rms), "i_rest": abs(i_rms), "phase": phase})
+
+    for phase in ("L1", "L2", "L3"):
+        phase_samples = [s for s in samples if s["phase"] == phase]
+        if not phase_samples:
+            continue
+        if any(
+            s["i_diff"] >= _characteristic_threshold(
+                s["i_rest"], idiff_pickup, slope1, intersection1, slope2, intersection2
             )
-            if sample["i_diff"] >= threshold:
-                phase_operated = True
-                break
-        if phase_operated:
+            for s in phase_samples
+        ):
             operated_phases.append(phase)
 
-    if any(sample["i_diff"] >= idiff_fast for sample in samples):
+    if any(s["i_diff"] >= idiff_fast for s in samples):
         status = "IDIFF_FAST_OPERATED"
     elif operated_phases:
         status = "IDIFF_OPERATED"
@@ -143,7 +248,7 @@ def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
         "operated_phases": operated_phases,
         "trip_markers": _detect_trip_markers(comtrade_data, samples),
         "phase_classification": _classify_phases(samples, params),
-        "diff_data_mode": _detect_diff_mode(channels),
+        "diff_data_mode": mode,
         "relay_diff_phases": _relay_diff_phases(comtrade_data),
     }
 

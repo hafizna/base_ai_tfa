@@ -209,6 +209,9 @@ class CharacteristicParams(BaseModel):
     slope2: float = 0.70
     intersection2: float = 2.50
     idiff_fast: float = 7.50
+    # Base current In (A) for p.u. normalisation of a true two-terminal diff.
+    # 0 = auto-estimate from the healthiest phase's prefault through-current.
+    in_base_a: float = 0.0
 
 
 class DiffRestraintRequest(BaseModel):
