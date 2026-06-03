@@ -116,6 +116,8 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
   const [operatedPhases, setOperatedPhases] = useState<string[]>([]);
   const [tripMarkers, setTripMarkers] = useState<TripMarker[]>([]);
   const [phaseClass, setPhaseClass] = useState<PhaseClassification[]>([]);
+  const [diffMode, setDiffMode] = useState<string>("TWO_TERMINAL");
+  const [relayDiffPhases, setRelayDiffPhases] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const activePreset = PRESETS.find((p) => p.key === selectedPreset) ?? PRESETS[0];
@@ -142,6 +144,8 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
       setOperatedPhases(res.operated_phases ?? []);
       setTripMarkers(res.trip_markers ?? []);
       setPhaseClass(res.phase_classification ?? []);
+      setDiffMode(res.diff_data_mode ?? "TWO_TERMINAL");
+      setRelayDiffPhases(res.relay_diff_phases ?? []);
     } finally {
       setLoading(false);
     }
@@ -216,31 +220,64 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     })
     .filter((t): t is Partial<Plotly.ScatterData> => t !== null);
 
+  const localOnly = diffMode === "LOCAL_ONLY";
+
+  // In LOCAL_ONLY mode the samples are local-terminal current in primary Amperes,
+  // not a p.u. differential — so the p.u. characteristic does not apply and the
+  // axes must auto-range to the actual current, otherwise points fall off-screen.
+  const maxSampleY = samples.length ? Math.max(...samples.map((s) => s.i_diff)) : 1;
+  const maxSampleX = samples.length ? Math.max(...samples.map((s) => s.i_rest)) : 1;
+
   const layout: Partial<Plotly.Layout> = {
     height: 400,
     margin: { t: 20, b: 50, l: 60, r: 20 },
-    xaxis: { title: { text: "I Restraint (p.u.)" }, tickfont: { size: 10 }, range: [0, 10] },
-    yaxis: { title: { text: "I Differential (p.u.)" }, tickfont: { size: 10 }, range: [0, params.idiff_fast * 1.1] },
+    xaxis: {
+      title: { text: localOnly ? "Arus terminal lokal (A)" : "I Restraint (p.u.)" },
+      tickfont: { size: 10 },
+      range: localOnly ? [0, maxSampleX * 1.1] : [0, 10],
+    },
+    yaxis: {
+      title: { text: localOnly ? "Arus terminal lokal (A)" : "I Differential (p.u.)" },
+      tickfont: { size: 10 },
+      range: localOnly ? [0, maxSampleY * 1.1] : [0, params.idiff_fast * 1.1],
+    },
     plot_bgcolor: "#ffffff",
     paper_bgcolor: "#ffffff",
     legend: { orientation: "h", y: -0.15 },
   };
 
   const statusClass = status === "NOT_OPERATED" ? styles.statusNot : status === "IDIFF_FAST_OPERATED" ? styles.statusFast : styles.statusOperated;
-  const statusLabel =
-    status === "NOT_OPERATED" ? "NOT OPERATED"
+  // In LOCAL_ONLY the operate verdict cannot come from the reconstructed scatter
+  // (it isn't a true differential) — it comes from the relay's own diff trip.
+  const statusLabel = localOnly
+    ? (relayDiffPhases.length
+        ? `RELAY DIFF OPERATED — ${relayDiffPhases.join(", ")}`
+        : "RELAY DIFF — TIDAK ADA SINYAL OPERATE")
+    : status === "NOT_OPERATED" ? "NOT OPERATED"
     : status === "IDIFF_FAST_OPERATED" ? "I-DIFF FAST OPERATED"
     : "IDIFF OPERATED";
-  const plotExplanation = samples.length > 0
-    ? "Setiap titik adalah posisi operasi sesaat dari window RMS pada rekaman: I-diff terhadap I-restraint per fasa. Banyak titik berarti banyak sampel waktu yang diplot, bukan jumlah spike arus."
-    : "Tekan Compute untuk membentuk titik operasi I-diff terhadap I-restraint dari rekaman.";
+  const localStatusClass = relayDiffPhases.length ? styles.statusFast : styles.statusNot;
+
+  const plotExplanation = samples.length === 0
+    ? "Tekan Compute untuk memproses rekaman."
+    : localOnly
+      ? "Mode LOCAL_ONLY: titik adalah arus terminal LOKAL per fasa (Ampere), bukan differential dua-terminal. Tidak ada arus sisi remote di rekaman ini, jadi kurva operate/restraint p.u. tidak diterapkan."
+      : "Setiap titik adalah posisi operasi sesaat dari window RMS pada rekaman: I-diff terhadap I-restraint per fasa. Banyak titik berarti banyak sampel waktu yang diplot, bukan jumlah spike arus.";
+
   const assessmentText = !status
     ? "Assessment belum dihitung."
+    : localOnly
+      ? (relayDiffPhases.length
+          ? `Assessment: differential dua-terminal tidak dapat direkonstruksi (arus sisi remote tidak direkam). Namun relay 87L sendiri melaporkan elemen differential OPERATE pada fasa ${relayDiffPhases.join(", ")} (dari sinyal DIF_TRIP). Verdict diambil dari keputusan relay, bukan dari waveform lokal. Arus lokal hanya konteks besaran gangguan.`
+          : "Assessment: differential dua-terminal tidak dapat direkonstruksi (arus sisi remote tidak direkam), dan tidak ditemukan sinyal DIF_TRIP per fasa dari relay. Tidak ada bukti operate elemen differential pada rekaman ini — periksa sinyal trip lain (Relay TRIP, OC/EF).")
     : status === "NOT_OPERATED"
       ? "Assessment: berdasarkan setting karakteristik yang dipilih, titik operasi masih berada di area restraint/non-operate. Relay diasumsikan tidak seharusnya trip untuk rekaman ini, kecuali ada setting aktual lain yang belum dimasukkan."
       : status === "IDIFF_FAST_OPERATED"
         ? `Assessment: titik operasi menembus elemen I-DIFF>> fast${operatedPhases.length ? ` pada fasa ${operatedPhases.join(", ")}` : ""}. Dengan setting yang diberikan, operasi relay dapat dianggap sesuai karakteristik fast differential.`
         : `Assessment: titik operasi melewati kurva operate I-DIFF>${operatedPhases.length ? ` pada fasa ${operatedPhases.join(", ")}` : ""}. Dengan setting yang diberikan, relay diasumsikan bekerja sesuai karakteristik differential/restraint.`;
+
+  // Hide the p.u. characteristic/region/fast line when they don't apply.
+  const baseTraces = localOnly ? [] : [operateRegion, charTrace, fastLine];
 
   return (
     <div className={styles.panel}>
@@ -269,16 +306,30 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         <span className={styles.badge}>{plotExplanation}</span>
       </div>
 
+      {localOnly && samples.length > 0 && (
+        <div
+          className={styles.row}
+          style={{ marginBottom: 12, padding: "8px 12px", background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: 6 }}
+        >
+          <span style={{ fontSize: "0.74rem", color: "#92400e", lineHeight: 1.5 }}>
+            ⚠️ <strong>Differential dua-terminal tidak tersedia.</strong> Rekaman ini hanya berisi arus
+            terminal lokal (tidak ada arus sisi remote dan tidak ada channel differential terhitung dari
+            relay). Plot di bawah adalah <strong>arus lokal per fasa</strong>, bukan diff/restraint sejati —
+            karena itu kurva operate p.u. tidak ditampilkan. Verdict diff diambil dari sinyal trip relay.
+          </span>
+        </div>
+      )}
+
       {status && (
-        <div className={`${styles.statusBadge} ${statusClass}`} style={{ marginBottom: 12 }}>
+        <div className={`${styles.statusBadge} ${localOnly ? localStatusClass : statusClass}`} style={{ marginBottom: 12 }}>
           {statusLabel}
-          {operatedPhases.length > 0 && ` — Phase ${operatedPhases.join(", ")}`}
+          {!localOnly && operatedPhases.length > 0 && ` — Phase ${operatedPhases.join(", ")}`}
         </div>
       )}
 
       <div data-pdf-chart-id="diff_restraint" data-pdf-chart-title="Diff / Restraint Plot">
         <Plot
-          data={[operateRegion, charTrace, fastLine, ...phaseTraces, ...tripTraces] as Plotly.Data[]}
+          data={[...baseTraces, ...phaseTraces, ...tripTraces] as Plotly.Data[]}
           layout={layout}
           config={{ displayModeBar: false, responsive: true }}
           style={{ width: "100%" }}
@@ -288,35 +339,57 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         <span className={styles.badge}>{assessmentText}</span>
       </div>
 
-      {/* Per-phase classification — verdict + max operating stats per fasa */}
+      {/* Per-phase classification. In LOCAL_ONLY the ratio-to-threshold is
+          meaningless (current in A vs a p.u. characteristic), so we show the
+          local fault current as context + the relay's own diff verdict instead. */}
       {phaseClass.length > 0 && (
         <>
-          <h3 style={{ fontSize: "0.85rem", color: "#475569", margin: "16px 0 10px" }}>Klasifikasi per Fasa</h3>
+          <h3 style={{ fontSize: "0.85rem", color: "#475569", margin: "16px 0 10px" }}>
+            {localOnly ? "Ringkasan per Fasa (arus lokal + verdict relay)" : "Klasifikasi per Fasa"}
+          </h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {phaseClass.map((c) => (
-              <div
-                key={c.phase}
-                style={{
-                  flex: "1 1 180px",
-                  border: `1px solid ${VERDICT_COLOR[c.verdict] ?? "#cbd5e1"}`,
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  background: "#ffffff",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <strong style={{ color: VERDICT_COLOR[c.verdict] ?? "#334155", fontSize: "0.82rem" }}>
-                    {c.phase}: {c.verdict}
-                  </strong>
-                  <span className={styles.badge} style={{ fontSize: "0.66rem" }}>{c.confidence}</span>
+            {phaseClass.map((c) => {
+              const relayOperated = relayDiffPhases.includes(c.phase);
+              const verdict = localOnly
+                ? (relayOperated ? "Relay Diff OPERATE" : "Relay Diff diam")
+                : c.verdict;
+              const color = localOnly
+                ? (relayOperated ? "#dc2626" : "#64748b")
+                : (VERDICT_COLOR[c.verdict] ?? "#334155");
+              return (
+                <div
+                  key={c.phase}
+                  style={{
+                    flex: "1 1 180px",
+                    border: `1px solid ${color}`,
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    background: "#ffffff",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <strong style={{ color, fontSize: "0.82rem" }}>
+                      {c.phase}: {verdict}
+                    </strong>
+                    {!localOnly && <span className={styles.badge} style={{ fontSize: "0.66rem" }}>{c.confidence}</span>}
+                  </div>
+                  <div style={{ fontSize: "0.72rem", color: "#475569", lineHeight: 1.6 }}>
+                    {localOnly ? (
+                      <>
+                        Arus lokal puncak: <strong>{c.max_idiff.toFixed(0)}</strong> A<br />
+                        Sumber verdict: <strong>{relayOperated ? "sinyal DIF_TRIP relay" : "tidak ada DIF_TRIP"}</strong>
+                      </>
+                    ) : (
+                      <>
+                        Max I-diff: <strong>{c.max_idiff.toFixed(2)}</strong> pu<br />
+                        Max I-rest: <strong>{c.max_irest.toFixed(2)}</strong> pu<br />
+                        Max ratio: <strong>{(c.max_ratio * 100).toFixed(0)}%</strong> dari threshold
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: "0.72rem", color: "#475569", lineHeight: 1.6 }}>
-                  Max I-diff: <strong>{c.max_idiff.toFixed(2)}</strong> pu<br />
-                  Max I-rest: <strong>{c.max_irest.toFixed(2)}</strong> pu<br />
-                  Max ratio: <strong>{(c.max_ratio * 100).toFixed(0)}%</strong> dari threshold
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

@@ -249,6 +249,12 @@ class DiffRestraintResponse(BaseModel):
     operated_phases: List[str]
     trip_markers: List[TripMarker] = []
     phase_classification: List[PhaseClassification] = []
+    # "TWO_TERMINAL" = relay-computed diff available (true differential);
+    # "LOCAL_ONLY" = only local-terminal currents — diff/restraint scatter is
+    # local current, NOT a true two-terminal differential. Verdict then comes
+    # from the relay's own per-phase diff trip signals (relay_diff_phases).
+    diff_data_mode: str = "TWO_TERMINAL"
+    relay_diff_phases: List[str] = []
 
 
 # --- Relay OCR ---

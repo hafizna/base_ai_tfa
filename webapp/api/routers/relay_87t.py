@@ -15,7 +15,9 @@ from ..schemas import (
     TripMarker, PhaseClassification,
 )
 from ..storage import load_analysis
-from .relay_87l import _characteristic_threshold, _detect_trip_markers, _classify_phases
+from .relay_87l import (
+    _characteristic_threshold, _detect_trip_markers, _classify_phases, _relay_diff_phases,
+)
 
 router = APIRouter(prefix="/api/analyze/87t", tags=["relay-87t"])
 
@@ -204,6 +206,9 @@ def _compute_87t(comtrade_data: dict, params: dict) -> dict:
         "operated_phases": operated_phases,
         "trip_markers": _detect_trip_markers(comtrade_data, samples),
         "phase_classification": _classify_phases(samples, params),
+        # Transformer diff is computed from winding currents -> genuine differential.
+        "diff_data_mode": "TWO_TERMINAL",
+        "relay_diff_phases": _relay_diff_phases(comtrade_data),
     }
 
 
@@ -225,4 +230,6 @@ async def diff_restraint_87t(body: DiffRestraintAnalysisRequest):
         operated_phases=result["operated_phases"],
         trip_markers=[TripMarker(**m) for m in result.get("trip_markers", [])],
         phase_classification=[PhaseClassification(**c) for c in result.get("phase_classification", [])],
+        diff_data_mode=result.get("diff_data_mode", "TWO_TERMINAL"),
+        relay_diff_phases=result.get("relay_diff_phases", []),
     )

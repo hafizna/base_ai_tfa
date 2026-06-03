@@ -29,12 +29,52 @@ PHASE_CURRENT_MAP = {
     "L3": ["IC", "IL3", "I3"],
 }
 
+# Relay-computed differential channels (already a true two-terminal quantity).
+# If present, we have real diff data; otherwise the record is local-terminal only.
+RELAY_DIFF_CHANNELS = {
+    "L1": ["87L.IDA", "IDIFFA", "IDIFF_A", "IDA", "IDIFFL1"],
+    "L2": ["87L.IDB", "IDIFFB", "IDIFF_B", "IDB", "IDIFFL2"],
+    "L3": ["87L.IDC", "IDIFFC", "IDIFF_C", "IDC", "IDIFFL3"],
+}
+
 
 def _find_ch(channels, candidates):
     for ch in channels:
         if ch["canonical_name"] in candidates or ch["name"].upper() in candidates:
             return np.array(ch["samples"])
     return None
+
+
+def _detect_diff_mode(channels) -> str:
+    """TWO_TERMINAL if the relay recorded its own computed differential channel,
+    else LOCAL_ONLY (only local-terminal currents present — no true I-remote)."""
+    has_relay_diff = any(
+        _find_ch(channels, RELAY_DIFF_CHANNELS[ph]) is not None for ph in ("L1", "L2", "L3")
+    )
+    return "TWO_TERMINAL" if has_relay_diff else "LOCAL_ONLY"
+
+
+# Per-phase differential-trip digital channels reported by the relay itself.
+# These are the authoritative verdict when waveform reconstruction is impossible.
+_RELAY_DIFF_TRIP = {
+    "L1": ["DIF-A", "DIFF-A", "DIFA", "87-A", "DIFF_A", "IDIFF-A"],
+    "L2": ["DIF-B", "DIFF-B", "DIFB", "87-B", "DIFF_B", "IDIFF-B"],
+    "L3": ["DIF-C", "DIFF-C", "DIFC", "87-C", "DIFF_C", "IDIFF-C"],
+}
+
+
+def _relay_diff_phases(comtrade_data: dict) -> list:
+    """Which phases the relay's own 87L diff element reports as operated (from status channels)."""
+    out = []
+    for ch in comtrade_data.get("status_channels", []):
+        name_up = str(ch.get("name", "")).upper()
+        samp = np.asarray(ch.get("samples", []), dtype=float)
+        if samp.size == 0 or not np.any(samp > 0.5):
+            continue
+        for ph, pats in _RELAY_DIFF_TRIP.items():
+            if any(p in name_up for p in pats) and ph not in out:
+                out.append(ph)
+    return sorted(out)
 
 
 def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
@@ -103,6 +143,8 @@ def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
         "operated_phases": operated_phases,
         "trip_markers": _detect_trip_markers(comtrade_data, samples),
         "phase_classification": _classify_phases(samples, params),
+        "diff_data_mode": _detect_diff_mode(channels),
+        "relay_diff_phases": _relay_diff_phases(comtrade_data),
     }
 
 
@@ -261,6 +303,8 @@ async def diff_restraint(body: DiffRestraintAnalysisRequest):
         operated_phases=result["operated_phases"],
         trip_markers=[TripMarker(**m) for m in result.get("trip_markers", [])],
         phase_classification=[PhaseClassification(**c) for c in result.get("phase_classification", [])],
+        diff_data_mode=result.get("diff_data_mode", "TWO_TERMINAL"),
+        relay_diff_phases=result.get("relay_diff_phases", []),
     )
 
 
