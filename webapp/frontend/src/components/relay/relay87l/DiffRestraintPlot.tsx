@@ -204,7 +204,7 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         x: ms.map((m) => m.i_rest),
         y: ms.map((m) => m.i_diff),
         type: "scatter",
-        mode: "markers+text",
+        mode: "text+markers",
         name: style.label,
         text: ms.map(() => "T"),
         textposition: "middle center",

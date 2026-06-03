@@ -122,7 +122,7 @@ export default function OvercurrentOverlay({ analysisId, relayType = "OCR", onRe
       x: [p.current_a],
       y: [p.trip_time_s ?? 0],
       type: "scatter",
-      mode: "markers+text",
+      mode: "text+markers",
       name: `${p.channel_label}: ${p.current_a.toFixed(0)} A → ${p.winning_stage_label} ${p.is_moment ? "INST" : ""}`,
       text: [p.channel_label],
       textposition: "top center",
