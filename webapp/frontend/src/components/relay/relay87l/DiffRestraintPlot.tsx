@@ -53,11 +53,40 @@ const PRESETS: Preset[] = [
 ];
 
 interface Sample { t: number; i_diff: number; i_rest: number; phase: string; }
+interface TripMarker {
+  kind: "RELAY_TRIP" | "DIFF" | "DIFF_FAST";
+  channel_name: string;
+  t: number;
+  phase: string | null;
+  i_diff: number;
+  i_rest: number;
+}
+interface PhaseClassification {
+  phase: string;
+  verdict: string;
+  confidence: string;
+  max_idiff: number;
+  max_irest: number;
+  max_ratio: number;
+}
 
 const PHASE_COLORS: Record<string, string> = {
   L1: "#f59e0b",
   L2: "#22c55e",
   L3: "#3b82f6",
+};
+
+const TRIP_STYLE: Record<string, { color: string; label: string }> = {
+  RELAY_TRIP: { color: "#f97316", label: "Relay TRIP" },
+  DIFF: { color: "#6366f1", label: "Diff> TRIP" },
+  DIFF_FAST: { color: "#db2777", label: "Diff>> TRIP" },
+};
+
+const VERDICT_COLOR: Record<string, string> = {
+  "Internal Fault": "#dc2626",
+  "Through Fault": "#d97706",
+  "Inrush?": "#7c3aed",
+  "Not Operated": "#64748b",
 };
 
 function buildCharacteristic(p: DiffParams) {
@@ -85,6 +114,8 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [operatedPhases, setOperatedPhases] = useState<string[]>([]);
+  const [tripMarkers, setTripMarkers] = useState<TripMarker[]>([]);
+  const [phaseClass, setPhaseClass] = useState<PhaseClassification[]>([]);
   const [loading, setLoading] = useState(false);
 
   const activePreset = PRESETS.find((p) => p.key === selectedPreset) ?? PRESETS[0];
@@ -109,6 +140,8 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
       setSamples(res.samples ?? []);
       setStatus(res.operated_status);
       setOperatedPhases(res.operated_phases ?? []);
+      setTripMarkers(res.trip_markers ?? []);
+      setPhaseClass(res.phase_classification ?? []);
     } finally {
       setLoading(false);
     }
@@ -160,6 +193,28 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     name: ph,
     marker: { color: PHASE_COLORS[ph], size: 4, opacity: 0.8 },
   }));
+
+  // TRIP markers — one trace per trip kind, placed at the operating point at
+  // the trip instant. Square 'T' so it stands out over the sample cloud.
+  const tripTraces: Partial<Plotly.ScatterData>[] = Object.entries(TRIP_STYLE)
+    .map(([kind, style]) => {
+      const ms = tripMarkers.filter((m) => m.kind === kind);
+      if (ms.length === 0) return null;
+      return {
+        x: ms.map((m) => m.i_rest),
+        y: ms.map((m) => m.i_diff),
+        type: "scatter",
+        mode: "markers+text",
+        name: style.label,
+        text: ms.map(() => "T"),
+        textposition: "middle center",
+        textfont: { color: "#ffffff", size: 9 },
+        hovertext: ms.map((m) => `${style.label}${m.phase ? ` (${m.phase})` : ""} @ ${(m.t * 1000).toFixed(0)} ms — ${m.channel_name}`),
+        hoverinfo: "text",
+        marker: { color: style.color, size: 16, symbol: "square", line: { color: "#111827", width: 1 } },
+      } as Partial<Plotly.ScatterData>;
+    })
+    .filter((t): t is Partial<Plotly.ScatterData> => t !== null);
 
   const layout: Partial<Plotly.Layout> = {
     height: 400,
@@ -223,7 +278,7 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
 
       <div data-pdf-chart-id="diff_restraint" data-pdf-chart-title="Diff / Restraint Plot">
         <Plot
-          data={[operateRegion, charTrace, fastLine, ...phaseTraces] as Plotly.Data[]}
+          data={[operateRegion, charTrace, fastLine, ...phaseTraces, ...tripTraces] as Plotly.Data[]}
           layout={layout}
           config={{ displayModeBar: false, responsive: true }}
           style={{ width: "100%" }}
@@ -232,6 +287,39 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
       <div className={styles.row} style={{ marginTop: 12 }}>
         <span className={styles.badge}>{assessmentText}</span>
       </div>
+
+      {/* Per-phase classification — verdict + max operating stats per fasa */}
+      {phaseClass.length > 0 && (
+        <>
+          <h3 style={{ fontSize: "0.85rem", color: "#475569", margin: "16px 0 10px" }}>Klasifikasi per Fasa</h3>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {phaseClass.map((c) => (
+              <div
+                key={c.phase}
+                style={{
+                  flex: "1 1 180px",
+                  border: `1px solid ${VERDICT_COLOR[c.verdict] ?? "#cbd5e1"}`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  background: "#ffffff",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <strong style={{ color: VERDICT_COLOR[c.verdict] ?? "#334155", fontSize: "0.82rem" }}>
+                    {c.phase}: {c.verdict}
+                  </strong>
+                  <span className={styles.badge} style={{ fontSize: "0.66rem" }}>{c.confidence}</span>
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "#475569", lineHeight: 1.6 }}>
+                  Max I-diff: <strong>{c.max_idiff.toFixed(2)}</strong> pu<br />
+                  Max I-rest: <strong>{c.max_irest.toFixed(2)}</strong> pu<br />
+                  Max ratio: <strong>{(c.max_ratio * 100).toFixed(0)}%</strong> dari threshold
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Parameter editor */}
       <h3 style={{ fontSize: "0.85rem", color: "#475569", margin: "16px 0 10px" }}>Parameters</h3>

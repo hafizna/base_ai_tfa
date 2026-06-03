@@ -10,9 +10,12 @@ from fastapi import APIRouter, HTTPException
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from ..schemas import DiffRestraintAnalysisRequest, DiffRestraintResponse, DiffRestraintSample
+from ..schemas import (
+    DiffRestraintAnalysisRequest, DiffRestraintResponse, DiffRestraintSample,
+    TripMarker, PhaseClassification,
+)
 from ..storage import load_analysis
-from .relay_87l import _characteristic_threshold
+from .relay_87l import _characteristic_threshold, _detect_trip_markers, _classify_phases
 
 router = APIRouter(prefix="/api/analyze/87t", tags=["relay-87t"])
 
@@ -195,7 +198,13 @@ def _compute_87t(comtrade_data: dict, params: dict) -> dict:
     else:
         status = "NOT_OPERATED"
 
-    return {"samples": samples, "operated_status": status, "operated_phases": operated_phases}
+    return {
+        "samples": samples,
+        "operated_status": status,
+        "operated_phases": operated_phases,
+        "trip_markers": _detect_trip_markers(comtrade_data, samples),
+        "phase_classification": _classify_phases(samples, params),
+    }
 
 
 @router.post("/diff-restraint", response_model=DiffRestraintResponse)
@@ -214,4 +223,6 @@ async def diff_restraint_87t(body: DiffRestraintAnalysisRequest):
         params=body.params,
         operated_status=result["operated_status"],
         operated_phases=result["operated_phases"],
+        trip_markers=[TripMarker(**m) for m in result.get("trip_markers", [])],
+        phase_classification=[PhaseClassification(**c) for c in result.get("phase_classification", [])],
     )

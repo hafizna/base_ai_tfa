@@ -222,11 +222,33 @@ class DiffRestraintAnalysisRequest(AnalysisRequestBase):
     relay_type: str = "87L"
 
 
+class TripMarker(BaseModel):
+    """A detected trip event mapped onto the operating-point trajectory."""
+    kind: str               # "RELAY_TRIP" | "DIFF" | "DIFF_FAST"
+    channel_name: str
+    t: float                # timestamp of first assertion (s)
+    phase: Optional[str] = None   # "L1"/"L2"/"L3" if the trip channel is phase-segregated
+    i_diff: float           # operating point at the trip instant
+    i_rest: float
+
+
+class PhaseClassification(BaseModel):
+    """Per-phase summary + verdict, mirroring physical relay event records."""
+    phase: str              # "L1" | "L2" | "L3"
+    verdict: str            # "Internal Fault" | "Through Fault" | "Not Operated" | "Inrush?"
+    confidence: str         # "high" | "medium" | "low"
+    max_idiff: float
+    max_irest: float
+    max_ratio: float        # max(i_diff / threshold) — >1.0 = inside operate region
+
+
 class DiffRestraintResponse(BaseModel):
     samples: List[DiffRestraintSample]
     params: CharacteristicParams
     operated_status: str    # "NOT_OPERATED" | "IDIFF_OPERATED" | "IDIFF_FAST_OPERATED"
     operated_phases: List[str]
+    trip_markers: List[TripMarker] = []
+    phase_classification: List[PhaseClassification] = []
 
 
 # --- Relay OCR ---
