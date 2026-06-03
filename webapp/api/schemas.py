@@ -254,3 +254,50 @@ class OvercurrentResponse(BaseModel):
     measured_current_a: float
     measured_trip_time_s: Optional[float]
     intersection_ratio: Optional[float]
+
+
+# --- Multi-stage TCC (Time-Current Characteristic) ---
+# Absolute-Ampere axis, multiple coordinated stages (inverse + definite-time/INST),
+# per-phase fault points. Mirrors physical relay setting sheets (elemen waktu + I>> moment).
+
+class TccStage(BaseModel):
+    """One protection stage. curve_type 'DT' = definite time / instant (uses definite_time_s)."""
+    label: str = "S1"                       # display label, e.g. S1, S2, I>>
+    curve_type: str = "NI"                  # NI | VI | EI | LTI | DT  (DT = Definite Time / INST)
+    is_pickup_a: float = 100.0              # pickup in ABSOLUTE Amperes
+    tms: float = 0.1                        # time multiplier (inverse stages only)
+    definite_time_s: float = 0.0            # operating time for DT stages (e.g. 0.3 phase, 0.7 trafo)
+
+
+class TccCurveLine(BaseModel):
+    """Computed line for one stage: list of (current_a, trip_time_s) points to plot."""
+    label: str
+    curve_type: str
+    is_pickup_a: float
+    currents_a: List[float]
+    trip_times_s: List[float]
+
+
+class TccFaultPoint(BaseModel):
+    """A measured fault current mapped onto the fastest-operating stage."""
+    channel_label: str                      # e.g. "A", "B", "C", "N/EF"
+    current_a: float
+    winning_stage_label: Optional[str]      # stage that trips first; None = below all pickups
+    winning_curve_type: Optional[str]
+    trip_time_s: Optional[float]
+    multiple_of_pickup: Optional[float]     # current / winning stage pickup
+    is_moment: bool = False                 # True if winning stage is DT/instant
+
+
+class TccRequest(AnalysisRequestBase):
+    mode: str = "phase"                     # "phase" (A/B/C) | "ef" (IN/I0/IE)
+    domain: str = "line"                    # "line" | "trafo" — affects moment-time guidance text
+    stages: List[TccStage] = []
+
+
+class TccResponse(BaseModel):
+    mode: str
+    domain: str
+    curves: List[TccCurveLine]
+    fault_points: List[TccFaultPoint]
+    assessment: str                         # descriptive evaluation text (kept + enriched)

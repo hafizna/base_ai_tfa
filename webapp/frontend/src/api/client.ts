@@ -311,6 +311,46 @@ export async function overCurrentCharacteristic(analysisId: string, curve_type: 
   return data;
 }
 
+export interface TccStage {
+  label: string;
+  curve_type: string;       // NI | VI | EI | LTI | DT
+  is_pickup_a: number;
+  tms: number;
+  definite_time_s: number;
+}
+export interface TccCurveLine {
+  label: string;
+  curve_type: string;
+  is_pickup_a: number;
+  currents_a: number[];
+  trip_times_s: number[];
+}
+export interface TccFaultPoint {
+  channel_label: string;
+  current_a: number;
+  winning_stage_label: string | null;
+  winning_curve_type: string | null;
+  trip_time_s: number | null;
+  multiple_of_pickup: number | null;
+  is_moment: boolean;
+}
+export interface TccResult {
+  mode: string;
+  domain: string;
+  curves: TccCurveLine[];
+  fault_points: TccFaultPoint[];
+  assessment: string;
+}
+export async function tccMultiStage(
+  analysisId: string,
+  mode: "phase" | "ef",
+  domain: "line" | "trafo",
+  stages: TccStage[],
+): Promise<TccResult> {
+  const { data } = await api.post("/api/analyze/ocr/tcc", { analysis_id: analysisId, mode, domain, stages });
+  return data;
+}
+
 export interface ReportChart {
   id: string;
   title: string;
