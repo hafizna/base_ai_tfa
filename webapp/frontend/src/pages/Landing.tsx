@@ -88,7 +88,7 @@ export default function Landing() {
         <div className={styles.eyebrow}>PLN AI-Powered DFR Analytics</div>
         <div className={styles.logo}>DFR Analyser</div>
         <p className={styles.subtitle}>
-          Pick the protection family first, then upload the COMTRADE pair or TWS FL export for analysis.
+          Pick the protection family first, then upload a COMTRADE file set or TWS FL export for analysis.
         </p>
       </header>
 
@@ -110,7 +110,7 @@ export default function Landing() {
       </main>
 
       <footer className={styles.footer}>
-        Upload a matching <code>.cfg</code> and <code>.dat</code> pair, or a TWS FL <code>.cdb</code> export.
+        Upload one ABB <code>.cff</code>, a matching <code>.cfg</code> + <code>.dat</code> pair, or a TWS FL <code>.cdb</code> export.
       </footer>
     </div>
   );

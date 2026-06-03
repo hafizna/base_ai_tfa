@@ -25,16 +25,18 @@ export default function Upload() {
   const { relayType } = useAnalysis();
   const navigate = useNavigate();
 
-  const cfgRef = useRef<HTMLInputElement>(null);
-  const datRef = useRef<HTMLInputElement>(null);
+  const comtradeRef = useRef<HTMLInputElement>(null);
   const cdbRef = useRef<HTMLInputElement>(null);
 
   const [cfgFile, setCfgFile] = useState<File | null>(null);
   const [datFile, setDatFile] = useState<File | null>(null);
+  const [cffFile, setCffFile] = useState<File | null>(null);
   const [cdbFile, setCdbFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<DetectionSuggestion | null>(null);
+  const comtradeFiles = [cffFile, cfgFile, datFile].filter((file): file is File => Boolean(file));
+  const comtradeReady = Boolean(cffFile || (cfgFile && datFile));
 
   if (!relayType) {
     navigate("/");
@@ -47,8 +49,8 @@ export default function Upload() {
       setError("Please select a .cdb export file.");
       return;
     }
-    if (relayType !== "TWS_FL" && (!cfgFile || !datFile)) {
-      setError("Please select both .cfg and .dat files.");
+    if (relayType !== "TWS_FL" && !comtradeReady) {
+      setError("Please select one .cff file or a matching .cfg + .dat pair.");
       return;
     }
 
@@ -62,12 +64,21 @@ export default function Upload() {
         return;
       }
 
-      if (!cfgFile || !datFile) {
-        setError("Please select both .cfg and .dat files.");
+      if (!comtradeReady) {
+        setError("Please select one .cff file or a matching .cfg + .dat pair.");
         return;
       }
 
-      const data = await uploadComtrade(cfgFile, datFile);
+      if (cffFile && (cfgFile || datFile)) {
+        setError("Use either one .cff file or one .cfg + .dat pair, not both.");
+        return;
+      }
+      if (cfgFile && datFile && fileStem(cfgFile) !== fileStem(datFile)) {
+        setError("The .cfg and .dat filenames do not match. Select files from the same COMTRADE record.");
+        return;
+      }
+
+      const data = await uploadComtrade(comtradeFiles);
       const suggested = data.suggested_relay_type;
       if (suggested && suggested !== relayType) {
         setSuggestion({
@@ -82,7 +93,7 @@ export default function Upload() {
       const response = (err as { response?: { data?: { detail?: string } } }).response;
       const msg = response?.data?.detail
         ?? (response
-          ? "Upload failed. Make sure the .cfg and .dat belong to the same COMTRADE record."
+          ? "Upload failed. Make sure the .cff is valid or the .cfg and .dat belong to the same COMTRADE record."
           : "Cannot reach the analysis API. In deployment, this usually means the frontend is pointing to the wrong backend URL.");
       setError(msg);
     } finally {
@@ -109,7 +120,7 @@ export default function Upload() {
             </>
           ) : (
             <>
-              Select the matching <code>.cfg</code> and <code>.dat</code> files from your relay or DFR recorder.
+              Select one ABB <code>.cff</code> file or the matching <code>.cfg</code> and <code>.dat</code> files from your relay or DFR recorder.
             </>
           )}
         </p>
@@ -126,20 +137,18 @@ export default function Upload() {
               />
             </div>
           ) : (
-            <div className={styles.dropRow}>
-              <DropZone
-                label=".cfg"
-                accept=".cfg,.CFG"
-                file={cfgFile}
-                inputRef={cfgRef}
-                onChange={setCfgFile}
-              />
-              <DropZone
-                label=".dat"
-                accept=".dat,.DAT"
-                file={datFile}
-                inputRef={datRef}
-                onChange={setDatFile}
+            <div className={styles.singleDrop}>
+              <ComtradeDropZone
+                files={comtradeFiles}
+                inputRef={comtradeRef}
+                onChange={(files) => {
+                  const next = parseComtradeFiles(files);
+                  setCfgFile(next.cfg);
+                  setDatFile(next.dat);
+                  setCffFile(next.cff);
+                  setSuggestion(null);
+                  setError(next.error);
+                }}
               />
             </div>
           )}
@@ -149,7 +158,7 @@ export default function Upload() {
           <button
             type="submit"
             className={styles.submit}
-            disabled={loading || (relayType === "TWS_FL" ? !cdbFile : !cfgFile || !datFile)}
+            disabled={loading || (relayType === "TWS_FL" ? !cdbFile : !comtradeReady)}
           >
             {loading ? "Parsing..." : "Analyze"}
           </button>
@@ -212,6 +221,104 @@ export default function Upload() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function fileExt(file: File) {
+  return file.name.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function fileStem(file: File) {
+  return file.name.replace(/\.[^.]+$/, "").toLowerCase();
+}
+
+function parseComtradeFiles(files: File[]) {
+  const supported = files.filter((file) => ["cff", "cfg", "dat"].includes(fileExt(file)));
+  const unsupported = files.filter((file) => !["cff", "cfg", "dat"].includes(fileExt(file)));
+  if (unsupported.length) {
+    return {
+      cfg: null,
+      dat: null,
+      cff: null,
+      error: `Unsupported file type: ${unsupported.map((file) => file.name).join(", ")}`,
+    };
+  }
+
+  const cffs = supported.filter((file) => fileExt(file) === "cff");
+  const cfgs = supported.filter((file) => fileExt(file) === "cfg");
+  const dats = supported.filter((file) => fileExt(file) === "dat");
+
+  if (cffs.length > 1) {
+    return { cfg: null, dat: null, cff: null, error: "Select only one .cff file." };
+  }
+  if (cffs.length === 1 && (cfgs.length > 0 || dats.length > 0)) {
+    return { cfg: null, dat: null, cff: cffs[0], error: "Use either one .cff file or one .cfg + .dat pair, not both." };
+  }
+  if (cffs.length === 1) {
+    return { cfg: null, dat: null, cff: cffs[0], error: null };
+  }
+
+  if (cfgs.length > 1 || dats.length > 1) {
+    return { cfg: null, dat: null, cff: null, error: "Select exactly one .cfg file and one .dat file." };
+  }
+
+  const cfg = cfgs[0] ?? null;
+  const dat = dats[0] ?? null;
+  if (cfg && dat && fileStem(cfg) !== fileStem(dat)) {
+    return { cfg, dat, cff: null, error: "The .cfg and .dat filenames do not match. Select files from the same COMTRADE record." };
+  }
+
+  return { cfg, dat, cff: null, error: null };
+}
+
+function ComtradeDropZone({
+  files,
+  inputRef,
+  onChange,
+}: {
+  files: File[];
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onChange: (files: File[]) => void;
+}) {
+  const [over, setOver] = useState(false);
+
+  function handleFiles(list: FileList | null) {
+    if (!list) return;
+    onChange(Array.from(list));
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setOver(false);
+    handleFiles(e.dataTransfer.files);
+  }
+
+  return (
+    <div
+      className={`${styles.dropzone} ${styles.dropzoneWide} ${over ? styles.dropzoneOver : ""} ${files.length ? styles.dropzoneFilled : ""}`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={handleDrop}
+      onClick={() => inputRef.current?.click()}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".cff,.CFF,.cfg,.CFG,.dat,.DAT"
+        multiple
+        style={{ display: "none" }}
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+      <span className={styles.dropLabel}>.cff / .cfg + .dat</span>
+      {files.length ? (
+        <span className={styles.fileName}>{files.map((file) => file.name).join(" + ")}</span>
+      ) : (
+        <span className={styles.dropHint}>Click or drag one .cff file, or select the .cfg and .dat pair together</span>
+      )}
     </div>
   );
 }

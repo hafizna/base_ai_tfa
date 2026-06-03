@@ -2,7 +2,7 @@
 
 Sistem klasifikasi penyebab gangguan transmisi berbasis COMTRADE IEEE C37.111.
 
-Update terakhir: 20 Mei 2026
+Update terakhir: 3 Juni 2026
 
 ---
 
@@ -30,7 +30,7 @@ mengklasifikasikan penyebab fisik ke dalam 7 kelas:
 ## Alur Klasifikasi
 
 ```
-INPUT: file .cfg + .dat (COMTRADE)
+INPUT: file .cff ABB atau .cfg + .dat (COMTRADE)
         │
         ▼
 1. Parse COMTRADE  →  Record

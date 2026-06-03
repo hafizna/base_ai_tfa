@@ -143,10 +143,15 @@ export interface AnalysisSummary {
   warnings: string[];
 }
 
-export async function uploadComtrade(cfg: File, dat: File) {
+export async function uploadComtrade(files: File[]) {
   const form = new FormData();
-  form.append("cfg_file", cfg);
-  form.append("dat_file", dat);
+  files.forEach((file) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "cff") form.append("cff_file", file);
+    else if (ext === "cfg") form.append("cfg_file", file);
+    else if (ext === "dat") form.append("dat_file", file);
+    else form.append("files", file);
+  });
   const { data } = await api.post<UploadedAnalysis>("/api/upload", form);
   return data;
 }

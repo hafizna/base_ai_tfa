@@ -10,6 +10,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+from core.cff_parser import CffParseError, parse_cff_bytes
 from core.comtrade_parser import ComtradeRecord, parse_comtrade
 from core.protection_router import ProtectionType, determine_protection
 from ..json_safety import replace_non_finite_numbers
@@ -120,37 +121,103 @@ def _analysis_to_summary(analysis_id: str, payload: dict) -> AnalysisSummaryOut:
     )
 
 
+def _upload_name(upload: UploadFile) -> str:
+    return Path(upload.filename or "record").name
+
+
+def _upload_suffix(upload: UploadFile) -> str:
+    return Path(upload.filename or "").suffix.casefold()
+
+
 @router.post("/upload", response_model=AnalysisCreatedResponse)
 async def upload_comtrade(
-    cfg_file: UploadFile = File(...),
-    dat_file: UploadFile = File(...),
+    files: list[UploadFile] | None = File(None),
+    cfg_file: UploadFile | None = File(None),
+    dat_file: UploadFile | None = File(None),
+    cff_file: UploadFile | None = File(None),
 ):
-    """Parse a .cfg + .dat COMTRADE pair and create a backend analysis session."""
-    cfg_bytes = await cfg_file.read()
-    dat_bytes = await dat_file.read()
+    """Parse a COMTRADE upload from one ABB .cff file or a matching .cfg + .dat pair."""
+    uploads = [*(files or [])]
+    uploads.extend(upload for upload in (cfg_file, dat_file, cff_file) if upload is not None)
 
-    with tempfile.TemporaryDirectory(prefix="dfr_upload_") as tmp_dir:
-        tmp = Path(tmp_dir)
-
-        cfg_name = Path(cfg_file.filename or "record.cfg").name
-        dat_name = Path(dat_file.filename or "record.dat").name
-
-        cfg_path = tmp / cfg_name
-        dat_path = tmp / dat_name
-
-        cfg_path.write_bytes(cfg_bytes)
-        dat_path.write_bytes(dat_bytes)
-
-        loop = asyncio.get_event_loop()
-        record = await loop.run_in_executor(
-            None,
-            partial(parse_comtrade, str(cfg_path), str(dat_path)),
+    if not uploads:
+        raise HTTPException(
+            status_code=400,
+            detail="Upload one ABB .cff file or a matching .cfg + .dat COMTRADE pair.",
         )
 
-    if record is None:
+    cff_uploads = [upload for upload in uploads if _upload_suffix(upload) == ".cff"]
+    cfg_uploads = [upload for upload in uploads if _upload_suffix(upload) == ".cfg"]
+    dat_uploads = [upload for upload in uploads if _upload_suffix(upload) == ".dat"]
+    unsupported = [
+        _upload_name(upload)
+        for upload in uploads
+        if _upload_suffix(upload) not in {".cff", ".cfg", ".dat"}
+    ]
+
+    if unsupported:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported COMTRADE upload file type: {', '.join(unsupported)}",
+        )
+
+    if cff_uploads:
+        if len(cff_uploads) != 1 or cfg_uploads or dat_uploads:
+            raise HTTPException(
+                status_code=400,
+                detail="Upload either one ABB .cff file or one matching .cfg + .dat pair, not both.",
+            )
+
+        cff_upload = cff_uploads[0]
+        cff_bytes = await cff_upload.read()
+        loop = asyncio.get_event_loop()
+        try:
+            record = await loop.run_in_executor(
+                None,
+                partial(parse_cff_bytes, cff_bytes, _upload_name(cff_upload)),
+            )
+        except CffParseError as exc:
+            raise HTTPException(status_code=422, detail=f"Could not parse ABB CFF file. {exc}") from exc
+    else:
+        if len(cfg_uploads) != 1 or len(dat_uploads) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Upload a complete COMTRADE pair: exactly one .cfg file and one .dat file.",
+            )
+
+        cfg_upload = cfg_uploads[0]
+        dat_upload = dat_uploads[0]
+        cfg_name = _upload_name(cfg_upload)
+        dat_name = _upload_name(dat_upload)
+
+        if Path(cfg_name).stem.casefold() != Path(dat_name).stem.casefold():
+            raise HTTPException(
+                status_code=422,
+                detail="The .cfg and .dat filenames do not match. Select files from the same COMTRADE record.",
+            )
+
+        cfg_bytes = await cfg_upload.read()
+        dat_bytes = await dat_upload.read()
+
+        with tempfile.TemporaryDirectory(prefix="dfr_upload_") as tmp_dir:
+            tmp = Path(tmp_dir)
+
+            cfg_path = tmp / cfg_name
+            dat_path = tmp / dat_name
+
+            cfg_path.write_bytes(cfg_bytes)
+            dat_path.write_bytes(dat_bytes)
+
+            loop = asyncio.get_event_loop()
+            record = await loop.run_in_executor(
+                None,
+                partial(parse_comtrade, str(cfg_path), str(dat_path)),
+            )
+
+    if record is None or record.total_samples <= 0:
         raise HTTPException(
             status_code=422,
-            detail="Could not parse COMTRADE files. Check that the .cfg and .dat pair is valid.",
+            detail="Could not parse COMTRADE files. Check that the uploaded .cff or .cfg/.dat pair is valid.",
         )
 
     payload = _record_to_out(record)
