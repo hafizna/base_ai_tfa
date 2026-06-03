@@ -328,12 +328,17 @@ def _parse_analog_channels(com: Comtrade, manufacturer: str, warnings: List[str]
             ch_unit = com.cfg.analog_channels[i].uu if hasattr(com.cfg, 'analog_channels') else ""
 
             # COMTRADE 1997 / non-standard files sometimes store a generic type
-            # ("Voltage", "Current") as the channel name while the actual phase
-            # identifier (Va, Vb, Vc, Ia, Ib, Ic, 3I0) is in the ph field.
-            # Use ph as the effective name so normalization can extract phase info.
+            # ("Voltage", "Current", or numbered variants like "Current1"/"Current2"
+            # used to distinguish CT sides on a line-diff record) as the channel
+            # name, while the actual phase identifier (Va, Vb, Vc, Ia, Ib, Ic, 3I0,
+            # Ia1, 3I01) lives in the ph field. Use ph as the effective name so
+            # normalization can extract phase info.
             if hasattr(com.cfg.analog_channels[i], 'ph'):
                 ph_hint = (com.cfg.analog_channels[i].ph or "").strip()
-                if ph_hint and ch_name.upper() in ('VOLTAGE', 'CURRENT', 'V', 'I', 'A', 'U'):
+                # Strip trailing digits ("Current1" -> "CURRENT") before matching,
+                # so vendor-numbered generic names also fall through to ph.
+                name_stem = re.sub(r'\d+$', '', ch_name.strip()).upper()
+                if ph_hint and name_stem in ('VOLTAGE', 'CURRENT', 'V', 'I', 'A', 'U', ''):
                     ch_name = ph_hint
 
             # Get CT/VT ratios (for validation/metadata only)

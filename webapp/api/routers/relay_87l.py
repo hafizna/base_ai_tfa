@@ -121,7 +121,9 @@ def _characteristic_threshold(i_rest, pickup, slope1, int1, slope2, int2):
 # Checked in order; first match wins. Phase suffix (A/B/C/L1..) parsed separately.
 _TRIP_PATTERNS = [
     ("DIFF_FAST", ["DIFF>>", "IDIFF>>", "87-2", "I-DIFF>>", "DIFF FAST", "UNRESTRAINED"]),
-    ("DIFF",      ["DIFF>", "IDIFF>", "87-1", "I-DIFF>", "87T TRIP", "87L TRIP", "DIFF PICKUP", "DIFF TRIP", "87 TRIP"]),
+    # "DIF" (single-F) and "DIFG" cover many DFR vendors (e.g. DIF-A_TRIP, DIFG_TRIP).
+    ("DIFF",      ["DIFF>", "IDIFF>", "87-1", "I-DIFF>", "87T TRIP", "87L TRIP",
+                   "DIFF PICKUP", "DIFF TRIP", "87 TRIP", "DIF-", "DIF_", "DIFG", "DIF "]),
     ("RELAY_TRIP", ["TRIP", "GEN TRIP", "RELAY TRIP", "PMT", "GENERAL TRIP"]),
 ]
 
@@ -133,11 +135,14 @@ def _phase_of_name(name_upper: str) -> "str | None":
     incidental trailing letter — e.g. "PMT BUKA" must NOT be read as phase A.
     """
     import re
+    # Trailing boundary: token must not be followed by another alphanumeric,
+    # but "_" / "-" / end-of-string are valid separators (so "DIF-A_TRIP" -> A).
+    end = r"(?![A-Z0-9])"
     for pnum, letters in (("L1", ("A", "1", "R")), ("L2", ("B", "2", "S")), ("L3", ("C", "3", "T"))):
         for tok in letters:
-            if re.search(rf"(?:PHASE|PH|L|_|-)\s*{tok}\b", name_upper):
+            if re.search(rf"(?:PHASE|PH|L|_|-)\s*{tok}{end}", name_upper):
                 return pnum
-            if re.search(rf"\b{tok}\b", name_upper) and tok not in ("R", "S", "T"):
+            if re.search(rf"\b{tok}{end}", name_upper) and tok not in ("R", "S", "T"):
                 # bare A/B/C/1/2/3 token (e.g. "DIFF> A"); skip R/S/T to avoid
                 # false hits on common words. Phase letters R/S/T require a prefix.
                 return pnum
