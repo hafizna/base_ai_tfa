@@ -48,6 +48,9 @@ interface ImportedZone {
   X?: number;    // reactance reach (Z reach, Ohm)
   R?: number;    // fault resistance reach (Ohm)
   RF?: number | null;
+  reachMode?: "x" | "z";
+  reverseReach?: number;
+  reverseR?: number;
   lineAngleDeg?: number;  // line impedance angle for tilted zone rendering
 }
 
@@ -481,6 +484,7 @@ function parseXRIO(text: string): ImportedRelayData | null {
   if (xml.querySelector("parsererror")) return null;
 
   const params = Array.from(xml.querySelectorAll("Parameter"));
+  const blocks = Array.from(xml.querySelectorAll("Block"));
 
   // Return FIRST occurrence of a parameter by Name text — avoids picking up duplicate
   // calibration blocks (e.g. GE P442 repeats many params with default values).
@@ -489,8 +493,226 @@ function parseXRIO(text: string): ImportedRelayData | null {
     return p?.querySelector("Value")?.textContent?.trim() ?? null;
   }
 
-  const lineAngleDeg = Number.parseFloat(getFirst("Line Angle") ?? "75");
+  function getFirstOf(names: string[]): string | null {
+    for (const name of names) {
+      const value = getFirst(name);
+      if (value !== null) return value;
+    }
+    return null;
+  }
+
+  function getFirstNumber(names: string[]): number | null {
+    const raw = getFirstOf(names);
+    if (raw === null) return null;
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function valueIsEnabled(value: string | null) {
+    if (value === null) return true;
+    return !/(?:_0|\b0\b|OFF|DISABLED|INACTIVE|12656)$/i.test(value);
+  }
+
+  function statusIsEnabled(name: string) {
+    return valueIsEnabled(getFirst(name));
+  }
+
+  function directText(node: Element, tagName: string): string | null {
+    for (const child of Array.from(node.children)) {
+      if (child.tagName === tagName) return child.textContent?.trim() ?? null;
+    }
+    return null;
+  }
+
+  function directName(node: Element): string {
+    return directText(node, "Name") ?? "";
+  }
+
+  function directChildBlocks(node: Element): Element[] {
+    return Array.from(node.children).filter((child) => child.tagName === "Block");
+  }
+
+  function directParamValue(block: Element, names: string[]): string | null {
+    for (const child of Array.from(block.children)) {
+      if (child.tagName !== "Parameter") continue;
+      const name = directName(child);
+      if (names.includes(name)) return directText(child, "Value");
+    }
+    return null;
+  }
+
+  function directParamNumber(block: Element, names: string[]): number | null {
+    const raw = directParamValue(block, names);
+    if (raw === null) return null;
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function directParamValueMatching(block: Element, pattern: RegExp): string | null {
+    for (const child of Array.from(block.children)) {
+      if (child.tagName !== "Parameter") continue;
+      if (pattern.test(directName(child))) return directText(child, "Value");
+    }
+    return null;
+  }
+
+  function directParamNumberMatching(block: Element, pattern: RegExp): number | null {
+    const raw = directParamValueMatching(block, pattern);
+    if (raw === null) return null;
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function firstDirectChildBlock(block: Element, name: string): Element | null {
+    return directChildBlocks(block).find((child) => directName(child) === name) ?? null;
+  }
+
+  const lineAngleDeg = getFirstNumber(["Line Angle"]) ?? 75;
   const angDeg = Number.isFinite(lineAngleDeg) ? lineAngleDeg : 75;
+
+  const p54xZoneIds = ["1", "2", "3", "P", "4", "Q"] as const;
+  type P54xZoneId = (typeof p54xZoneIds)[number];
+  const p54xStatusName = (id: P54xZoneId, family: "phase" | "ground") =>
+    family === "phase" ? `Zone ${id} Ph Status` : `Zone ${id} Gnd Stat.`;
+
+  function buildP54xZones(family: "phase" | "ground"): ImportedZone[] {
+    const familyEnabled = family === "phase" ? statusIsEnabled("Phase Chars.") : statusIsEnabled("Ground Chars.");
+    if (!familyEnabled) return [];
+
+    return p54xZoneIds.flatMap((id) => {
+      if (!statusIsEnabled(p54xStatusName(id, family))) return [];
+
+      const reach = getFirstNumber(
+        family === "phase"
+          ? [`Z${id} Ph. Reach`, `Z${id} Ph Reach`]
+          : [`Z${id} Gnd. Reach`, `Z${id} Gnd Reach`]
+      );
+      const zoneAngle = getFirstNumber(
+        family === "phase"
+          ? [`Z${id} Ph. Angle`, `Z${id} Ph Angle`]
+          : [`Z${id} Gnd. Angle`, `Z${id} Gnd Angle`]
+      ) ?? angDeg;
+      const resistance = getFirstNumber(
+        family === "phase"
+          ? [
+              `R${id} Ph. Resistive`,
+              `R${id} Ph Resistive`,
+              `R${id} Ph. Res. Fwd.`,
+              `R${id} Ph. Res. Fwd`,
+              `R${id} Ph Res Fwd`,
+            ]
+          : [
+              `R${id} Gnd Resistive`,
+              `R${id} Gnd. Resistive`,
+              `R${id} Gnd. Res. Fwd.`,
+              `R${id} Gnd. Res. Fwd`,
+              `R${id} Gnd Res Fwd`,
+            ]
+      );
+
+      if (reach == null || reach <= 0 || resistance == null || resistance <= 0) return [];
+      return [{
+        label: `Z${id}`,
+        shapeType: "xrio" as const,
+        reach,
+        X: reactanceFromReach(reach, zoneAngle),
+        R: resistance,
+        reachMode: "z" as const,
+        lineAngleDeg: zoneAngle,
+      }];
+    });
+  }
+
+  function buildGeD60Zones(family: "phase" | "ground"): ImportedZone[] {
+    const pattern = family === "phase" ? /^Phase Distance Z([1-5])$/i : /^Ground Distance Z([1-5])$/i;
+    return blocks.flatMap((block): ImportedZone[] => {
+      const match = directName(block).match(pattern);
+      if (!match) return [];
+      if (!valueIsEnabled(directParamValue(block, ["Function ()"]))) return [];
+
+      const reach = directParamNumber(block, ["Reach (Ohms)"]);
+      if (reach == null || reach <= 0) return [];
+
+      const label = `Z${match[1]}`;
+      const angle = directParamNumberMatching(block, /^RCA\b/i) ?? angDeg;
+      const shape = directParamValue(block, ["Shape ()"]);
+      if (shape && /MHO/i.test(shape)) {
+        const angleRad = (angle * Math.PI) / 180;
+        return [{
+          label,
+          shapeType: "mho" as const,
+          centerR: (reach / 2) * Math.cos(angleRad),
+          centerX: (reach / 2) * Math.sin(angleRad),
+          radius: reach / 2,
+        }];
+      }
+
+      const right = directParamNumberMatching(block, /^Quad Right Blinder/i) ?? reach;
+      const left = directParamNumberMatching(block, /^Quad Left Blinder/i) ?? Math.max(1, right * 0.15);
+      const reverseReach = directParamNumberMatching(block, /^Rev Reach\b/i) ?? Math.max(0.1, reach * 0.08);
+      return [{
+        label,
+        shapeType: "xrio" as const,
+        reach,
+        X: reactanceFromReach(reach, angle),
+        R: right,
+        reverseR: left,
+        reverseReach,
+        reachMode: "z" as const,
+        lineAngleDeg: angle,
+      }];
+    });
+  }
+
+  function buildSiemens7saZones(family: "phase" | "ground"): ImportedZone[] {
+    return blocks.flatMap((block): ImportedZone[] => {
+      const match = directName(block).match(/^Zone Z([1-5])$/i);
+      if (!match) return [];
+      const id = match[1];
+      if (!valueIsEnabled(directParamValueMatching(block, new RegExp(`^Op\\. mode Z${id}$`, "i")))) return [];
+
+      const x = directParamNumberMatching(block, new RegExp(`^X\\(Z${id}\\)`, "i"));
+      const r = family === "phase"
+        ? directParamNumberMatching(block, new RegExp(`^R\\(Z${id}\\)`, "i"))
+        : directParamNumberMatching(block, new RegExp(`^RE\\(Z${id}\\)`, "i"));
+      if (x == null || x <= 0 || r == null || r <= 0) return [];
+      return [{
+        label: `Z${id}`,
+        shapeType: "xrio" as const,
+        X: x,
+        R: r,
+        reachMode: "x" as const,
+        lineAngleDeg: angDeg,
+      }];
+    });
+  }
+
+  function buildAbbRel670Zones(family: "phase" | "ground"): ImportedZone[] {
+    return blocks.flatMap((block): ImportedZone[] => {
+      const match = directName(block).match(/^ZMQ\w*PDIS:\s*([1-5])$/i);
+      if (!match) return [];
+      const setting = firstDirectChildBlock(block, "Setting Group1") ?? block;
+      if (!valueIsEnabled(directParamValue(setting, ["Operation"]))) return [];
+      if (family === "phase" && !valueIsEnabled(directParamValue(setting, ["OperationPP"]))) return [];
+      if (family === "ground" && !valueIsEnabled(directParamValue(setting, ["OperationPE"]))) return [];
+
+      const x = directParamNumber(setting, ["X1"]);
+      const r1 = directParamNumber(setting, ["R1"]);
+      const faultR = family === "phase"
+        ? directParamNumber(setting, ["RFPP"])
+        : directParamNumber(setting, ["RFPE"]);
+      if (x == null || x <= 0 || faultR == null || faultR <= 0) return [];
+      const angle = r1 != null && r1 > 0 ? (Math.atan2(x, r1) * 180) / Math.PI : angDeg;
+      return [{
+        label: `Z${match[1]}`,
+        shapeType: "xrio" as const,
+        X: x,
+        R: faultR,
+        reachMode: "x" as const,
+        lineAngleDeg: angle,
+      }];
+    });
+  }
 
   // GE/Alstom P442 xrio naming: Z1/Z2/Z3 = X reach (along line angle, Ohm secondary)
   //   R1G/R2G/R3G-R4G = earth fault resistance coverage (Ohm secondary)
@@ -514,13 +736,13 @@ function parseXRIO(text: string): ImportedRelayData | null {
       const x = Number.parseFloat(xStr);
       const r = Number.parseFloat(rStr);
       if (!Number.isFinite(x) || x <= 0 || !Number.isFinite(r) || r <= 0) return [];
-      return [{ label, shapeType: "xrio" as const, X: x, R: r, lineAngleDeg: angDeg }];
+      return [{ label, shapeType: "xrio" as const, X: x, R: r, reachMode: "x" as const, lineAngleDeg: angDeg }];
     });
   }
 
   // Earth compensation: kZ1 Res Comp + kZ1 Angle (GE P442)
-  const k0MagStr = getFirst("kZ1 Res Comp");
-  const k0AngStr = getFirst("kZ1 Angle");
+  const k0MagStr = getFirstOf(["kZ1 Res Comp", "kZN Res Comp", "kZN1 Res. Comp."]);
+  const k0AngStr = getFirstOf(["kZ1 Angle", "kZN Res Angle", "kZN1 Res. Angle"]);
   let earthComp: ImportedRelayData["earthComp"];
   if (k0MagStr && k0AngStr) {
     const k0 = Number.parseFloat(k0MagStr);
@@ -530,16 +752,52 @@ function parseXRIO(text: string): ImportedRelayData | null {
     }
   }
 
-  // CT/VT ratios from the "CT AND VT RATIOS" block
-  const vtPrimary = Number.parseFloat(getFirst("Main VT Primary") ?? "");
-  const vtSecondary = Number.parseFloat(getFirst("Main VT Sec'y") ?? "");
-  const ctPrimary = Number.parseFloat(getFirst("Phase CT Primary") ?? "");
-  const ctSecondary = Number.parseFloat(getFirst("Phase CT Sec'y") ?? "");
-  const vtRatio = Number.isFinite(vtPrimary) && vtSecondary > 0 ? vtPrimary / vtSecondary : null;
-  const ctRatio = Number.isFinite(ctPrimary) && ctSecondary > 0 ? ctPrimary / ctSecondary : null;
+  if (!earthComp) {
+    const re = getFirstNumber(["RE/RL(Z1)", "RE/RL(> Z1)"]);
+    const xe = getFirstNumber(["XE/XL(Z1)", "XE/XL(> Z1)"]);
+    if (re != null && xe != null) {
+      earthComp = {
+        k0: Math.hypot(re, xe),
+        angleDeg: (Math.atan2(xe, re) * 180) / Math.PI,
+        source: `xrio RE/RL=${re.toFixed(3)}, XE/XL=${xe.toFixed(3)}`,
+      };
+    }
+  }
+  if (!earthComp) {
+    const geGroundZ1 = blocks.find((block) => directName(block) === "Ground Distance Z1");
+    const z0z1Mag = geGroundZ1 ? directParamNumber(geGroundZ1, ["Z0/Z1 Mag ()"]) : null;
+    const z0z1Ang = geGroundZ1 ? directParamNumberMatching(geGroundZ1, /^Z0\/Z1 Ang/i) : null;
+    if (z0z1Mag != null && z0z1Ang != null) {
+      const angleRad = (z0z1Ang * Math.PI) / 180;
+      const real = (z0z1Mag * Math.cos(angleRad) - 1) / 3;
+      const imag = (z0z1Mag * Math.sin(angleRad)) / 3;
+      earthComp = {
+        k0: Math.hypot(real, imag),
+        angleDeg: (Math.atan2(imag, real) * 180) / Math.PI,
+        source: `xrio Z0/Z1=${z0z1Mag.toFixed(3)}, angle=${z0z1Ang.toFixed(1)} deg`,
+      };
+    }
+  }
 
-  const phGnd = buildP442Zones(EARTH_ZONES);
-  const phPh = buildP442Zones(PHASE_ZONES);
+  // CT/VT ratios from the "CT AND VT RATIOS" block
+  const vtPrimary = getFirstNumber(["Main VT Primary", "VT Primary", "Unom PRIMARY", "VTprim7", "VTprim1"]);
+  const vtSecondary = getFirstNumber(["Main VT Sec'y", "Main VT Secondary", "VT Secondary", "Unom SECONDARY", "VTsec7", "VTsec1"]);
+  const ctPrimary = getFirstNumber(["Phase CT Primary", "Phase CT Primary (A)", "CT Primary", "CT PRIMARY", "CTprim1"]);
+  const ctSecondary = getFirstNumber(["Phase CT Sec'y", "Phase CT Secondary", "Phase CT Secondary (A)", "CT Secondary", "CT SECONDARY", "CTsec1"]);
+  let vtRatio = vtPrimary != null && vtSecondary != null && vtSecondary > 0 ? vtPrimary / vtSecondary : null;
+  const ctRatio = ctPrimary != null && ctSecondary != null && ctSecondary > 0 ? ctPrimary / ctSecondary : null;
+  if (vtRatio == null) vtRatio = getFirstNumber(["Phase VT Ratio ()"]);
+
+  const p54xGnd = buildP54xZones("ground");
+  const p54xPh = buildP54xZones("phase");
+  const geGnd = buildGeD60Zones("ground");
+  const gePh = buildGeD60Zones("phase");
+  const siemensGnd = buildSiemens7saZones("ground");
+  const siemensPh = buildSiemens7saZones("phase");
+  const abbGnd = buildAbbRel670Zones("ground");
+  const abbPh = buildAbbRel670Zones("phase");
+  const phGnd = p54xGnd.length ? p54xGnd : geGnd.length ? geGnd : siemensGnd.length ? siemensGnd : abbGnd.length ? abbGnd : buildP442Zones(EARTH_ZONES);
+  const phPh = p54xPh.length ? p54xPh : gePh.length ? gePh : siemensPh.length ? siemensPh : abbPh.length ? abbPh : buildP442Zones(PHASE_ZONES);
   if (phGnd.length === 0 && phPh.length === 0) return null;
 
   return {
@@ -564,17 +822,37 @@ function importedZoneToConfig(zone: ImportedZone, fallback: Zone): Zone {
   }
 
   if (zone.shapeType === "xrio" && zone.X != null && zone.R != null) {
+    const angleDeg = zone.lineAngleDeg ?? fallback.line_angle_deg;
+    const rfFwd = zone.R;
+    const rfRev = zone.reverseR ?? Math.max(1, rfFwd * 0.15);
+
+    if (zone.reachMode === "z" && zone.reach != null) {
+      const zFwd = zone.reach;
+      const zRev = zone.reverseReach ?? Math.max(0.1, zFwd * 0.08);
+      return {
+        ...fallback,
+        label: zone.label || fallback.label,
+        shape: "quad",
+        reach_mode: "z",
+        z_fwd: zFwd,
+        z_rev: zRev,
+        rf_fwd: rfFwd,
+        rf_rev: rfRev,
+        xf: reactanceFromReach(zFwd, angleDeg),
+        xr: reactanceFromReach(zRev, angleDeg),
+        line_angle_deg: angleDeg,
+      };
+    }
+
     // P442-style quadrilateral: X = reactance reach (along line angle), R = fault resistance reach.
     // Build polygon vertices using the tilted-top boundary formula:
     //   X_top(R) = xReach + (R − xReach·cot) · cot    where cot = cos/sin
-    const ang = ((zone.lineAngleDeg ?? fallback.line_angle_deg) * Math.PI) / 180;
+    const ang = (angleDeg * Math.PI) / 180;
     const sinA = Math.sin(ang);
     const cosA = Math.cos(ang);
     const cotA = sinA > 0.01 ? cosA / sinA : 0;
     const xf = zone.X;
-    const rfFwd = zone.R;
-    const rfRev = Math.max(1, rfFwd * 0.15);
-    const xr = Math.max(1, xf * 0.08);
+    const xr = zone.reverseReach ?? Math.max(1, xf * 0.08);
     const xReachR = xf * cotA;                             // R at the line-reach point
     const xTopRight = xf + (rfFwd - xReachR) * cotA;
     const xTopLeft  = xf + (-rfRev - xReachR) * cotA;
@@ -588,7 +866,7 @@ function importedZoneToConfig(zone: ImportedZone, fallback: Zone): Zone {
       rf_rev: rfRev,
       xf,
       xr,
-      line_angle_deg: zone.lineAngleDeg ?? fallback.line_angle_deg,
+      line_angle_deg: angleDeg,
       poly_r: polyR,
       poly_x: polyX,
     };
@@ -620,7 +898,10 @@ function importedZoneToConfig(zone: ImportedZone, fallback: Zone): Zone {
 }
 
 function isRenderableImportedZone(zone: ImportedZone) {
-  if (zone.shapeType === "xrio") return zone.X != null && zone.X > 0 && zone.R != null && zone.R > 0;
+  if (zone.shapeType === "xrio") {
+    const hasReach = zone.reachMode === "z" ? zone.reach != null && zone.reach > 0 : zone.X != null && zone.X > 0;
+    return hasReach && zone.R != null && zone.R > 0;
+  }
   if (zone.shapeType === "poly") return !!zone.poly && zone.poly.length >= 3;
   return zone.shapeType === "circle" || zone.shapeType === "mho";
 }
@@ -1277,9 +1558,12 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   async function handleRelayFile(file: File) {
     try {
       const text = await file.text();
-      const imported = file.name.toLowerCase().endsWith(".xrio") ? parseXRIO(text) : parseRIO(text);
+      const lowerName = file.name.toLowerCase();
+      const imported = lowerName.endsWith(".xrio") || lowerName.endsWith(".xri") || /<\s*XRio\b/i.test(text)
+        ? parseXRIO(text)
+        : parseRIO(text);
       if (!imported) {
-        setRelayStatus("Format relay tidak bisa diparse. Gunakan file .rio atau .xrio yang valid.");
+        setRelayStatus("Format relay tidak bisa diparse. Gunakan file .rio, .xrio, atau .xri yang valid.");
         return;
       }
 
@@ -1803,11 +2087,11 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           }}
         >
           <span style={{ fontSize: "1.1rem" }}>📂</span>
-          <span>Click or drag <strong>.rio</strong> / <strong>.xrio</strong> here</span>
+          <span>Click or drag <strong>.rio</strong> / <strong>.xrio</strong> / <strong>.xri</strong> here</span>
           <input
             ref={rioInputRef}
             type="file"
-            accept=".rio,.xrio,.RIO,.XRIO"
+            accept=".rio,.xrio,.xri,.RIO,.XRIO,.XRI"
             style={{ display: "none" }}
             onChange={(e) => {
               const file = e.target.files?.[0];
