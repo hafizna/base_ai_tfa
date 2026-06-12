@@ -4,10 +4,11 @@ set -eu
 # WEB_CONCURRENCY follows the Heroku/Railway convention. Each worker is a
 # separate Python process: it must pickle-load fault_classifier.pkl once at
 # boot (the FastAPI lifespan in webapp/api/main.py does this eagerly), so
-# memory cost is roughly N × ~180 MB. Default to 2 on free dynos, override
-# upward only when you have RAM headroom and concurrent traffic.
+# memory cost is roughly N × ~180 MB. Default to 1 to minimise idle RAM on
+# low-traffic deployments (Railway bills RAM-seconds); set WEB_CONCURRENCY=2+
+# only when you have steady concurrent traffic and RAM headroom.
 PORT_VALUE="${PORT:-8000}"
-WORKERS_VALUE="${WEB_CONCURRENCY:-2}"
+WORKERS_VALUE="${WEB_CONCURRENCY:-1}"
 
 exec uvicorn webapp.api.main:app \
   --host 0.0.0.0 \
