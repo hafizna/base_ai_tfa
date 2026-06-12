@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from ..schemas import (
     LocusAnalysisRequest, LocusResponse, LocusPoint,
+    LocusBatchRequest, LocusBatchResponse,
     LocusEventsResponse,
     AIFaultFeatures, AIFaultResult,
 )
@@ -841,6 +842,55 @@ async def compute_locus(body: LocusAnalysisRequest):
         points=[LocusPoint(**p) for p in points],
         zones=body.zones,
         fault_inception_idx=None,
+    )
+
+
+def _compute_locus_batch(
+    payload: dict,
+    loops: list[str],
+    k0: float,
+    k0_angle_deg: float,
+    invert_i: bool,
+    ct_ratio_override: Optional[float],
+    vt_ratio_override: Optional[float],
+) -> dict[str, list[dict]]:
+    """Compute every requested loop from a single already-loaded payload."""
+    out: dict[str, list[dict]] = {}
+    for loop in loops:
+        try:
+            out[loop] = _compute_locus(
+                payload, loop, k0, k0_angle_deg, invert_i,
+                ct_ratio_override, vt_ratio_override,
+            )
+        except HTTPException:
+            # A loop whose voltage/current channel is absent shouldn't fail the
+            # whole batch — just return no points for it.
+            out[loop] = []
+    return out
+
+
+@router.post("/locus-batch", response_model=LocusBatchResponse)
+async def compute_locus_batch(body: LocusBatchRequest):
+    """Compute all requested loops in one request. Loads/parses the stored
+    COMTRADE payload once instead of once per loop — avoids the 6× redundant
+    load that pushed large records past the client timeout."""
+    payload = load_analysis(body.analysis_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
+
+    loop = asyncio.get_event_loop()
+    points_by_loop = await loop.run_in_executor(
+        None, partial(
+            _compute_locus_batch, payload, body.loops,
+            body.k0, body.k0_angle_deg, body.invert_i,
+            body.ct_ratio_override, body.vt_ratio_override,
+        )
+    )
+    return LocusBatchResponse(
+        points_by_loop={
+            loop_name: [LocusPoint(**p) for p in pts]
+            for loop_name, pts in points_by_loop.items()
+        }
     )
 
 

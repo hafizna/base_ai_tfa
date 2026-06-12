@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  computeLocus,
+  computeLocusBatch,
   fetchElectricalParams21,
   fetchFaultClassification21,
   fetchLocusEvents21,
@@ -25,6 +25,7 @@ interface Zone {
   z_fwd?: number;
   z_rev?: number;
   line_angle_deg: number;
+  directional_clip?: boolean;
   color: string;
   /** Direct polygon vertices (R, X) — when set, rendered as-is instead of via quadVertices() */
   poly_r?: number[];
@@ -51,6 +52,7 @@ interface ImportedZone {
   reachMode?: "x" | "z";
   reverseReach?: number;
   reverseR?: number;
+  directionalClip?: boolean;
   lineAngleDeg?: number;  // line impedance angle for tilted zone rendering
 }
 
@@ -74,6 +76,7 @@ type TimeMode = "fault" | "all";
 type PlotFamily = "ground" | "phase";
 type PlotRange = { x?: [number, number]; y?: [number, number] };
 type DetailMode = "standard" | "detailed";
+type OhmMode = "secondary" | "primary";
 type ZoneShapeChoice = "mho" | "quad_rx" | "quad_z";
 type FaultClassification21 = Awaited<ReturnType<typeof fetchFaultClassification21>>;
 
@@ -180,19 +183,76 @@ function zReachQuadVertices(zone: Zone) {
   ];
 }
 
+/** Clip polygon ke setengah-bidang { (r,x) : nr*r + nx*x >= 0 } (Sutherland-Hodgman). */
+function clipHalfPlane(poly: number[][], nr: number, nx: number): number[][] {
+  if (poly.length < 3) return poly;
+  const inside = (p: number[]) => nr * p[0] + nx * p[1] >= -1e-9;
+  const out: number[][] = [];
+  for (let i = 0; i < poly.length; i += 1) {
+    const cur = poly[i];
+    const prev = poly[(i + poly.length - 1) % poly.length];
+    const curIn = inside(cur);
+    const prevIn = inside(prev);
+    if (curIn !== prevIn) {
+      const dp = nr * prev[0] + nx * prev[1];
+      const dc = nr * cur[0] + nx * cur[1];
+      const denom = dp - dc;
+      if (Math.abs(denom) > 1e-12) {
+        const t = dp / denom;
+        out.push([prev[0] + (cur[0] - prev[0]) * t, prev[1] + (cur[1] - prev[1]) * t]);
+      }
+    }
+    if (curIn) out.push(cur);
+  }
+  return out;
+}
+
+function rxQuadVertices(zone: Zone) {
+  // Bentuk quad mengikuti detego:
+  //   - blinder resistif kiri/kanan VERTIKAL (R konstan di −rf_rev dan +rf_fwd)
+  //   - garis reaktansi atas (xf) & bawah (−xr) MIRING mengikuti sudut saluran
+  //     (slope cot θ) — inilah yang membuat tepi atas-kiri masuk ke R negatif
+  //   - bila directional_clip aktif, quad dipotong oleh garis arah (line angle)
+  //     yang lewat origin sehingga sisi reverse terbuang → zona forward-dominant
+  const angleRad = (zone.line_angle_deg * Math.PI) / 180;
+  const sinA = Math.sin(angleRad);
+  const cosA = Math.cos(angleRad);
+  const cot = Math.abs(sinA) > 0.01 ? cosA / sinA : 0;
+  const xFwd = Math.max(0, zone.xf);
+  const xBottom = -Math.max(0, zone.xr); // offset reverse-reactance kecil (umumnya ~0)
+  const rightR = Math.max(0, zone.rf_fwd);
+  const leftR = -Math.max(0, zone.rf_rev);
+  const topXAt = (r: number) => xFwd + r * cot;
+  const bottomXAt = (r: number) => xBottom + r * cot;
+  let poly: number[][] = [
+    [leftR, bottomXAt(leftR)],
+    [rightR, bottomXAt(rightR)],
+    [rightR, topXAt(rightR)],
+    [leftR, topXAt(leftR)],
+  ];
+
+  if (zone.directional_clip) {
+    // Garis arah lewat origin pada sudut saluran; arah forward (operate) =
+    // sisi yang searah vektor saluran. Normal half-plane forward: (sinA, -cosA)
+    // memberi nr*r+nx*x>=0 untuk titik di sisi forward dari garis tsb.
+    poly = clipHalfPlane(poly, sinA, -cosA);
+    if (poly.length < 3) {
+      poly = [
+        [leftR, bottomXAt(leftR)],
+        [rightR, bottomXAt(rightR)],
+        [rightR, topXAt(rightR)],
+        [leftR, topXAt(leftR)],
+      ];
+    }
+  }
+
+  // tutup polygon (titik pertama diulang) agar garis Plotly menyambung.
+  return [...poly, poly[0]];
+}
+
 function quadVertices(zone: Zone) {
   if (zone.reach_mode === "z") return zReachQuadVertices(zone);
-
-  const ang = (zone.line_angle_deg * Math.PI) / 180;
-  const cos = Math.cos(ang);
-  const sin = Math.sin(ang);
-  return [
-    [zone.rf_fwd * cos, zone.rf_fwd * sin],
-    [-zone.rf_rev * cos, -zone.rf_rev * sin],
-    [-zone.rf_rev * cos + zone.xr * sin, zone.xr * cos - zone.rf_rev * sin],
-    [zone.rf_fwd * cos + zone.xf * sin, zone.xf * cos + zone.rf_fwd * sin],
-    [zone.rf_fwd * cos, zone.rf_fwd * sin],
-  ];
+  return rxQuadVertices(zone);
 }
 
 function quadTrace(zone: Zone): Partial<Plotly.ScatterData> {
@@ -215,6 +275,50 @@ function quadTrace(zone: Zone): Partial<Plotly.ScatterData> {
     line: { color: zone.color, width: 1.6, dash: "dot" },
     showlegend: true,
   };
+}
+
+function scalePoint(point: LocusPoint, scale: number): LocusPoint {
+  return {
+    ...point,
+    r: point.r * scale,
+    x: point.x * scale,
+  };
+}
+
+function scalePointsByLoop(
+  pointsByLoop: Partial<Record<LoopName, LocusPoint[]>>,
+  scale: number,
+): Partial<Record<LoopName, LocusPoint[]>> {
+  if (scale === 1) return pointsByLoop;
+  const next: Partial<Record<LoopName, LocusPoint[]>> = {};
+  ([...GROUND_LOOPS, ...PHASE_LOOPS] as LoopName[]).forEach((loop) => {
+    const points = pointsByLoop[loop];
+    if (points) next[loop] = points.map((point) => scalePoint(point, scale));
+  });
+  return next;
+}
+
+function scaleZone(zone: Zone, scale: number): Zone {
+  if (scale === 1) return zone;
+  return {
+    ...zone,
+    center_r: zone.center_r * scale,
+    center_x: zone.center_x * scale,
+    radius: zone.radius * scale,
+    rf_fwd: zone.rf_fwd * scale,
+    rf_rev: zone.rf_rev * scale,
+    xf: zone.xf * scale,
+    xr: zone.xr * scale,
+    z_fwd: zone.z_fwd != null ? zone.z_fwd * scale : undefined,
+    z_rev: zone.z_rev != null ? zone.z_rev * scale : undefined,
+    poly_r: zone.poly_r?.map((value) => value * scale),
+    poly_x: zone.poly_x?.map((value) => value * scale),
+  };
+}
+
+function scaleZones(zones: Zone[], scale: number): Zone[] {
+  if (scale === 1) return zones;
+  return zones.map((zone) => scaleZone(zone, scale));
 }
 
 function parseTripCharCircle(block: string) {
@@ -254,20 +358,62 @@ function parseTripCharPolygon(block: string) {
   return points.length >= 3 ? points : null;
 }
 
+function polygonArea(poly: { r: number; x: number }[]): number {
+  let area = 0;
+  for (let i = 0; i < poly.length; i += 1) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    area += a.r * b.x - b.r * a.x;
+  }
+  return Math.abs(area) / 2;
+}
+
+/**
+ * RIO SHAPE blocks come in two flavours that share the `LINE`/`LINEP` keyword:
+ *  (A) Siemens 7SA/7SL, MiCOM/Alstom P44x: each LINE's (r,x) anchor IS a polygon
+ *      vertex — the points listed in order trace the zone boundary directly.
+ *  (B) NR/NARI PCS-9xx: the (r,x,angle,side) define infinite half-plane clip
+ *      lines (anchors are degenerate, e.g. two points at the origin).
+ * Try (A) first; if the anchors form a sane bounded polygon use it. Otherwise
+ * fall back to half-plane clipping (B) and reject any unbounded result so a
+ * malformed/unsupported shape is skipped instead of sprawling to ±extent.
+ */
 function clipShapeByRioLines(shapeText: string) {
+  // LINE r, x, angle, side   — cartesian anchor (r,x)
+  // LINEP mag, ptAngle, angle, side — polar anchor (mag∠ptAngle)
   const lines = Array.from(
     shapeText.matchAll(
-      /^\s*LINE\s+([+-]?\d[\d.eE+-]*),\s*([+-]?\d[\d.eE+-]*),\s*([+-]?\d[\d.eE+-]*),\s*(LEFT|RIGHT)\b/gim
+      /^\s*(LINEP?)\s+([+-]?\d[\d.eE+-]*),\s*([+-]?\d[\d.eE+-]*),\s*([+-]?\d[\d.eE+-]*),\s*(LEFT|RIGHT)\b/gim
     )
-  ).map((match) => ({
-    r: Number.parseFloat(match[1]),
-    x: Number.parseFloat(match[2]),
-    angleDeg: Number.parseFloat(match[3]),
-    side: match[4].toUpperCase() as "LEFT" | "RIGHT",
-  }));
+  ).map((match) => {
+    const isPolar = match[1].toUpperCase() === "LINEP";
+    const a = Number.parseFloat(match[2]);
+    const b = Number.parseFloat(match[3]);
+    const r = isPolar ? a * Math.cos((b * Math.PI) / 180) : a;
+    const x = isPolar ? a * Math.sin((b * Math.PI) / 180) : b;
+    return {
+      r,
+      x,
+      angleDeg: Number.parseFloat(match[4]),
+      side: match[5].toUpperCase() as "LEFT" | "RIGHT",
+    };
+  });
 
   if (lines.length < 2) return null;
 
+  // (A) anchor-as-vertex: use the listed (r,x) points directly. Require EVERY
+  // listed anchor to be distinct — Siemens/P44x list real, all-distinct vertices,
+  // whereas NR clip-line shapes repeat the origin (e.g. two (0,0) entries), which
+  // signals the half-plane encoding handled below. Also need ≥3 points + real area.
+  const vertexPoly = lines.map((line) => ({ r: line.r, x: line.x }));
+  const allDistinct = vertexPoly.every((point, idx) =>
+    vertexPoly.every((other, otherIdx) => otherIdx === idx || Math.hypot(point.r - other.r, point.x - other.x) > 1e-6)
+  );
+  if (allDistinct && vertexPoly.length >= 3 && polygonArea(vertexPoly) > 1e-3) {
+    return vertexPoly;
+  }
+
+  // (B) half-plane clipping fallback for NR-style shapes.
   const anchors = lines.flatMap((line) => [Math.abs(line.r), Math.abs(line.x)]).filter(Number.isFinite);
   const extent = Math.max(100, ...anchors) * 4;
   let poly = [
@@ -321,7 +467,16 @@ function clipShapeByRioLines(shapeText: string) {
     return Math.hypot(point.r - prev.r, point.x - prev.x) > 1e-6;
   });
 
-  return deduped.length >= 3 ? deduped : null;
+  if (deduped.length < 3) return null;
+  // Reject unbounded results: if any vertex still sits on the synthetic extent
+  // box the half-planes never closed the region — drawing it would sprawl off
+  // the plot (the NR sprawl-to-X=−400 bug). Skip the zone instead.
+  const touchesExtent = deduped.some(
+    (point) => Math.abs(Math.abs(point.r) - extent) < extent * 1e-3 || Math.abs(Math.abs(point.x) - extent) < extent * 1e-3
+  );
+  if (touchesExtent) return null;
+
+  return deduped;
 }
 
 function parseSifangRIO(text: string): ImportedRelayData | null {
@@ -486,9 +641,48 @@ function parseXRIO(text: string): ImportedRelayData | null {
   const params = Array.from(xml.querySelectorAll("Parameter"));
   const blocks = Array.from(xml.querySelectorAll("Block"));
 
-  // Return FIRST occurrence of a parameter by Name text — avoids picking up duplicate
-  // calibration blocks (e.g. GE P442 repeats many params with default values).
+  // MiCOM/Alstom relay (P54x, P44x) menyimpan empat setting group; tiap group
+  // punya blok "GROUP <N> ..." dengan reach distance sendiri. "Active Settings"
+  // menentukan group mana yang aktif. Tanpa scoping, getFirst() selalu ambil
+  // GROUP 1 walau relay sedang di group lain → reach salah.
+  function blockName(node: Element): string {
+    for (const child of Array.from(node.children)) {
+      if (child.tagName === "Name") return child.textContent?.trim() ?? "";
+    }
+    return "";
+  }
+
+  function detectActiveGroup(): number {
+    for (const node of params) {
+      if (node.querySelector("Name")?.textContent?.trim() !== "Active Settings") continue;
+      const value = node.querySelector("Value")?.textContent?.trim() ?? "";
+      // Bentuk umum: "Group 2" atau enum id "PARAMETER_09_03_1" (suffix 0-based).
+      const direct = value.match(/Group\s*([1-4])/i);
+      if (direct) return Number.parseInt(direct[1], 10);
+      const enumId = value.match(/_(\d)$/);
+      if (enumId) return Number.parseInt(enumId[1], 10) + 1;
+    }
+    return 1;
+  }
+
+  const activeGroup = detectActiveGroup();
+  // Parameter yang berada di dalam blok "GROUP <activeGroup> ..." (mis. "GROUP 2
+  // DIST. ELEMENTS"). Dipakai untuk memprioritaskan nilai dari group aktif.
+  const activeGroupParams = new Set<Element>();
+  for (const block of blocks) {
+    if (!new RegExp(`^GROUP\\s*${activeGroup}\\b`, "i").test(blockName(block))) continue;
+    for (const p of Array.from(block.querySelectorAll("Parameter"))) activeGroupParams.add(p);
+  }
+
+  // Return parameter value by Name. Prioritaskan kemunculan di group aktif;
+  // kalau tidak ada (param non-group seperti CT/VT, atau relay tanpa setting
+  // group) jatuh ke kemunculan pertama di dokumen. Ini juga menghindari blok
+  // kalibrasi duplikat (mis. GE P442 mengulang param dengan nilai default).
   function getFirst(name: string): string | null {
+    const inGroup = params.find(
+      (node) => activeGroupParams.has(node) && node.querySelector("Name")?.textContent?.trim() === name
+    );
+    if (inGroup) return inGroup.querySelector("Value")?.textContent?.trim() ?? null;
     const p = params.find((node) => node.querySelector("Name")?.textContent?.trim() === name);
     return p?.querySelector("Value")?.textContent?.trim() ?? null;
   }
@@ -617,7 +811,11 @@ function parseXRIO(text: string): ImportedRelayData | null {
         reach,
         X: reactanceFromReach(reach, zoneAngle),
         R: resistance,
-        reachMode: "z" as const,
+        // Forward-dominant: blinder kanan penuh +R, kiri sempit (default
+        // rf_rev = R*0.15 di importedZoneToConfig). Sisi reverse lalu dipotong
+        // garis arah via directional_clip → bentuk seperti detego.
+        reachMode: "x" as const,
+        directionalClip: true,
         lineAngleDeg: zoneAngle,
       }];
     });
@@ -658,7 +856,8 @@ function parseXRIO(text: string): ImportedRelayData | null {
         R: right,
         reverseR: left,
         reverseReach,
-        reachMode: "z" as const,
+        reachMode: "x" as const,
+        directionalClip: true,
         lineAngleDeg: angle,
       }];
     });
@@ -682,6 +881,7 @@ function parseXRIO(text: string): ImportedRelayData | null {
         X: x,
         R: r,
         reachMode: "x" as const,
+        directionalClip: true,
         lineAngleDeg: angDeg,
       }];
     });
@@ -709,6 +909,7 @@ function parseXRIO(text: string): ImportedRelayData | null {
         X: x,
         R: faultR,
         reachMode: "x" as const,
+        directionalClip: true,
         lineAngleDeg: angle,
       }];
     });
@@ -736,7 +937,7 @@ function parseXRIO(text: string): ImportedRelayData | null {
       const x = Number.parseFloat(xStr);
       const r = Number.parseFloat(rStr);
       if (!Number.isFinite(x) || x <= 0 || !Number.isFinite(r) || r <= 0) return [];
-      return [{ label, shapeType: "xrio" as const, X: x, R: r, reachMode: "x" as const, lineAngleDeg: angDeg }];
+      return [{ label, shapeType: "xrio" as const, X: x, R: r, reachMode: "x" as const, directionalClip: true, lineAngleDeg: angDeg }];
     });
   }
 
@@ -841,6 +1042,24 @@ function importedZoneToConfig(zone: ImportedZone, fallback: Zone): Zone {
         xf: reactanceFromReach(zFwd, angleDeg),
         xr: reactanceFromReach(zRev, angleDeg),
         line_angle_deg: angleDeg,
+        directional_clip: zone.directionalClip,
+      };
+    }
+
+    if (zone.directionalClip) {
+      const xf = zone.X;
+      const xr = zone.reverseReach ?? Math.max(1, xf * 0.08);
+      return {
+        ...fallback,
+        label: zone.label || fallback.label,
+        shape: "quad",
+        reach_mode: "rx",
+        rf_fwd: rfFwd,
+        rf_rev: rfRev,
+        xf,
+        xr,
+        line_angle_deg: angleDeg,
+        directional_clip: true,
       };
     }
 
@@ -1011,14 +1230,16 @@ function lineImpedanceTrace(zones: Zone[]): Partial<Plotly.ScatterData> | null {
     Math.abs(bounds.yMax),
   ) * 1.5;
   if (!Number.isFinite(reach) || reach <= 0) return null;
+  // Gaya detego: garis arah (line angle) digambar lewat origin ke DUA arah
+  // (reverse → forward) sebagai panduan batas direksional, bukan hanya forward.
   return {
-    x: [0, reach * cos],
-    y: [0, reach * sin],
+    x: [-reach * cos, 0, reach * cos],
+    y: [-reach * sin, 0, reach * sin],
     type: "scatter",
     mode: "lines",
-    name: "Line impedance",
-    line: { color: "#334155", width: 1.2, dash: "dashdot" },
-    hovertemplate: `Line impedance<br>angle=${source.line_angle_deg.toFixed(1)} deg<extra></extra>`,
+    name: "Dir. boundary",
+    line: { color: "#94a3b8", width: 1.1, dash: "dash" },
+    hovertemplate: `Dir. boundary<br>line angle=${source.line_angle_deg.toFixed(1)}°<extra></extra>`,
   };
 }
 
@@ -1266,18 +1487,19 @@ function familyLayout(
   currentMs?: number,
   detailMode: DetailMode = "standard",
   zones: Zone[] = [],
+  ohmLabel = "secondary ohm",
 ): Partial<Plotly.Layout> {
   const detailed = detailMode === "detailed";
   const spanX = Math.max(1, xRange[1] - xRange[0]);
   const spanY = Math.max(1, yRange[1] - yRange[0]);
   const majorDtick = Math.max(1, Math.round(Math.max(spanX, spanY) / 10 / 2) * 2);
   return {
-    uirevision: title,
+    uirevision: `${title}:${ohmLabel}`,
     height: detailed ? 560 : 460,
     margin: { t: 36, b: 56, l: 64, r: 20 },
     autosize: true,
     xaxis: {
-      title: { text: "R (secondary ohm)" },
+      title: { text: `R (${ohmLabel})` },
       range: xRange,
       zeroline: false,
       tickfont: { size: detailed ? 11 : 10 },
@@ -1290,7 +1512,7 @@ function familyLayout(
       linecolor: detailed ? "#475569" : undefined,
     },
     yaxis: {
-      title: { text: "X (secondary ohm)" },
+      title: { text: `X (${ohmLabel})` },
       range: yRange,
       zeroline: false,
       tickfont: { size: detailed ? 11 : 10 },
@@ -1363,8 +1585,16 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   const [plotRanges, setPlotRanges] = useState<Record<PlotFamily, PlotRange>>({ ground: {}, phase: {} });
   const [ctRatioOverride, setCtRatioOverride] = useState<number | null>(null);
   const [vtRatioOverride, setVtRatioOverride] = useState<number | null>(null);
+  const [locusRatios, setLocusRatios] = useState<{ ct: number | null; vt: number | null }>({ ct: null, vt: null });
+  const [ohmMode, setOhmMode] = useState<OhmMode>("secondary");
   const [ratioNotice, setRatioNotice] = useState("CT/VT locus memakai rasio dari CFG/parser sampai nilai RIO/XRIO atau manual diisi.");
   const rioInputRef = useRef<HTMLInputElement>(null);
+  const primaryOhmScale =
+    locusRatios.ct != null && locusRatios.vt != null && locusRatios.ct > 0
+      ? locusRatios.vt / locusRatios.ct
+      : 1;
+  const displayOhmScale = ohmMode === "primary" ? primaryOhmScale : 1;
+  const displayOhmLabel = ohmMode === "primary" ? "primary ohm" : "secondary ohm";
 
   async function fetchAllLoci(
     nextGroundZones = groundZones,
@@ -1375,22 +1605,22 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     setLoading(true);
     setError(null);
     try {
-      const results = await Promise.all(
-        [...GROUND_LOOPS, ...PHASE_LOOPS].map(async (loop) => {
-          const zones = GROUND_LOOPS.includes(loop) ? nextGroundZones : nextPhaseZones;
-          const response = await computeLocus(
-            analysisId, zones, loop, 0, 0, false,
-            nextCtRatio ?? undefined, nextVtRatio ?? undefined,
-          );
-          return [loop, response.points ?? []] as const;
-        })
+      // One batch request computes every loop server-side from a single payload
+      // load. The old per-loop Promise.all fired 6 requests that each re-loaded
+      // and re-serialized the full COMTRADE record — large NR/PCS files piled up
+      // past the 30s client timeout. Zones stay client-side (display only).
+      const allLoops = [...GROUND_LOOPS, ...PHASE_LOOPS];
+      const { points_by_loop } = await computeLocusBatch(
+        analysisId, allLoops, 0, 0, false,
+        nextCtRatio ?? undefined, nextVtRatio ?? undefined,
       );
 
       const nextPoints: Partial<Record<LoopName, LocusPoint[]>> = {};
-      results.forEach(([loop, points]) => {
-        nextPoints[loop] = points;
+      allLoops.forEach((loop) => {
+        nextPoints[loop] = points_by_loop[loop] ?? [];
       });
       setPointsByLoop(nextPoints);
+      setLocusRatios({ ct: nextCtRatio, vt: nextVtRatio });
 
       const totalPoints = Object.values(nextPoints).reduce((sum, points) => sum + (points?.length ?? 0), 0);
       if (totalPoints === 0) {
@@ -1590,8 +1820,16 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
         nextVtRatio = imported.vtRatio;
         setCtRatioOverride(nextCtRatio);
         setVtRatioOverride(nextVtRatio);
+        // Reach XRIO bersifat secondary, sedangkan locus terbaca dari COMTRADE
+        // umumnya primary (kanal V/I sudah primary, CFG tanpa kolom rasio).
+        // Begitu CT/VT tersedia, tampilkan keduanya dalam primary ohm supaya
+        // zone dan locus berada di skala lapangan yang sama (zone x VT/CT).
+        const primaryScale = nextVtRatio / nextCtRatio;
+        setOhmMode("primary");
         setRatioNotice(
-          `CT/VT dari ${file.name} dipakai untuk locus: CT=${nextCtRatio.toFixed(2)}:1, VT=${nextVtRatio.toFixed(2)}:1.${previousRatioNote} Koreksi manual bila tidak sesuai nameplate/setting relay.`
+          `CT/VT dari ${file.name} dipakai untuk locus: CT=${nextCtRatio.toFixed(2)}:1, VT=${nextVtRatio.toFixed(2)}:1.${previousRatioNote} ` +
+          `Tampilan otomatis ke primary ohm: reach zone secondary dikali VT/CT (${primaryScale.toFixed(2)}x) agar sejajar locus primary. ` +
+          `Koreksi manual bila tidak sesuai nameplate/setting relay.`
         );
       } else {
         setRatioNotice(
@@ -1640,7 +1878,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
 
   useEffect(() => {
     setPlotRanges({ ground: {}, phase: {} });
-  }, [analysisId, dataRevision, timeMode]);
+  }, [analysisId, dataRevision, timeMode, ohmMode, displayOhmScale]);
 
   useEffect(() => {
     if (!playing) return undefined;
@@ -1660,16 +1898,28 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   }, [activeTimeRange, playing, replaySpeed]);
 
   const currentPlayMs = playMs ?? activeTimeRange[1];
+  const displayPointsByLoop = useMemo(
+    () => scalePointsByLoop(pointsByLoop, displayOhmScale),
+    [displayOhmScale, pointsByLoop],
+  );
+  const displayGroundZones = useMemo(
+    () => scaleZones(groundZones, displayOhmScale),
+    [displayOhmScale, groundZones],
+  );
+  const displayPhaseZones = useMemo(
+    () => scaleZones(phaseZones, displayOhmScale),
+    [displayOhmScale, phaseZones],
+  );
   const visiblePointsByLoop = useMemo(() => {
     const next: Partial<Record<LoopName, LocusPoint[]>> = {};
     ([...GROUND_LOOPS, ...PHASE_LOOPS] as LoopName[]).forEach((loop) => {
-      next[loop] = (pointsByLoop[loop] ?? []).filter((point) => {
+      next[loop] = (displayPointsByLoop[loop] ?? []).filter((point) => {
         const tMs = point.t * 1000;
         return tMs >= activeTimeRange[0] && tMs <= currentPlayMs;
       });
     });
     return next;
-  }, [activeTimeRange, currentPlayMs, pointsByLoop]);
+  }, [activeTimeRange, currentPlayMs, displayPointsByLoop]);
 
   // Resolved digital-channel states at the replay cursor — feeds the snapshot
   // panel so the operator sees which signals are live as the cursor moves.
@@ -1720,16 +1970,17 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ? GROUND_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
     const inception = timing.inceptionMs !== null && groundEventLoops.length
-      ? eventTrace("Inception marker", groundEventLoops, pointsByLoop, timing.inceptionMs, "#facc15", currentPlayMs)
+      ? eventTrace("Inception marker", groundEventLoops, displayPointsByLoop, timing.inceptionMs, "#facc15", currentPlayMs)
       : null;
     const trip = relayTripMs !== null
-      ? eventTrace(relayTripTraceLabel, GROUND_LOOPS, pointsByLoop, relayTripMs, "#2563eb", currentPlayMs)
+      ? eventTrace(relayTripTraceLabel, GROUND_LOOPS, displayPointsByLoop, relayTripMs, "#2563eb", currentPlayMs)
       : null;
-    const zoneTraces = groundZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
+    const zoneTraces = displayGroundZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
     const measured = detailMode === "detailed" ? measuredTrace(GROUND_LOOPS, visiblePointsByLoop) : null;
-    const line = detailMode === "detailed" ? lineImpedanceTrace(groundZones) : null;
+    // Dir. boundary (garis sudut saluran) selalu ditampilkan sebagai panduan, gaya detego.
+    const line = lineImpedanceTrace(displayGroundZones);
     if (detailMode !== "detailed") {
-      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
+      return [...(line ? [line as Plotly.Data] : []), ...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
     }
     return [
       ...zoneTraces,
@@ -1741,7 +1992,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ...(inception ? [inception as Plotly.Data] : []),
       ...(trip ? [trip as Plotly.Data] : []),
     ] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, detailMode, groundEventLoops, groundZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
+  }, [activeTimeRange, currentPlayMs, detailMode, displayGroundZones, displayPointsByLoop, groundEventLoops, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
 
   const phaseTraces = useMemo(() => {
     const loci = PHASE_LOOPS.filter((loop) => (visiblePointsByLoop[loop] ?? []).length > 0).map((loop) =>
@@ -1755,16 +2006,17 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ? PHASE_LOOPS.map((loop) => headTrace(loop, visiblePointsByLoop[loop] ?? [], currentPlayMs)).filter(Boolean)
       : [];
     const inception = timing.inceptionMs !== null && phaseEventLoops.length
-      ? eventTrace("Inception marker", phaseEventLoops, pointsByLoop, timing.inceptionMs, "#facc15", currentPlayMs)
+      ? eventTrace("Inception marker", phaseEventLoops, displayPointsByLoop, timing.inceptionMs, "#facc15", currentPlayMs)
       : null;
     const trip = relayTripMs !== null
-      ? eventTrace(relayTripTraceLabel, PHASE_LOOPS, pointsByLoop, relayTripMs, "#2563eb", currentPlayMs)
+      ? eventTrace(relayTripTraceLabel, PHASE_LOOPS, displayPointsByLoop, relayTripMs, "#2563eb", currentPlayMs)
       : null;
-    const zoneTraces = phaseZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
+    const zoneTraces = displayPhaseZones.map((zone) => (zone.shape === "mho" ? mhoCircleTrace(zone) : quadTrace(zone)));
     const measured = detailMode === "detailed" ? measuredTrace(PHASE_LOOPS, visiblePointsByLoop) : null;
-    const line = detailMode === "detailed" ? lineImpedanceTrace(phaseZones) : null;
+    // Dir. boundary (garis sudut saluran) selalu ditampilkan sebagai panduan, gaya detego.
+    const line = lineImpedanceTrace(displayPhaseZones);
     if (detailMode !== "detailed") {
-      return [...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
+      return [...(line ? [line as Plotly.Data] : []), ...loci, ...(heads as Plotly.Data[]), ...(inception ? [inception as Plotly.Data] : []), ...(trip ? [trip as Plotly.Data] : []), ...zoneTraces] as Plotly.Data[];
     }
     return [
       ...zoneTraces,
@@ -1776,14 +2028,14 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       ...(inception ? [inception as Plotly.Data] : []),
       ...(trip ? [trip as Plotly.Data] : []),
     ] as Plotly.Data[];
-  }, [activeTimeRange, currentPlayMs, detailMode, phaseEventLoops, phaseZones, pointsByLoop, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
+  }, [activeTimeRange, currentPlayMs, detailMode, displayPhaseZones, displayPointsByLoop, phaseEventLoops, relayTripMs, relayTripTraceLabel, timing.inceptionMs, visiblePointsByLoop]);
 
   // When zones are loaded, merge zone bounds with locus points but cap at 4× the
   // zone span so pre-fault load impedance (100-150 Ω away) doesn't crush the view.
   const groundRanges = useMemo(() => {
-    const pointBounds = boundsFromPoints(pointsByLoop, GROUND_LOOPS);
-    if (groundZones.length === 0) return finalizeRange(pointBounds);
-    const zoneBounds = boundsFromZones(groundZones);
+    const pointBounds = boundsFromPoints(displayPointsByLoop, GROUND_LOOPS);
+    if (displayGroundZones.length === 0) return finalizeRange(pointBounds);
+    const zoneBounds = boundsFromZones(displayGroundZones);
     const zoneSpanR = Math.max(10, zoneBounds.xMax - zoneBounds.xMin);
     const zoneSpanX = Math.max(10, zoneBounds.yMax - zoneBounds.yMin);
     const capped = {
@@ -1793,12 +2045,12 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       yMax: Math.min(pointBounds.yMax, zoneBounds.yMax + zoneSpanX * 2),
     };
     return finalizeRange(mergeBounds(zoneBounds, capped));
-  }, [groundZones, pointsByLoop]);
+  }, [displayGroundZones, displayPointsByLoop]);
 
   const phaseRanges = useMemo(() => {
-    const pointBounds = boundsFromPoints(pointsByLoop, PHASE_LOOPS);
-    if (phaseZones.length === 0) return finalizeRange(pointBounds);
-    const zoneBounds = boundsFromZones(phaseZones);
+    const pointBounds = boundsFromPoints(displayPointsByLoop, PHASE_LOOPS);
+    if (displayPhaseZones.length === 0) return finalizeRange(pointBounds);
+    const zoneBounds = boundsFromZones(displayPhaseZones);
     const zoneSpanR = Math.max(10, zoneBounds.xMax - zoneBounds.xMin);
     const zoneSpanX = Math.max(10, zoneBounds.yMax - zoneBounds.yMin);
     const capped = {
@@ -1808,7 +2060,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       yMax: Math.min(pointBounds.yMax, zoneBounds.yMax + zoneSpanX * 2),
     };
     return finalizeRange(mergeBounds(zoneBounds, capped));
-  }, [phaseZones, pointsByLoop]);
+  }, [displayPhaseZones, displayPointsByLoop]);
 
   const groundShape = shapeChoiceFor(groundZones[0]);
   const phaseShape = shapeChoiceFor(phaseZones[0]);
@@ -2134,6 +2386,17 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
               onChange={(event) => updateRatioOverride("vt", event.target.value)}
             />
           </label>
+          <label className={styles.zoneLabel}>
+            Ohm display
+            <select
+              className={styles.selectField}
+              value={ohmMode}
+              onChange={(event) => setOhmMode(event.target.value as OhmMode)}
+            >
+              <option value="secondary">Secondary ohm</option>
+              <option value="primary">Primary ohm (Detego)</option>
+            </select>
+          </label>
           <button
             type="button"
             className={styles.applyBtn}
@@ -2144,7 +2407,12 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           </button>
         </div>
         <div className={styles.badge} style={{ marginTop: 8, whiteSpace: "normal", lineHeight: 1.45 }}>
-          {ratioNotice}
+          {ratioNotice}{" "}
+          {ohmMode === "primary"
+            ? (locusRatios.ct != null && locusRatios.vt != null
+              ? `Tampilan primary = secondary x VT/CT (${primaryOhmScale.toFixed(3)}x).`
+              : "Tampilan primary butuh CT/VT yang sudah di-Apply; skala sementara 1.000x.")
+            : "Tampilan plot sekarang secondary ohm."}
         </div>
       </div>
 
@@ -2335,7 +2603,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           <div className={styles.locusPlotTitle}>Phase-to-Ground | ZA, ZB, ZC</div>
           <Plot
             data={groundTraces}
-            layout={familyLayout("Phase-to-Ground", groundViewRange.x, groundViewRange.y, currentPlayMs, detailMode, groundZones)}
+            layout={familyLayout("Phase-to-Ground", groundViewRange.x, groundViewRange.y, currentPlayMs, detailMode, displayGroundZones, displayOhmLabel)}
             config={{ displayModeBar: true, responsive: true, displaylogo: false, toImageButtonOptions: { scale: detailMode === "detailed" ? 3 : 2 } }}
             style={{ width: "100%" }}
             onRelayout={(event) => rememberPlotRange("ground", event as Readonly<Record<string, unknown>>)}
@@ -2350,7 +2618,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           <div className={styles.locusPlotTitle}>Phase-to-Phase | ZAB, ZBC, ZCA</div>
           <Plot
             data={phaseTraces}
-            layout={familyLayout("Phase-to-Phase", phaseViewRange.x, phaseViewRange.y, currentPlayMs, detailMode, phaseZones)}
+            layout={familyLayout("Phase-to-Phase", phaseViewRange.x, phaseViewRange.y, currentPlayMs, detailMode, displayPhaseZones, displayOhmLabel)}
             config={{ displayModeBar: true, responsive: true, displaylogo: false, toImageButtonOptions: { scale: detailMode === "detailed" ? 3 : 2 } }}
             style={{ width: "100%" }}
             onRelayout={(event) => rememberPlotRange("phase", event as Readonly<Record<string, unknown>>)}

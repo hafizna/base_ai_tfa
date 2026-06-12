@@ -150,6 +150,21 @@ class LocusResponse(BaseModel):
     fault_inception_idx: Optional[int]
 
 
+class LocusBatchRequest(AnalysisRequestBase):
+    """Compute several loops in one request so the stored COMTRADE payload is
+    loaded/parsed once instead of once per loop (6× for the locus panel)."""
+    loops: List[str] = ["ZA", "ZB", "ZC", "ZAB", "ZBC", "ZCA"]
+    k0: float = 0.0
+    k0_angle_deg: float = 0.0
+    invert_i: bool = False
+    ct_ratio_override: Optional[float] = None
+    vt_ratio_override: Optional[float] = None
+
+
+class LocusBatchResponse(BaseModel):
+    points_by_loop: dict[str, List[LocusPoint]]
+
+
 class LocusEvent(BaseModel):
     """A single curated digital event placed on the impedance-locus timeline."""
     time_ms: float          # absolute time in the record (ms)
