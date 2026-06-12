@@ -206,6 +206,32 @@ export async function computeLocus(
   return data;
 }
 
+export async function computeLocusBatch(
+  analysisId: string,
+  loops: string[],
+  k0 = 0.0,
+  k0AngleDeg = 0.0,
+  invertI = false,
+  ctRatioOverride?: number,
+  vtRatioOverride?: number,
+) {
+  const { data } = await api.post(
+    "/api/analyze/21/locus-batch",
+    {
+      analysis_id: analysisId,
+      loops,
+      k0,
+      k0_angle_deg: k0AngleDeg,
+      invert_i: invertI,
+      ...(ctRatioOverride != null ? { ct_ratio_override: ctRatioOverride } : {}),
+      ...(vtRatioOverride != null ? { vt_ratio_override: vtRatioOverride } : {}),
+    },
+    // One request does the work of six; allow it more time than the 30s default.
+    { timeout: 90000 },
+  );
+  return data as { points_by_loop: Record<string, { t: number; r: number; x: number }[]> };
+}
+
 export async function fetchFaultClassification21(analysisId: string) {
   const { data } = await api.get(`/api/analyze/21/fault-classification?analysis_id=${analysisId}`);
   return data as {

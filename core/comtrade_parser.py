@@ -321,6 +321,37 @@ def _parse_analog_channels(com: Comtrade, manufacturer: str, warnings: List[str]
     """
     analog_channels = []
 
+    # Decide already-primary per CT GROUP, not per channel. The old per-channel
+    # test (max_abs > ct_primary*0.5) mis-fired on a healthy phase: in an NR/NARI
+    # record where `a` already encodes primary (pors='S'), the faulted phase
+    # (e.g. ib peak ~20kA) exceeds the threshold and is left alone, but a healthy
+    # phase (e.g. ic peak ~2kA) falls below it and gets multiplied by ct_primary
+    # again → 2kA × 4000 = 8MA. Grouping by (ct_primary, ct_secondary, unit) and
+    # treating the whole group as already-primary if ANY member looks primary
+    # keeps the phases consistent.
+    group_already_primary: dict = {}
+    for gi in range(len(com.analog_channel_ids)):
+        try:
+            g_pors = (getattr(com.cfg.analog_channels[gi], 'pors', 'P') or 'P').upper().strip()
+            if g_pors != 'S':
+                continue
+            g_pri = float(getattr(com.cfg.analog_channels[gi], 'primary', 1.0) or 1.0)
+            g_sec = float(getattr(com.cfg.analog_channels[gi], 'secondary', 1.0) or 1.0)
+            if g_pri <= 0 or g_sec <= 0 or g_pri == g_sec:
+                continue
+            g_unit = (getattr(com.cfg.analog_channels[gi], 'uu', '') or '').strip().lower()
+            if gi < len(com.analog):
+                g_max = float(np.max(np.abs(np.asarray(com.analog[gi], dtype=float)))) if len(com.analog[gi]) else 0.0
+            else:
+                g_max = 0.0
+            key = (g_pri, g_sec, g_unit)
+            if g_max > g_pri * 0.5:
+                group_already_primary[key] = True
+            elif key not in group_already_primary:
+                group_already_primary[key] = False
+        except Exception:
+            continue
+
     for i, ch_id in enumerate(com.analog_channel_ids):
         try:
             # Get channel info
@@ -397,10 +428,11 @@ def _parse_analog_channels(com: Comtrade, manufacturer: str, warnings: List[str]
                 # Guard: some relays (e.g. NARI/NR PCS-9xx) embed the full CT/VT
                 # ratio inside `a` but still write PS='S'. Their samples will already
                 # be in primary-magnitude territory (>> ct_primary/2).
-                # Using ct_primary*0.5 as the threshold correctly handles relays like
-                # Sifang CSC-101M where secondary=1 but nominal secondary voltage is
-                # ~58V — the old ct_secondary*10 threshold (=10V) fired too easily.
-                already_primary = max_abs > ct_primary * 0.5
+                # Decide per CT GROUP (precomputed above) so a healthy low-current
+                # phase shares the same verdict as its faulted sibling — otherwise
+                # the healthy phase alone gets the ratio re-applied (×ct_primary).
+                group_key = (ct_primary, ct_secondary, ch_unit.strip().lower())
+                already_primary = group_already_primary.get(group_key, max_abs > ct_primary * 0.5)
                 if already_primary:
                     warnings.append(
                         f"Channel {ch_name}: pors=S but max value ({max_abs:.1f}) >> "
