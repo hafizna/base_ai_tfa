@@ -1597,8 +1597,6 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   const displayOhmLabel = ohmMode === "primary" ? "primary ohm" : "secondary ohm";
 
   async function fetchAllLoci(
-    nextGroundZones = groundZones,
-    nextPhaseZones = phaseZones,
     nextCtRatio = ctRatioOverride,
     nextVtRatio = vtRatioOverride,
   ) {
@@ -1845,7 +1843,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
         ? ` | CT=${nextCtRatio.toFixed(0)}:1, VT=${nextVtRatio.toFixed(1)}:1`
         : "";
       setRelayStatus(`${file.name} dimuat: ${gndCount} zona ground, ${phCount} zona phase.${polyNote}${ratioNote}`);
-      await fetchAllLoci(nextGroundZones, nextPhaseZones, nextCtRatio, nextVtRatio);
+      await fetchAllLoci(nextCtRatio, nextVtRatio);
     } catch {
       setRelayStatus("Gagal membaca file relay.");
     }
@@ -2303,7 +2301,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
         <div className={styles.controls} style={{ flexWrap: "wrap", gap: 10 }}>
           <button
             className={styles.applyBtn}
-            onClick={() => void fetchAllLoci(groundZones, phaseZones, ctRatioOverride, vtRatioOverride)}
+            onClick={() => void fetchAllLoci(ctRatioOverride, vtRatioOverride)}
             disabled={loading}
           >
             {loading ? "Computing..." : "Refresh All Loci"}
@@ -2400,7 +2398,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           <button
             type="button"
             className={styles.applyBtn}
-            onClick={() => void fetchAllLoci(groundZones, phaseZones, ctRatioOverride, vtRatioOverride)}
+            onClick={() => void fetchAllLoci(ctRatioOverride, vtRatioOverride)}
             disabled={loading}
           >
             Apply CT/VT
