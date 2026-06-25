@@ -67,7 +67,27 @@ export default function FaultTypeBadge21({ analysisId, dataRevision = 0 }: Props
 
       {loading && <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>Mengklasifikasikan...</div>}
 
-      {!loading && data && (
+      {!loading && data && data.no_fault && (
+        <div className={styles.faultSummaryCard}>
+          <div className={styles.faultIdentityRow}>
+            <span
+              className={styles.faultCodePill}
+              style={{ background: "#f0fdf4", borderColor: "#86efac", color: "#16a34a" }}
+            >
+              NONE
+            </span>
+            <div className={styles.faultIdentityText}>
+              <div style={{ color: "#16a34a" }}>Tidak ada gangguan</div>
+              <p>Tidak ada proteksi bekerja / lonjakan arus.</p>
+            </div>
+          </div>
+          <div className={styles.faultMetricRow}>
+            <Metric label="Total Rekaman" value={formatMs(data.total_ms)} sub="ms" />
+          </div>
+        </div>
+      )}
+
+      {!loading && data && !data.no_fault && (
         <div className={styles.faultSummaryCard}>
           <div className={styles.faultIdentityRow}>
             <span

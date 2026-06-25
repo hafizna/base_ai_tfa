@@ -245,6 +245,7 @@ export async function fetchFaultClassification21(analysisId: string) {
     fault_ms: number;
     total_ms: number;
     ar_status: "successful" | "failed" | null;
+    no_fault?: boolean;
   };
 }
 

@@ -590,6 +590,17 @@ def _compute_fault_classification(payload: dict) -> dict:
     if len(time) < 4:
         return empty
 
+    # Shared no-fault gate: if no real fault is present, don't report a fault
+    # type/phase/timing — that would contradict the AI panel and the physics.
+    det = detect_fault(payload)
+    if det.no_fault:
+        return {
+            **empty,
+            "fault_code": "NONE",
+            "no_fault": True,
+            "total_ms": round(float((time[-1] - time[0]) * 1000), 1),
+        }
+
     row = extract_ml_features(payload, "21")
     total_ms = round(float((time[-1] - time[0]) * 1000), 1)
     fault_ms = float(row.get("fault_duration_ms", 0) or 0)
@@ -631,6 +642,7 @@ def _compute_fault_classification(payload: dict) -> dict:
         "fault_ms": fault_ms,
         "total_ms": total_ms,
         "ar_status": ar_status,
+        "no_fault": False,
     }
 
 
