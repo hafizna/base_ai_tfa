@@ -19,7 +19,7 @@ from ..schemas import (
 )
 from ..storage import load_analysis
 from ..ml_predict import run_ml_prediction, extract_ml_features, _digital_sequence_features
-from ..fault_detection import detect_fault
+from ..fault_detection import detect_fault_presence
 
 router = APIRouter(prefix="/api/analyze/21", tags=["relay-21"])
 
@@ -558,7 +558,7 @@ def _compute_electrical_params(payload: dict) -> dict:
     # Shared no-fault gate: if no real fault is present, the fault-window
     # parameters above are computed from load V/I and are misleading. Flag it
     # and blank them so the UI and PDF render a clean "no fault" state instead.
-    det = detect_fault(payload)
+    det = detect_fault_presence(payload)
     if det.no_fault:
         return {
             "no_fault": True,
@@ -592,7 +592,7 @@ def _compute_fault_classification(payload: dict) -> dict:
 
     # Shared no-fault gate: if no real fault is present, don't report a fault
     # type/phase/timing — that would contradict the AI panel and the physics.
-    det = detect_fault(payload)
+    det = detect_fault_presence(payload)
     if det.no_fault:
         return {
             **empty,

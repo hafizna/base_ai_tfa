@@ -37,7 +37,7 @@ if str(_PIPELINE_DIR) not in sys.path:
 from models.predict import _petir_subtype_description, _augment_row_with_soe_context  # noqa: E402
 from models.rules import apply_rules  # noqa: E402
 from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
-from .fault_detection import detect_fault  # noqa: E402
+from .fault_detection import detect_fault_presence  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
 _CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calibrator.pkl"
@@ -1124,12 +1124,12 @@ def _build_narrative_evidence(row: dict, ranking: list, pred: str, confidence: f
 def _no_fault_gate(payload: dict) -> Optional[dict]:
     """Physics precondition: was there actually a fault to classify?
 
-    Delegates the decision to the shared :func:`detect_fault` (single source of
-    truth used by relay-21/87L, electrical params, locus, and the PDF report) so
-    every surface agrees. Returns a NONE/no-fault result dict to short-circuit
-    the pipeline, or None to let normal classification proceed.
+    Delegates the decision to the shared :func:`detect_fault_presence` (single
+    source of truth used by relay-21/87L, electrical params, locus, and the PDF
+    report) so every surface agrees. Returns a NONE/no-fault result dict to
+    short-circuit the pipeline, or None to let normal classification proceed.
     """
-    det = detect_fault(payload)
+    det = detect_fault_presence(payload)
     if det.is_fault:
         return None
 

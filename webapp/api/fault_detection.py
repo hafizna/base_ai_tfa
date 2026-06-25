@@ -80,8 +80,12 @@ def _is_operate_status(name: str) -> bool:
     return is_operate and not is_standing
 
 
-def detect_fault(payload: dict) -> FaultDetection:
+def detect_fault_presence(payload: dict) -> FaultDetection:
     """Decide whether a COMTRADE payload actually contains a fault.
+
+    Named distinctly from ``core.fault_detector.detect_fault`` (the CLI/training
+    fault-event extractor) to avoid confusion: this one is the webapp no-fault
+    gate and takes the stored COMTRADE *payload* dict.
 
     Conservative: ANY hard evidence (protection operated, current step, voltage
     sag, or sequence unbalance) ⇒ is_fault=True. Only when none is present do we
