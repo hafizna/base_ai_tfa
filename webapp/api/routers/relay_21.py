@@ -19,6 +19,7 @@ from ..schemas import (
 )
 from ..storage import load_analysis
 from ..ml_predict import run_ml_prediction, extract_ml_features, _digital_sequence_features
+from ..fault_detection import detect_fault
 
 router = APIRouter(prefix="/api/analyze/21", tags=["relay-21"])
 
@@ -553,6 +554,21 @@ def _compute_electrical_params(payload: dict) -> dict:
 
     result["fault_duration_ms"] = round((time[extinction_idx] - time[inception_idx]) * 1000, 1)
     result["inception_time_ms"] = round(float(time[inception_idx]) * 1000, 1)
+
+    # Shared no-fault gate: if no real fault is present, the fault-window
+    # parameters above are computed from load V/I and are misleading. Flag it
+    # and blank them so the UI and PDF render a clean "no fault" state instead.
+    det = detect_fault(payload)
+    if det.no_fault:
+        return {
+            "no_fault": True,
+            "no_fault_reasons": det.reasons,
+            "peak_to_prefault_ratio": det.peak_to_prefault_ratio,
+            "voltage_sag_pu": det.voltage_sag_pu,
+            "i0_i1_ratio": det.i0_i1_ratio,
+            "i2_i1_ratio": det.i2_i1_ratio,
+        }
+    result["no_fault"] = False
     return result
 
 

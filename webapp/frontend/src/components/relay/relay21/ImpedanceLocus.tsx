@@ -1576,6 +1576,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
     tripSource: null,
   });
   const [faultClassification, setFaultClassification] = useState<FaultClassification21 | null>(null);
+  const [noFault, setNoFault] = useState(false);
   const [locusEvents, setLocusEvents] = useState<LocusEvent[]>([]);
   const [showLocusEvents, setShowLocusEvents] = useState(true);
   const [playMs, setPlayMs] = useState<number | null>(null);
@@ -1645,6 +1646,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
         if (!alive) return;
         if (paramsResult.status === "fulfilled") {
           const params = paramsResult.value;
+          setNoFault(params.no_fault === true);
           setTiming({
             inceptionMs: typeof params.inception_time_ms === "number" ? params.inception_time_ms : null,
             durationMs: typeof params.fault_duration_ms === "number" ? params.fault_duration_ms : null,
@@ -1652,6 +1654,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
             tripSource: typeof params.trip_time_ms === "number" ? (params.trip_time_source ?? "status_edge") : null,
           });
         } else {
+          setNoFault(false);
           setTiming({ inceptionMs: null, durationMs: null, tripMs: null, tripSource: null });
         }
         setFaultClassification(classificationResult.status === "fulfilled" ? classificationResult.value : null);
@@ -2290,6 +2293,22 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
             )}
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (noFault) {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <h2 className={styles.panelTitle}>Impedance Locus Diagram</h2>
+        </div>
+        <div className={styles.warning} style={{ borderLeft: "4px solid #16a34a" }}>
+          <strong style={{ color: "#16a34a" }}>Tidak ada gangguan.</strong>{" "}
+          Locus impedansi tidak digambar karena tidak ada gangguan pada rekaman ini —
+          trajektori akan dihitung dari arus/tegangan beban dan tidak bermakna. Rekaman
+          kemungkinan ter-trigger oleh pickup fault detector yang reset sendiri.
+        </div>
       </div>
     );
   }

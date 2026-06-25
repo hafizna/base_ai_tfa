@@ -36,6 +36,8 @@ export interface AIFaultResult {
   cause_ranking: AICauseRank[];
   fault_type: string;
   overall_confidence: number;
+  /** True when the no-fault gate fired: record triggered but no fault present. */
+  no_fault?: boolean;
   evidence: Array<string | AIEvidenceItem>;
   tier1?: AITier1Info | null;
   raw_probabilities?: Record<string, number> | null;
@@ -100,6 +102,7 @@ export default function AIFaultResultView({
   apiTrace,
 }: Props) {
   const topCause = result.cause_ranking[0];
+  const noFault = result.no_fault === true || result.fault_type === "none";
   const isPermanent = result.fault_type === "permanent";
   const confidence = clampPct(result.overall_confidence);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -109,27 +112,48 @@ export default function AIFaultResultView({
 
   return (
     <div className={styles.aiResultLayout}>
-      <section className={styles.aiVerdictStrip}>
-        <div className={styles.aiVerdictMain}>
-          <span className={styles.aiEyebrow}>Primary pattern</span>
-          <div className={styles.aiVerdictTitle}>{topCause?.label ?? "No dominant cause"}</div>
-          <div className={styles.aiVerdictMeta}>
-            <span className={isPermanent ? styles.aiFaultPermanent : styles.aiFaultTransient}>
-              {isPermanent ? permanentLabel : transientLabel}
-            </span>
-            <span>{result.cause_ranking.length} ranked candidates</span>
-          </div>
-        </div>
-
-        <div
-          className={styles.aiConfidenceDial}
-          style={{ "--confidence": `${confidence}%` } as CSSProperties}
-          aria-label={`Overall confidence ${confidence.toFixed(0)}%`}
+      {noFault ? (
+        <section
+          className={styles.aiVerdictStrip}
+          data-no-fault="true"
+          style={{ borderLeft: "4px solid #16a34a" }}
         >
-          <span>{confidence.toFixed(0)}%</span>
-          <small>AI confidence</small>
-        </div>
-      </section>
+          <div className={styles.aiVerdictMain}>
+            <span className={styles.aiEyebrow}>Status</span>
+            <div className={styles.aiVerdictTitle} style={{ color: "#16a34a" }}>
+              Tidak ada gangguan
+            </div>
+            <div className={styles.aiVerdictMeta}>
+              <span>
+                Rekaman ter-trigger tanpa proteksi bekerja — kemungkinan pickup fault detector
+                yang reset sendiri. Klasifikasi penyebab tidak dijalankan.
+              </span>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className={styles.aiVerdictStrip}>
+          <div className={styles.aiVerdictMain}>
+            <span className={styles.aiEyebrow}>Primary pattern</span>
+            <div className={styles.aiVerdictTitle}>{topCause?.label ?? "No dominant cause"}</div>
+            <div className={styles.aiVerdictMeta}>
+              <span className={isPermanent ? styles.aiFaultPermanent : styles.aiFaultTransient}>
+                {isPermanent ? permanentLabel : transientLabel}
+              </span>
+              <span>{result.cause_ranking.length} ranked candidates</span>
+            </div>
+          </div>
+
+          <div
+            className={styles.aiConfidenceDial}
+            style={{ "--confidence": `${confidence}%` } as CSSProperties}
+            aria-label={`Overall confidence ${confidence.toFixed(0)}%`}
+          >
+            <span>{confidence.toFixed(0)}%</span>
+            <small>AI confidence</small>
+          </div>
+        </section>
+      )}
 
       {result.cause_ranking.length > 0 && (
         <section>

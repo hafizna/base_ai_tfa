@@ -354,12 +354,14 @@ def _build_conclusion(
     ai_analysis: Optional[dict],
     elec: dict,
 ) -> Table:
-    fault_code = fault_class.get("fault_code", "—")
-    phases_label = fault_class.get("phases_label", "—")
-    zone = fault_class.get("zone") or "—"
-    trip_type = fault_class.get("trip_type") or "—"
-    fault_ms = fault_class.get("fault_ms", 0.0)
-    ar_status = fault_class.get("ar_status")
+    no_fault = bool(ai_analysis.get("no_fault")) if ai_analysis else False
+
+    fault_code = "TIDAK ADA GANGGUAN" if no_fault else fault_class.get("fault_code", "—")
+    phases_label = "—" if no_fault else fault_class.get("phases_label", "—")
+    zone = "—" if no_fault else (fault_class.get("zone") or "—")
+    trip_type = "—" if no_fault else (fault_class.get("trip_type") or "—")
+    fault_ms = 0.0 if no_fault else fault_class.get("fault_ms", 0.0)
+    ar_status = None if no_fault else fault_class.get("ar_status")
     ar_label = {
         "successful": "A/R BERHASIL",
         "failed": "A/R GAGAL",
@@ -430,13 +432,16 @@ def _build_conclusion(
             if isinstance(reasoning, str) and reasoning.strip():
                 narrative_lines.append(reasoning.strip())
 
-    z_inception = elec.get("z_at_inception_ohm")
-    z_angle = elec.get("z_angle_deg")
-    if z_inception is not None:
-        z_line = f"<b>Impedansi saat inception:</b> {z_inception:.2f} Ω"
-        if z_angle is not None:
-            z_line += f" ∠ {z_angle:.1f}°"
-        narrative_lines.append(z_line)
+    # Impedance at inception is only meaningful for an actual fault; on a
+    # no-fault record it is computed from load V/I and is misleading.
+    if not no_fault:
+        z_inception = elec.get("z_at_inception_ohm")
+        z_angle = elec.get("z_angle_deg")
+        if z_inception is not None:
+            z_line = f"<b>Impedansi saat inception:</b> {z_inception:.2f} Ω"
+            if z_angle is not None:
+                z_line += f" ∠ {z_angle:.1f}°"
+            narrative_lines.append(z_line)
 
     # Right-side chip column: vertical [label, value] pairs to fit the
     # narrow ~77mm slot inside the conclusion box without clipping.
@@ -550,7 +555,9 @@ def _build_generic_conclusion(styles: dict, payload: dict, relay_label: str, ai_
         f"<b>Kanal:</b> {len(payload.get('analog_channels', []))} analog / {len(payload.get('status_channels', []))} digital",
     ]
 
-    if ai_analysis:
+    no_fault = bool(ai_analysis.get("no_fault")) if ai_analysis else False
+
+    if ai_analysis and not no_fault:
         cause_ranking = ai_analysis.get("cause_ranking") or []
         top = cause_ranking[0] if isinstance(cause_ranking, list) and cause_ranking else None
         if isinstance(top, dict):
@@ -562,6 +569,13 @@ def _build_generic_conclusion(styles: dict, payload: dict, relay_label: str, ai_
                     pct = conf * 100 if conf <= 1 else conf
                     line += f" <font color='#64748b'>(confidence {pct:.0f}%)</font>"
                 narrative_lines.append(line)
+
+    if no_fault:
+        narrative_lines.append(
+            "<b>Status:</b> <font color='#16a34a'>TIDAK ADA GANGGUAN</font> — "
+            "rekaman ter-trigger tanpa proteksi bekerja (kemungkinan pickup fault detector "
+            "yang reset sendiri). Klasifikasi penyebab tidak dijalankan."
+        )
 
     summary_chips = [
         ("RELAY", relay_label),
@@ -589,7 +603,10 @@ def _build_generic_conclusion(styles: dict, payload: dict, relay_label: str, ai_
 
     narrative_cells = [
         Paragraph("KONKLUSI", styles["conclusion_kicker"]),
-        Paragraph("Ringkasan Analisis COMTRADE", styles["conclusion_head"]),
+        Paragraph(
+            "TIDAK ADA GANGGUAN" if no_fault else "Ringkasan Analisis COMTRADE",
+            styles["conclusion_head"],
+        ),
     ]
     for line in narrative_lines:
         narrative_cells.append(Paragraph(line, styles["conclusion_body"]))
@@ -1145,6 +1162,8 @@ def _build_binary_time_diagram_section(styles: dict, payload: dict) -> list:
 
 
 def _build_electrical_section(styles: dict, elec: dict) -> list:
+    if not elec:
+        return []
     rows = [
         ("Waktu inception", f"{elec['inception_time_ms']:.1f} ms" if elec.get("inception_time_ms") is not None else "—"),
         ("Durasi gangguan", f"{elec['fault_duration_ms']:.1f} ms" if elec.get("fault_duration_ms") is not None else "—"),
@@ -1229,9 +1248,10 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
         ft_label = {
             "transient": "Transient (sementara)",
             "permanent": "Permanent (menetap)",
+            "none": "Tidak ada gangguan",
         }.get(fault_type.lower(), fault_type)
         summary_bits.append(f"<b>Jenis kejadian:</b> {ft_label}")
-    if isinstance(overall_conf, (int, float)):
+    if isinstance(overall_conf, (int, float)) and fault_type != "none":
         pct = overall_conf * 100 if overall_conf <= 1 else overall_conf
         summary_bits.append(f"<b>Confidence overall:</b> {pct:.0f}%")
     if summary_bits:
@@ -1568,8 +1588,12 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     station = payload.get("station_name") or "Stasiun Tidak Diketahui"
     device = payload.get("rec_dev_id") or "Device Tidak Diketahui"
 
+    no_fault = bool(request.ai_analysis.get("no_fault")) if request.ai_analysis else False
+
     fault_class = _compute_fault_classification(payload) if relay_type == "21" else None
-    elec = _compute_electrical_params(payload) if relay_type == "21" else {}
+    # On a no-fault record the impedance trajectory is computed from load V/I and
+    # is meaningless; suppress the fault electrical params from the report.
+    elec = _compute_electrical_params(payload) if relay_type == "21" and not no_fault else {}
 
     buf = io.BytesIO()
     header_top_clearance = 22 * mm + 4 * mm  # header band + gap
@@ -1661,7 +1685,8 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     ]
     locus_ids = {"impedance_locus", "impedance_locus_ground", "impedance_locus_phase"}
     non_locus_charts = [chart for chart in visible_charts if chart.id not in locus_ids]
-    locus_charts = [chart for chart in visible_charts if chart.id in locus_ids]
+    # No fault → no meaningful impedance locus; drop those charts entirely.
+    locus_charts = [] if no_fault else [chart for chart in visible_charts if chart.id in locus_ids]
 
     for chart in non_locus_charts:
         kicker, default_title = chart_titles.get(chart.id, ("VISUALISASI", chart.title))

@@ -269,6 +269,12 @@ export async function fetchElectricalParams21(analysisId: string) {
     rx_ratio?: number;
     z_angle_deg?: number;
     ar_dead_time_ms?: number;
+    no_fault?: boolean;
+    no_fault_reasons?: string[];
+    peak_to_prefault_ratio?: number;
+    voltage_sag_pu?: number;
+    i0_i1_ratio?: number;
+    i2_i1_ratio?: number;
   };
 }
 

@@ -37,6 +37,7 @@ if str(_PIPELINE_DIR) not in sys.path:
 from models.predict import _petir_subtype_description, _augment_row_with_soe_context  # noqa: E402
 from models.rules import apply_rules  # noqa: E402
 from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
+from .fault_detection import detect_fault  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
 _CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calibrator.pkl"
@@ -280,13 +281,38 @@ def _thd_percent(arr: np.ndarray, sr: float, freq: float) -> float:
     return float(harmonics / spectrum[1] * 100.0)
 
 
+def _fundamental_phasor(seg: np.ndarray) -> complex:
+    """Fundamental (1st-harmonic) phasor of a one-cycle window via DFT.
+
+    The window must be exactly one fundamental cycle. Returns a complex phasor
+    whose magnitude is the peak amplitude of the fundamental.
+    """
+    n = len(seg)
+    if n < 2:
+        return 0j
+    k = np.arange(n)
+    # Project onto e^{-j 2π k / n}: real part = cos component, imag = sin component.
+    coeff = np.exp(-2j * np.pi * k / n)
+    return complex(2.0 / n * np.dot(seg.astype(float), coeff))
+
+
 def _symmetrical_components(ia: np.ndarray, ib: np.ndarray, ic: np.ndarray):
-    """Return (I0_rms, I1_rms, I2_rms) using one-sample approximation of seq."""
+    """Return (|I0|, |I1|, |I2|) sequence magnitudes from one-cycle windows.
+
+    Fortescue requires PHASORS, not raw time samples: each phase is first
+    reduced to its fundamental phasor (1-cycle DFT), then the symmetrical
+    transform is applied. Feeding raw sinusoids straight into the a-operator
+    matrix yields I1≈I2 for any balanced set (the old bug that made every
+    record look 100% unbalanced).
+    """
     a = np.exp(1j * 2 * np.pi / 3)
-    i0 = (ia + ib + ic) / 3.0
-    i1 = (ia + a * ib + (a ** 2) * ic) / 3.0
-    i2 = (ia + (a ** 2) * ib + a * ic) / 3.0
-    return float(np.sqrt(np.mean(np.abs(i0) ** 2))), float(np.sqrt(np.mean(np.abs(i1) ** 2))), float(np.sqrt(np.mean(np.abs(i2) ** 2)))
+    pa = _fundamental_phasor(np.asarray(ia).real)
+    pb = _fundamental_phasor(np.asarray(ib).real)
+    pc = _fundamental_phasor(np.asarray(ic).real)
+    i0 = (pa + pb + pc) / 3.0
+    i1 = (pa + a * pb + (a ** 2) * pc) / 3.0
+    i2 = (pa + (a ** 2) * pb + a * pc) / 3.0
+    return abs(i0), abs(i1), abs(i2)
 
 
 def _phase_from_status_name(name: str) -> Optional[str]:
@@ -761,6 +787,10 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
             v_thds.append(_thd_percent(seg, sr, freq))
         voltage_thd_max_percent = float(max(v_thds)) if v_thds else 0.0
 
+    # Current step ratio: largest faulted-phase peak vs its own prefault RMS.
+    # ~1.0–1.4 on steady load, ≫2 on a real fault. Used by the no-fault gate.
+    peak_to_prefault_ratio = float(np.max(np.abs(i_primary)) / pre_rms) if pre_rms > 0 else 0.0
+
     digital = _digital_sequence_features(status_channels, time, inception_idx)
 
     # AR result — trust only the tightened detection in _digital_sequence_features.
@@ -805,6 +835,30 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
     if len(digital.get("digital_startup_phases") or []) == 1:
         faulted_phases_str = digital["digital_startup_phases"][0]
 
+    # Broad "did any protection actually operate?" scan. _digital_sequence_features
+    # only catches phase-tagged trips/CB-opens; unphased operate bits like Op_Prot,
+    # 87L.Op, 21Lx.Op, 78.Op, or BO "TRIP" channels must also count. We exclude
+    # standing-status bits (.On/.Valid/.Ready/_OK/Pkp) which are HIGH in normal
+    # service and a mere fault-detector pickup (Pkp) that resets itself.
+    operate_active = False
+    for sch in status_channels:
+        nm = str(sch.get("name", "") or "").upper()
+        if not _status_any_on(sch.get("samples") or []):
+            continue
+        is_operate = (
+            re.search(r"(?:^|[._\s])OP(?:[._\s]|$)", nm) is not None
+            or "TRIP" in nm
+            or "OP_PROT" in nm.replace(" ", "")
+        )
+        is_standing = any(
+            tok in nm for tok in (".ON", ".OFF", ".VALID", ".READY", ".BLOCKED",
+                                   "_OK", "PKP", "PICKUP", "PICK UP", "ALM", "ALARM",
+                                   "MODE", "SWITCH", "HEALTHY", "INPROG", "ACTIVE")
+        )
+        if is_operate and not is_standing:
+            operate_active = True
+            break
+
     ct_anomaly = detect_ct_measurement_anomaly(
         {"A": ia, "B": ib, "C": ic},
         {"A": va, "B": vb, "C": vc},
@@ -847,6 +901,8 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
         "ct_anomaly_detected": bool(ct_anomaly.get("detected")),
         "ct_anomaly_phase": str(ct_anomaly.get("phase", "") or ""),
         "ct_anomaly_evidence": str(ct_anomaly.get("evidence", "") or ""),
+        "peak_to_prefault_ratio": round(peak_to_prefault_ratio, 2),
+        "protection_operated": bool(operate_active),
     }
     result.update(digital)
     return result
@@ -859,6 +915,7 @@ def _empty_features() -> dict:
         "voltage_phase_ratio_spread_pu", "healthy_phase_voltage_ratio", "v2_v1_ratio",
         "voltage_thd_max_percent", "reclose_successful", "is_ground_fault",
         "trip_type", "faulted_phases", "zone_operated",
+        "peak_to_prefault_ratio", "protection_operated",
     ]}
     row.update({
         "digital_trip_type": None,
@@ -1064,6 +1121,45 @@ def _build_narrative_evidence(row: dict, ranking: list, pred: str, confidence: f
     return evidence
 
 
+def _no_fault_gate(payload: dict) -> Optional[dict]:
+    """Physics precondition: was there actually a fault to classify?
+
+    Delegates the decision to the shared :func:`detect_fault` (single source of
+    truth used by relay-21/87L, electrical params, locus, and the PDF report) so
+    every surface agrees. Returns a NONE/no-fault result dict to short-circuit
+    the pipeline, or None to let normal classification proceed.
+    """
+    det = detect_fault(payload)
+    if det.is_fault:
+        return None
+
+    evidence = [
+        _ev(
+            "Tidak terdeteksi gangguan: " + "; ".join(det.reasons) + ".",
+            "verdict", weight=0.95, kind="physics",
+        ),
+        _ev(
+            "Rekaman kemungkinan ter-trigger oleh pickup fault detector (FD.Pkp / "
+            "FD.DPFC.Pkp) yang reset sendiri tanpa proteksi bekerja — event non-gangguan. "
+            "Klasifikasi penyebab dan perhitungan impedansi/locus tidak dijalankan karena "
+            "tidak ada gangguan untuk dianalisa.",
+            "notable", kind="physics",
+        ),
+    ]
+    return {
+        "fault_type": "none",
+        "cause_ranking": [],
+        "overall_confidence": 0.0,
+        "evidence": evidence,
+        "no_fault": True,
+        "tier1": {"fired": False},
+        "raw_probabilities": None,
+        "calibrated_probabilities": None,
+        "applied_caps": [],
+        "feature_vector_used": None,
+    }
+
+
 def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     """Run the LightGBM fault classifier on a session payload.
 
@@ -1097,6 +1193,14 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
 
     model_bundle = _load_model()
     meta = _model_metadata(model_bundle)
+
+    # ------------------------------------------------------------------
+    # Tier 0 — no-fault gate (physics precondition before any classification)
+    # ------------------------------------------------------------------
+    gate = _no_fault_gate(payload)
+    if gate is not None:
+        gate["meta"] = meta
+        return gate
 
     row = extract_ml_features(payload, relay_type)
     # Inject SOE-derived loop context so Tier 1 sanity rules see the same

@@ -193,8 +193,11 @@ class AIFaultFeatures(BaseModel):
 
 class AIFaultResult(BaseModel):
     cause_ranking: List[Dict[str, Any]]   # [{cause, label, confidence}]
-    fault_type: str                        # "transient" | "permanent"
+    fault_type: str                        # "transient" | "permanent" | "none"
     overall_confidence: float
+    # True when the no-fault gate fired: record was triggered (e.g. FD pickup)
+    # but no protection operated and no fault signature is present.
+    no_fault: bool = False
     # Evidence can be plain strings (legacy responses) or structured items
     # {text, severity, weight, kind}. UI handles both shapes.
     evidence: List[Any]

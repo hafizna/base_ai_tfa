@@ -70,7 +70,16 @@ export default function ElectricalParams21({ analysisId, dataRevision = 0 }: Pro
         <p className={styles.emptyText}>Data tidak tersedia untuk rekaman ini.</p>
       )}
 
-      {params && (
+      {params && params.no_fault && (
+        <div className={styles.warning} style={{ borderLeft: "4px solid #16a34a" }}>
+          <strong style={{ color: "#16a34a" }}>Tidak ada gangguan.</strong>{" "}
+          Rekaman ter-trigger tanpa proteksi bekerja (kemungkinan pickup fault detector yang
+          reset sendiri). Parameter gangguan & impedansi tidak dihitung karena akan diambil dari
+          arus/tegangan beban dan menyesatkan.
+        </div>
+      )}
+
+      {params && !params.no_fault && (
         <>
           {hasSuspiciousCurrentRatio && (
             <div className={styles.warning} style={{ marginBottom: 12 }}>
