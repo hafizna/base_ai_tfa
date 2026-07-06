@@ -417,3 +417,58 @@ export async function generateReport(analysisId: string, body: ReportRequest): P
   });
   return data;
 }
+
+export interface TrainingFeedbackRequest {
+  analysis_id: string;
+  relay_type: string;
+  ai_correct: boolean | null;
+  actual_label: string;
+  fault_type: string;
+  include_for_training: boolean;
+  operator?: string;
+  notes?: string;
+  ai_prediction?: Record<string, unknown> | null;
+}
+
+export interface TrainingStatus {
+  enabled: boolean;
+  admin_token_configured: boolean;
+  data_dir: string;
+  raw_record_count: number;
+  feedback_count: number;
+  total_bytes: number;
+}
+
+function trainingHeaders(token: string) {
+  return { "X-Training-Admin-Token": token };
+}
+
+export async function fetchTrainingStatus() {
+  const { data } = await api.get<TrainingStatus>("/api/training/status");
+  return data;
+}
+
+export async function submitTrainingFeedback(token: string, body: TrainingFeedbackRequest) {
+  const { data } = await api.post("/api/training/feedback", body, {
+    headers: trainingHeaders(token),
+  });
+  return data;
+}
+
+export async function downloadTrainingArchive(token: string): Promise<Blob> {
+  const { data } = await api.get("/api/training/export", {
+    headers: trainingHeaders(token),
+    responseType: "blob",
+    timeout: 120000,
+  });
+  return data;
+}
+
+export async function clearTrainingArchive(token: string) {
+  const { data } = await api.post(
+    "/api/training/clear",
+    { confirm: "CLEAR" },
+    { headers: trainingHeaders(token), timeout: 60000 },
+  );
+  return data;
+}

@@ -24,6 +24,7 @@ import {
 } from "../api/client";
 import COMTRADEExplorer from "../components/panels/COMTRADEExplorer";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
+import TrainingFeedbackPanel from "../components/panels/TrainingFeedbackPanel";
 import AIFaultAnalysis21 from "../components/relay/relay21/AIFaultAnalysis21";
 import ElectricalParams21 from "../components/relay/relay21/ElectricalParams21";
 import FaultTypeBadge21 from "../components/relay/relay21/FaultTypeBadge21";
@@ -490,6 +491,10 @@ export default function Workspace() {
                   comtrade={comtrade}
                   onUpdate={(updated) => { setComtrade(updated); setDataRevision((r) => r + 1); }}
                 />
+                </PanelErrorBoundary>
+
+                <PanelErrorBoundary label="Training Feedback">
+                  <TrainingFeedbackPanel analysisId={currentAnalysisId} relayType={relayType} />
                 </PanelErrorBoundary>
               </aside>
 

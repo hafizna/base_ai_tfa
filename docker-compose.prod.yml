@@ -9,8 +9,13 @@ services:
       PORT: "8000"
       WEB_CONCURRENCY: "1"
       ANALYSIS_SESSION_TTL_HOURS: "24"
+      TRAINING_RETENTION_ENABLED: "${TRAINING_RETENTION_ENABLED:-1}"
+      TRAINING_DATA_DIR: "/app/training-data"
+      TRAINING_ADMIN_TOKEN: "${TRAINING_ADMIN_TOKEN:-}"
     ports:
       - "127.0.0.1:8000:8000"
+    volumes:
+      - ./training-data:/app/training-data
     healthcheck:
       test:
         [

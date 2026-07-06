@@ -178,6 +178,40 @@ WEB_CONCURRENCY=4 ./start.sh
 # Status warmup expose di GET /api/health → "warmup": {...}.
 ```
 
+### Retensi data training dari production
+Production Docker Compose menyimpan upload mentah ke folder host `training-data/`
+ketika `TRAINING_RETENTION_ENABLED=1` (default di `docker-compose.prod.yml`).
+Folder ini sengaja di-ignore Git.
+
+Di server EC2, buat token admin sekali:
+```bash
+cd ~/base_ai_tfa
+printf 'TRAINING_ADMIN_TOKEN=%s\n' 'ganti-dengan-token-panjang' > .env
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Yang tersimpan:
+- `training-data/raw/<timestamp>_<analysis_id>/` berisi `.cfg/.dat`, `.cff`, atau `.cdb` asli plus `metadata.json`.
+- `training-data/labels/feedback.csv` dan `.jsonl` berisi koreksi label dari panel Training Feedback.
+
+Export dari UI: isi token di panel **Training Feedback**, lalu klik **Download archive**.
+
+Export dari SSH:
+```bash
+cd ~/base_ai_tfa
+bash scripts/export_training_archive.sh
+```
+
+Setelah ZIP aman dipindah ke laptop, clear archive server:
+```bash
+cd ~/base_ai_tfa
+bash scripts/clear_training_archive.sh --yes
+```
+
+Workflow retraining tetap lokal: download ZIP, kurasi label, regenerate
+`data/features/labeled_features.csv`, jalankan `python models/train.py` dan
+`python models/calibrate.py`, commit model baru, lalu deploy ulang EC2.
+
 ### Profiling (Opsi A step #1)
 ```powershell
 # Install py-spy sekali (dev-only, tidak ada di requirements.txt)

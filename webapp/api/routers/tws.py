@@ -1,6 +1,7 @@
 """TWS FL .cdb upload and retrieval endpoints."""
 
 import asyncio
+import logging
 from functools import partial
 from pathlib import Path
 
@@ -10,8 +11,10 @@ from pydantic import BaseModel
 from core.tws_cdb_parser import TwsCdbParseError, parse_tws_cdb_bytes
 from ..json_safety import replace_non_finite_numbers
 from ..storage import load_analysis, save_analysis
+from ..training_retention import RetainedUploadFile, retain_upload
 
 router = APIRouter(prefix="/api/tws", tags=["tws-fl"])
+logger = logging.getLogger("uvicorn")
 
 
 class TwsUploadResponse(BaseModel):
@@ -46,6 +49,32 @@ async def upload_tws_cdb(cdb_file: UploadFile = File(...)):
     payload = replace_non_finite_numbers(payload)
     analysis_id = save_analysis(payload)
     first_result = (payload.get("results") or [{}])[0]
+
+    try:
+        retain_upload(
+            analysis_id=analysis_id,
+            source_type="tws_cdb",
+            files=[
+                RetainedUploadFile(
+                    field_name="cdb_file",
+                    filename=filename,
+                    content_type=cdb_file.content_type,
+                    data=cdb_bytes,
+                )
+            ],
+            metadata={
+                "station_name": payload.get("station_name", ""),
+                "rec_dev_id": payload.get("rec_dev_id", ""),
+                "source_file": payload.get("source_file", filename),
+                "circuit_name": first_result.get("circuit_name", ""),
+                "line_length_km": float(first_result.get("line_length_km") or 0.0),
+                "endpoint_count": len(first_result.get("endpoints") or []),
+                "total_samples": int(payload.get("total_samples") or 0),
+                "warnings": payload.get("warnings", []),
+            },
+        )
+    except Exception as exc:
+        logger.warning("Failed to retain raw TWS upload for analysis_id=%s: %s", analysis_id, exc)
 
     return TwsUploadResponse(
         analysis_id=analysis_id,

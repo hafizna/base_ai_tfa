@@ -1,6 +1,7 @@
 """Upload router - parses .cfg + .dat pair and returns structured JSON."""
 
 import asyncio
+import logging
 import sys
 import tempfile
 from functools import partial
@@ -16,6 +17,7 @@ from core.protection_router import ProtectionType, determine_protection
 from ..json_safety import replace_non_finite_numbers
 from ..schemas import AnalysisCreatedResponse, AnalysisSummaryOut, ComtradeOut, RecalcByIdRequest
 from ..storage import load_analysis, save_analysis, update_analysis
+from ..training_retention import RetainedUploadFile, retain_upload
 
 _PROTECTION_TO_RELAY: dict[ProtectionType, str] = {
     ProtectionType.DISTANCE: "21",
@@ -25,6 +27,7 @@ _PROTECTION_TO_RELAY: dict[ProtectionType, str] = {
 }
 
 router = APIRouter(prefix="/api", tags=["upload"])
+logger = logging.getLogger("uvicorn")
 
 
 def _record_to_out(record: ComtradeRecord) -> dict:
@@ -170,6 +173,15 @@ async def upload_comtrade(
 
         cff_upload = cff_uploads[0]
         cff_bytes = await cff_upload.read()
+        retained_files = [
+            RetainedUploadFile(
+                field_name="cff_file",
+                filename=_upload_name(cff_upload),
+                content_type=cff_upload.content_type,
+                data=cff_bytes,
+            )
+        ]
+        source_type = "comtrade_cff"
         loop = asyncio.get_event_loop()
         try:
             record = await loop.run_in_executor(
@@ -198,6 +210,21 @@ async def upload_comtrade(
 
         cfg_bytes = await cfg_upload.read()
         dat_bytes = await dat_upload.read()
+        retained_files = [
+            RetainedUploadFile(
+                field_name="cfg_file",
+                filename=cfg_name,
+                content_type=cfg_upload.content_type,
+                data=cfg_bytes,
+            ),
+            RetainedUploadFile(
+                field_name="dat_file",
+                filename=dat_name,
+                content_type=dat_upload.content_type,
+                data=dat_bytes,
+            ),
+        ]
+        source_type = "comtrade_pair"
 
         with tempfile.TemporaryDirectory(prefix="dfr_upload_") as tmp_dir:
             tmp = Path(tmp_dir)
@@ -233,6 +260,28 @@ async def upload_comtrade(
             detection_confidence = event.confidence
     except Exception:
         pass
+
+    try:
+        retain_upload(
+            analysis_id=analysis_id,
+            source_type=source_type,
+            files=retained_files,
+            metadata={
+                "station_name": payload.get("station_name", ""),
+                "rec_dev_id": payload.get("rec_dev_id", ""),
+                "rev_year": payload.get("rev_year", ""),
+                "trigger_time": payload.get("trigger_time", 0.0),
+                "total_samples": payload.get("total_samples", 0),
+                "frequency": payload.get("frequency", 0.0),
+                "analog_channel_count": len(payload.get("analog_channels", [])),
+                "status_channel_count": len(payload.get("status_channels", [])),
+                "warnings": payload.get("warnings", []),
+                "suggested_relay_type": suggested_relay_type,
+                "detection_confidence": detection_confidence,
+            },
+        )
+    except Exception as exc:
+        logger.warning("Failed to retain raw upload for analysis_id=%s: %s", analysis_id, exc)
 
     return AnalysisCreatedResponse(
         analysis_id=analysis_id,
