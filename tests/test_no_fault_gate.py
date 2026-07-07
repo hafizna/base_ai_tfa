@@ -14,6 +14,7 @@ from webapp.api.ml_predict import (
     _no_fault_gate,
     _symmetrical_components,
 )
+from webapp.api.fault_detection import detect_fault_presence
 
 
 def _balanced_load_payload(freq=50.0, sr=1200.0, dur_s=1.0, i_amp=3.7, v_amp=80.0):
@@ -59,6 +60,40 @@ def test_balanced_load_triggers_no_fault_gate():
     assert res["fault_type"] == "none"
     assert res["overall_confidence"] == 0.0
     assert res["cause_ranking"] == []
+
+
+def test_sync_fail_with_minor_analog_blip_is_no_fault():
+    """SYNC FAIL only, no protection operate, and no sustained fault current."""
+    payload = _balanced_load_payload(sr=1000.0, dur_s=1.4, i_amp=250.0, v_amp=80.0)
+    t = np.asarray(payload["time"])
+    event = (t >= 0.85) & (t <= 0.912)
+
+    # Mild analog disturbance: enough to look tempting to the old OR gate
+    # (sag > 10%), but not a real relay fault because current does not step
+    # up in a sustained way and SOE has only sync failure.
+    for ch in payload["analog_channels"]:
+        if ch["measurement"] == "voltage":
+            arr = np.asarray(ch["samples"], dtype=float)
+            arr[event] *= 0.88
+            ch["samples"] = arr.tolist()
+        if ch["canonical_name"] == "IA":
+            arr = np.asarray(ch["samples"], dtype=float)
+            arr[event] *= 1.15
+            ch["samples"] = arr.tolist()
+
+    sync = np.zeros(len(t), dtype=int)
+    sync[(t >= 1.0) & (t <= 1.209)] = 1
+    payload["status_channels"] = [
+        {"id": "sync", "name": "SYNC FAIL", "samples": sync.tolist()},
+    ]
+
+    det = detect_fault_presence(payload)
+    assert det.no_fault, det.reasons
+    assert _no_fault_gate(payload) is not None
+
+    res = run_ml_prediction(payload, "21")
+    assert res["no_fault"] is True
+    assert res["fault_type"] == "none"
 
 
 def test_symmetrical_components_balanced_set_is_positive_sequence_only():

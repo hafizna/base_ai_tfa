@@ -19,7 +19,7 @@ from ..schemas import (
 )
 from ..storage import load_analysis
 from ..ml_predict import run_ml_prediction, extract_ml_features, _digital_sequence_features
-from ..fault_detection import detect_fault_presence
+from ..fault_detection import detect_fault_presence, _is_operate_status
 
 router = APIRouter(prefix="/api/analyze/21", tags=["relay-21"])
 
@@ -532,8 +532,8 @@ def _compute_electrical_params(payload: dict) -> dict:
     if trip_time_ms is None:
         start_idx = max(0, inception_idx - 2)
         for sch in payload.get("status_channels", []):
-            name = sch.get("name", "").upper()
-            if not any(key in name for key in ("TRIP", "TRIPPING", "OPRT", "OPERATE")):
+            name = str(sch.get("name", "") or "")
+            if not _is_operate_status(name):
                 continue
             samples = sch.get("samples", [])
             n = min(len(samples), len(time))
@@ -856,6 +856,8 @@ async def compute_locus(body: LocusAnalysisRequest):
     payload = load_analysis(body.analysis_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
+    if detect_fault_presence(payload).no_fault:
+        return LocusResponse(loop=body.loop, points=[], zones=body.zones, fault_inception_idx=None)
 
     loop = asyncio.get_event_loop()
     points = await loop.run_in_executor(
@@ -905,6 +907,8 @@ async def compute_locus_batch(body: LocusBatchRequest):
     payload = load_analysis(body.analysis_id)
     if payload is None:
         raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
+    if detect_fault_presence(payload).no_fault:
+        return LocusBatchResponse(points_by_loop={loop_name: [] for loop_name in body.loops})
 
     loop = asyncio.get_event_loop()
     points_by_loop = await loop.run_in_executor(

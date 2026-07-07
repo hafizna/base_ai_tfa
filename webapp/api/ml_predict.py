@@ -37,7 +37,7 @@ if str(_PIPELINE_DIR) not in sys.path:
 from models.predict import _petir_subtype_description, _augment_row_with_soe_context  # noqa: E402
 from models.rules import apply_rules  # noqa: E402
 from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
-from .fault_detection import detect_fault_presence  # noqa: E402
+from .fault_detection import detect_fault_presence, _is_operate_status  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
 _CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calibrator.pkl"
@@ -482,7 +482,7 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
         first_ms = _first_on_ms(samples, time, start_idx)
         phase = _phase_from_status_name(raw_name)
 
-        is_trip = "TRIP" in name
+        is_trip = _is_operate_status(raw_name)
         compact_name = name.replace(" ", "")
         is_cb_open = (
             "CB OPEN" in name
@@ -845,17 +845,7 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
         nm = str(sch.get("name", "") or "").upper()
         if not _status_any_on(sch.get("samples") or []):
             continue
-        is_operate = (
-            re.search(r"(?:^|[._\s])OP(?:[._\s]|$)", nm) is not None
-            or "TRIP" in nm
-            or "OP_PROT" in nm.replace(" ", "")
-        )
-        is_standing = any(
-            tok in nm for tok in (".ON", ".OFF", ".VALID", ".READY", ".BLOCKED",
-                                   "_OK", "PKP", "PICKUP", "PICK UP", "ALM", "ALARM",
-                                   "MODE", "SWITCH", "HEALTHY", "INPROG", "ACTIVE")
-        )
-        if is_operate and not is_standing:
+        if _is_operate_status(nm):
             operate_active = True
             break
 

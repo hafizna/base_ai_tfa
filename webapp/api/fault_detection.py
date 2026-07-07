@@ -19,10 +19,14 @@ import numpy as np
 
 # Thresholds are unit-free (ratios), so they hold for primary OR secondary
 # scaling. A genuine fault shows at least one of these.
-CURRENT_STEP_RATIO = 2.0    # peak / prefault-RMS on the most-active phase
-VOLTAGE_SAG_PU = 0.10       # fractional drop in faulted-phase RMS
-I0_I1_RATIO = 0.20          # zero-sequence unbalance
-I2_I1_RATIO = 0.15          # negative-sequence unbalance
+CURRENT_STEP_RATIO = 2.0       # peak / prefault-RMS on the most-active phase
+CURRENT_RMS_STEP_RATIO = 1.50  # max 1-cycle RMS / prefault-RMS
+VOLTAGE_SAG_PU = 0.10          # fractional drop in faulted-phase RMS
+HARD_VOLTAGE_SAG_PU = 0.25     # sag deep enough to count as hard evidence
+I0_I1_RATIO = 0.20             # zero-sequence unbalance
+I2_I1_RATIO = 0.15             # negative-sequence unbalance
+HARD_I0_I1_RATIO = 0.30
+HARD_I2_I1_RATIO = 0.30
 
 
 @dataclass
@@ -31,6 +35,7 @@ class FaultDetection:
     is_fault: bool
     reasons: list[str] = field(default_factory=list)   # why we decided fault / no-fault
     peak_to_prefault_ratio: float = 0.0
+    current_rms_step_ratio: float = 0.0
     voltage_sag_pu: float = 0.0
     i0_i1_ratio: float = 0.0
     i2_i1_ratio: float = 0.0
@@ -75,7 +80,10 @@ def _is_operate_status(name: str) -> bool:
     is_standing = any(
         tok in nm for tok in (".ON", ".OFF", ".VALID", ".READY", ".BLOCKED",
                               "_OK", "PKP", "PICKUP", "PICK UP", "ALM", "ALARM",
-                              "MODE", "SWITCH", "HEALTHY", "INPROG", "ACTIVE")
+                              "MODE", "SWITCH", "HEALTHY", "INPROG", "ACTIVE",
+                              "SYNC", "GPS", "IRIG", "CLOCK", "TIME", "COMM",
+                              "CHANNEL", "TELE", "PLCC", "TRIP CIRCUIT", "TRIP CKT",
+                              "TC FAIL")
     )
     return is_operate and not is_standing
 
@@ -123,14 +131,27 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
 
     # 2) Current step on the most-active phase.
     peak_ratio = 0.0
+    rms_step_ratio = 0.0
     currents = [arr for arr in (ia, ib, ic) if arr is not None and len(arr) >= 4]
     if currents:
-        def step(arr: np.ndarray) -> float:
+        def step(arr: np.ndarray) -> tuple[float, float]:
             pre_n = min(2 * cycle_n, len(arr) // 4)
             pre = float(np.sqrt(np.mean(arr[:pre_n] ** 2))) if pre_n > 1 else 0.0
-            return float(np.max(np.abs(arr)) / pre) if pre > 0 else 0.0
-        peak_ratio = max(step(arr) for arr in currents)
-    has_current_step = peak_ratio >= CURRENT_STEP_RATIO
+            if pre <= 0:
+                return 0.0, 0.0
+            peak = float(np.max(np.abs(arr)) / pre)
+            scan_end = max(1, len(arr) - cycle_n)
+            rms_values = [
+                float(np.sqrt(np.mean(arr[i:i + cycle_n] ** 2)))
+                for i in range(pre_n, scan_end)
+                if len(arr[i:i + cycle_n]) == cycle_n
+            ]
+            rms_step = (max(rms_values) / pre) if rms_values else 0.0
+            return peak, rms_step
+        steps = [step(arr) for arr in currents]
+        peak_ratio = max(item[0] for item in steps)
+        rms_step_ratio = max(item[1] for item in steps)
+    has_current_step = peak_ratio >= CURRENT_STEP_RATIO and rms_step_ratio >= CURRENT_RMS_STEP_RATIO
     if has_current_step:
         reasons.append(f"lonjakan arus {peak_ratio:.2f}× prefault")
 
@@ -153,6 +174,7 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
             if pre_mean > 0:
                 sag_pu = max(0.0, (pre_mean - min(fault_rms)) / pre_mean)
     has_sag = sag_pu >= VOLTAGE_SAG_PU
+    has_hard_sag = sag_pu >= HARD_VOLTAGE_SAG_PU
     if has_sag:
         reasons.append(f"voltage sag {sag_pu * 100:.1f}%")
 
@@ -176,15 +198,25 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
                 i0_i1 = i0 / i1
                 i2_i1 = i2 / i1
     has_unbalance = i0_i1 > I0_I1_RATIO or i2_i1 > I2_I1_RATIO
+    has_hard_unbalance = i0_i1 > HARD_I0_I1_RATIO or i2_i1 > HARD_I2_I1_RATIO
     if has_unbalance:
         reasons.append(f"ketidakseimbangan urutan (I0/I1 {i0_i1 * 100:.1f}%, I2/I1 {i2_i1 * 100:.1f}%)")
 
-    is_fault = protection_operated or has_current_step or has_sag or has_unbalance
+    # A small voltage dip or mild negative-sequence component is not enough by
+    # itself. Sync/teleprotection/GPS disturbances can create exactly that kind
+    # of analog blip while the SOE contains no protection operate. Only hard
+    # evidence, or a strong combination of analog evidence, opens the gate.
+    analog_hard_fault = (
+        has_current_step
+        or (has_hard_sag and (has_hard_unbalance or peak_ratio >= 1.8))
+        or (has_sag and has_hard_unbalance)
+    )
+    is_fault = protection_operated or analog_hard_fault
     if not is_fault:
         reasons = [
             "tidak ada proteksi beroperasi",
-            f"arus tetap pada level beban (rasio puncak/prefault {peak_ratio:.2f}×)",
-            f"tidak ada voltage sag berarti ({sag_pu * 100:.1f}%)",
+            f"arus tidak menunjukkan lonjakan gangguan sustained (peak {peak_ratio:.2f}x, RMS {rms_step_ratio:.2f}x prefault)",
+            f"tidak ada voltage sag kuat ({sag_pu * 100:.1f}%)",
             f"sistem seimbang (I0/I1 {i0_i1 * 100:.1f}%, I2/I1 {i2_i1 * 100:.1f}%)",
         ]
 
@@ -192,6 +224,7 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
         is_fault=is_fault,
         reasons=reasons,
         peak_to_prefault_ratio=round(peak_ratio, 2),
+        current_rms_step_ratio=round(rms_step_ratio, 2),
         voltage_sag_pu=round(sag_pu, 3),
         i0_i1_ratio=round(i0_i1, 3),
         i2_i1_ratio=round(i2_i1, 3),
