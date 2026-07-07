@@ -161,6 +161,21 @@ class TestProtectionRouterGeneral:
         prot = determine_protection(record)
         assert prot.primary_protection == ProtectionType.DIFFERENTIAL
 
+    def test_single_f_dif_trip_routes_line_differential_not_ocr(self):
+        """DFR/vendor DIF-A_TRIP naming is differential even without explicit 87L text."""
+        record = MockRecord(
+            status_channels=_make_status(["DIF-A_TRIP", "50/51 PICKUP"], triggered=True),
+        )
+        prot = determine_protection(record)
+        assert prot.primary_protection == ProtectionType.DIFFERENTIAL
+
+    def test_idif_operate_routes_line_differential_not_ocr(self):
+        record = MockRecord(
+            status_channels=_make_status(["IDIF_B OP", "OCR TRIP"], triggered=True),
+        )
+        prot = determine_protection(record)
+        assert prot.primary_protection == ProtectionType.DIFFERENTIAL
+
     def test_ln1_87l_idiff_operate_does_not_route_transformer(self):
         """Line differential IDIFF signals must stay on the 87L path."""
         record = MockRecord(

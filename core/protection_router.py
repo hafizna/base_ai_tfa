@@ -387,12 +387,14 @@ def _check_differential_operate(status_names: List[str], status_dict: dict) -> b
     # ABB REL: "DIFL*:OPERATE", "L3D-TRL1/2/3" (line 3-terminal differential)
     # DFR: "DIFF TRIP", "87 TRIP", "MAIN PROT" (if from differential relay)
     patterns = ['87L', '87 ', 'DIFF', 'DIFFERENTIAL',
+                'IDIF', 'IDIFF', 'I DIFF', 'I-DIFF', 'PDIF',
+                'DIF ', 'DIF-', 'DIF_', 'DIFA', 'DIFB', 'DIFC', 'DIFG',
                 'L3D',        # ABB REL: "L3D-TRL1", "L3D-TRIPRES" (line 3-terminal diff)
                 'LT3D',       # ABB/DFR exports: "LT3D-TRL1", "LT3D-IDL1MAG"
                 'LDL',        # Line differential local/remote trip: "LDL-TRLOCAL"
                 'DIFL',       # ABB: "DIFL:OPERATE"
                 ]
-    operate_keywords = ['OPERATE', 'TRIP',
+    operate_keywords = ['OPERATE', 'TRIP', 'OP', 'ACT',
                         'TRL',    # ABB REL: "L3D-TRL1" (trip per phase)
                         ]
 
@@ -578,7 +580,11 @@ def _check_overcurrent_operate(status_names: List[str], status_dict: dict) -> tu
         'OCR', '50', '51',
     ]
     operate_keywords = ['PICKUP', 'PICKED UP', 'TRIP', 'PU']
-    exclude_keywords = ['87', 'DIFF', 'DIST', 'ZONE', '21', '67N', 'DEF']
+    exclude_keywords = [
+        '87', 'DIFF', 'IDIF', 'IDIFF', 'PDIF',
+        'DIF ', 'DIF-', 'DIF_', 'DIFA', 'DIFB', 'DIFC', 'DIFG',
+        'DIST', 'ZONE', '21', '67N', 'DEF',
+    ]
 
     for name in status_names:
         variants = _name_variants(name)
