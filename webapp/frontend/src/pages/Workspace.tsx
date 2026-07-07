@@ -73,6 +73,7 @@ class PanelErrorBoundary extends Component<{ label: string; children: ReactNode 
 }
 
 const RELAY_LABELS: Record<string, string> = {
+  LINE: "21 / 87L - Line Protection",
   "21": "21 - Distance",
   "87L": "87L - Differential Line",
   CCP: "CCP / Stub Differential",
@@ -110,6 +111,7 @@ export default function Workspace() {
   const navigate = useNavigate();
 
   const relayType = urlType ?? ctxRelayType ?? "21";
+  const isLineRelay = relayType === "LINE";
   const [comtrade, setComtrade] = useState<ComtradeData | null>(null);
   const [dataRevision, setDataRevision] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -240,7 +242,7 @@ export default function Workspace() {
 
   async function fetchAiAnalysisSafe(): Promise<Record<string, unknown> | null> {
     try {
-      if (relayType === "21") {
+      if (relayType === "21" || isLineRelay) {
         const features = await extractFeatures21(currentAnalysisId);
         const result = await aiFaultAnalysis21(currentAnalysisId, features);
         return result as Record<string, unknown>;
@@ -285,12 +287,13 @@ export default function Workspace() {
         fetchAiAnalysisSafe(),
         fetchSoeEventsSafe(),
       ]);
+      const reportRelayType = isLineRelay ? "21" : relayType;
       const relaySettings = (relayType === "OCR" || relayType === "SBEF") && ocrReportSettings
         ? { ocr: ocrReportSettings }
         : null;
 
       const blob = await generateReport(currentAnalysisId, {
-        relay_type: relayType,
+        relay_type: reportRelayType,
         ai_analysis: aiAnalysis,
         charts,
         soe_events: soeEvents,
@@ -317,7 +320,7 @@ export default function Workspace() {
   }
 
   function renderPrimaryAnalysisPanel() {
-    if (relayType === "21") {
+    if (relayType === "21" || isLineRelay) {
       return (
         <>
           <PanelErrorBoundary label="AI Fault Analysis">
@@ -326,6 +329,16 @@ export default function Workspace() {
           <PanelErrorBoundary label="Parameter Elektrikal">
             <ElectricalParams21 analysisId={currentAnalysisId} dataRevision={dataRevision} />
           </PanelErrorBoundary>
+          {isLineRelay && (
+            <>
+              <PanelErrorBoundary label="Fault Recap 87L">
+                <FaultRecap87T comtrade={comtrade!} relayLabel="Line Protection (21 / 87L)" />
+              </PanelErrorBoundary>
+              <PanelErrorBoundary label="AI Fault Analysis 87L">
+                <AIFaultAnalysis87L analysisId={currentAnalysisId} />
+              </PanelErrorBoundary>
+            </>
+          )}
         </>
       );
     }
@@ -381,6 +394,19 @@ export default function Workspace() {
         <PanelErrorBoundary label="Impedance Locus">
           <ImpedanceLocus analysisId={currentAnalysisId} dataRevision={dataRevision} />
         </PanelErrorBoundary>
+      );
+    }
+
+    if (isLineRelay) {
+      return (
+        <>
+          <PanelErrorBoundary label="Impedance Locus">
+            <ImpedanceLocus analysisId={currentAnalysisId} dataRevision={dataRevision} />
+          </PanelErrorBoundary>
+          <PanelErrorBoundary label="Diff/Restraint">
+            <DiffRestraintPlot analysisId={currentAnalysisId} relayType="87L" />
+          </PanelErrorBoundary>
+        </>
       );
     }
 
@@ -479,7 +505,7 @@ export default function Workspace() {
             </section>
             <div className={styles.resultsLayout}>
               <aside className={styles.leftPanel}>
-                {relayType === "21" && (
+                {(relayType === "21" || isLineRelay) && (
                   <PanelErrorBoundary label="Jenis Gangguan">
                     <FaultTypeBadge21 analysisId={currentAnalysisId} dataRevision={dataRevision} />
                   </PanelErrorBoundary>

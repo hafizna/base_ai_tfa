@@ -88,6 +88,7 @@ interface DigEvent {
   type: DigType;
   activateMs: number | null;
   durationMs: number | null;
+  phase?: "A" | "B" | "C" | "N" | null;
 }
 
 interface FaultAnalysis {
@@ -107,7 +108,7 @@ interface FaultAnalysis {
 
 interface LineDiffAnalog {
   channel: string;
-  role: "Differential" | "Restraint";
+  role: "Relay Idiff" | "Remote Current" | "Restraint/Bias";
   phase: "A" | "B" | "C" | "N" | "-";
   peak: number;
   rms: number;
@@ -299,12 +300,20 @@ function phaseOfLineDiff(ch: AnalogChannel): "A" | "B" | "C" | "N" | "-" {
 
 function isLineDiffAnalog(ch: AnalogChannel): boolean {
   const text = `${ch.name} ${ch.canonical_name}`.toUpperCase();
+  if (isRemoteLineCurrent(ch)) return false;
   return (
     /\b(?:IDIFF|IDIF|IDL[123]?|LDL)\b/.test(text) ||
     /\bIL[123]\s*D\b/.test(text) ||
     /\bIL[123]D\b/.test(text) ||
     /\bIDNS(?:MAG)?\b/.test(text)
   );
+}
+
+function isRemoteLineCurrent(ch: AnalogChannel): boolean {
+  const name = ch.name.toUpperCase();
+  const compact = name.replace(/[^A-Z0-9]+/g, "");
+  if (!/REM|REMOTE/.test(compact)) return false;
+  return /(?:IL[123]|I[ABC]|I[123]|IN)/.test(compact);
 }
 
 function isRestraintAnalog(ch: AnalogChannel): boolean {
@@ -329,18 +338,42 @@ function lineDiffEventTag(name: string) {
   const upper = name.toUpperCase();
   if (/TRLOCAL|LOCAL/.test(upper)) return "LOCAL";
   if (/TRREMOTE|REMOTE/.test(upper)) return "REMOTE";
-  if (/TRL[123]|LT3D|LDL|DIFF|DIFL/.test(upper)) return "DIFF";
+  if (/TRL[123]|LT3D|LDL|DIFF|DIFL|DIF[-_ ]|DIF[ABC]/.test(upper)) return "DIFF";
   if (/TRIP|TRP/.test(upper)) return "TRIP";
   if (/AR|RECLOS|RECLOSE/.test(upper)) return "AR";
   return "INFO";
 }
 
+function phaseOfDigitalName(name: string): "A" | "B" | "C" | "N" | null {
+  const upper = name.toUpperCase();
+  const end = "(?![A-Z0-9])";
+  const groups: Array<["A" | "B" | "C" | "N", string[]]> = [
+    ["A", ["A", "1", "R"]],
+    ["B", ["B", "2", "S"]],
+    ["C", ["C", "3", "T"]],
+    ["N", ["N", "0"]],
+  ];
+
+  for (const [phase, tokens] of groups) {
+    for (const token of tokens) {
+      if (new RegExp(`(?:PHASE|PH|L|_|-)\\s*${token}${end}`).test(upper)) return phase;
+      if (phase === "N" && new RegExp(`\\b${token}${end}`).test(upper)) return phase;
+      if (["A", "B", "C"].includes(token) && new RegExp(`\\b${token}${end}`).test(upper)) return phase;
+    }
+  }
+  return null;
+}
+
 function analyzeLineDiff(comtrade: ComtradeData): LineDiffAnalysis {
   const timeMs = comtrade.time.map((t) => t * 1000);
   const analogs: LineDiffAnalog[] = comtrade.analog_channels
-    .filter((ch) => isLineDiffAnalog(ch) || isRestraintAnalog(ch))
+    .filter((ch) => isLineDiffAnalog(ch) || isRemoteLineCurrent(ch) || isRestraintAnalog(ch))
     .map((ch) => {
-      const role: LineDiffAnalog["role"] = isRestraintAnalog(ch) ? "Restraint" : "Differential";
+      const role: LineDiffAnalog["role"] = isRemoteLineCurrent(ch)
+        ? "Remote Current"
+        : isRestraintAnalog(ch)
+          ? "Restraint/Bias"
+          : "Relay Idiff";
       return {
         channel: ch.name,
         role,
@@ -351,15 +384,16 @@ function analyzeLineDiff(comtrade: ComtradeData): LineDiffAnalysis {
       };
     })
     .sort((a, b) => {
-      const roleRank = a.role === b.role ? 0 : a.role === "Differential" ? -1 : 1;
+      const rank = { "Relay Idiff": 0, "Restraint/Bias": 1, "Remote Current": 2 };
+      const roleRank = rank[a.role] - rank[b.role];
       if (roleRank !== 0) return roleRank;
       return a.channel.localeCompare(b.channel);
     });
 
-  const diffAnalogs = analogs.filter((item) => item.role === "Differential");
-  const restraintAnalogs = analogs.filter((item) => item.role === "Restraint");
+  const diffAnalogs = analogs.filter((item) => item.role === "Relay Idiff");
+  const restraintAnalogs = analogs.filter((item) => item.role === "Restraint/Bias");
   const maxDiffPeak = Math.max(0, ...diffAnalogs.map((item) => item.peak));
-  const activePhases = [
+  const activeAnalogPhases = [
     ...new Set(
       diffAnalogs
         .filter((item) => item.phase !== "-" && item.peak >= Math.max(maxDiffPeak * 0.2, 0.001))
@@ -383,15 +417,36 @@ function analyzeLineDiff(comtrade: ComtradeData): LineDiffAnalysis {
         type: classifyDig(ch.name),
         activateMs,
         durationMs: activateMs !== null && deactivateMs !== null ? deactivateMs - activateMs : null,
+        phase: phaseOfDigitalName(ch.name),
       };
     });
 
   const diffEvents = digEvents
-    .filter((event) => /L3D|LT3D|LDL|DIFL|DIFF|87L/i.test(event.name))
+    .filter((event) => /L3D|LT3D|LDL|DIFL|DIFF|DIF[-_ ]|DIF[ABC]|87L/i.test(event.name))
     .sort((a, b) => (a.activateMs ?? Infinity) - (b.activateMs ?? Infinity));
   const tripEvents = digEvents
     .filter((event) => /TRIP|TRP|TRL|TRLOCAL|TRREMOTE/i.test(event.name))
     .sort((a, b) => (a.activateMs ?? Infinity) - (b.activateMs ?? Infinity));
+  const digitalDiffPhases = [
+    ...new Set(
+      diffEvents
+        .map((event) => event.phase)
+        .filter((phase): phase is "A" | "B" | "C" | "N" => phase != null)
+    ),
+  ];
+  const digitalTripPhases = [
+    ...new Set(
+      tripEvents
+        .map((event) => event.phase)
+        .filter((phase): phase is "A" | "B" | "C" | "N" => phase != null)
+    ),
+  ];
+  const activePhases = [
+    ...new Set([
+      ...activeAnalogPhases,
+      ...(digitalDiffPhases.length > 0 ? digitalDiffPhases : digitalTripPhases),
+    ]),
+  ];
 
   const localTripMs = diffEvents.find((event) => /TRLOCAL|LOCAL/i.test(event.name))?.activateMs ?? null;
   const remoteTripMs = diffEvents.find((event) => /TRREMOTE|REMOTE/i.test(event.name))?.activateMs ?? null;
@@ -512,7 +567,9 @@ function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
               : { background: "#f8fafc", color: "#64748b", border: "1.5px solid #cbd5e1" }
           }
         >
-          {operated ? "Differential trip observed" : "No differential trip signal found"}
+          {operated
+            ? `Differential trip observed${r.activePhases.length ? ` — ${r.activePhases.join(", ")}` : ""}`
+            : "No differential trip signal found"}
         </span>
         {(["A", "B", "C", "N"] as const).map((ph) => {
           const active = r.activePhases.includes(ph);
@@ -542,9 +599,10 @@ function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
       </div>
 
       <p style={{ fontSize: "0.82rem", color: "#475569", margin: "8px 0 16px", lineHeight: 1.5 }}>
-        Ringkasan ini membaca sinyal 87L sebagai operasi diferensial: arus differential/operate,
-        arus restraint/bias, serta urutan trip lokal dan remote. Ini bukan klasifikasi OCR berbasis
-        puncak arus fasa biasa.
+        Ringkasan ini membaca sinyal 87L sebagai operasi diferensial: Relay Idiff adalah arus
+        operasi/differential yang dihitung relay, Remote Current adalah arus terminal lawan,
+        dan Restraint/Bias adalah kanal penahan. Remote current tidak dipakai sebagai bukti
+        differential trip.
       </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8, marginBottom: 16 }}>
@@ -558,7 +616,7 @@ function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
       {r.analogs.length > 0 && (
         <>
           <h3 style={{ fontSize: "0.75rem", color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>
-            Differential / Restraint Analog Channels
+            87L Analog Channels
           </h3>
           <div style={{ overflowX: "auto", marginBottom: 16 }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -577,7 +635,16 @@ function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
                   <tr key={`${item.role}-${item.channel}`}>
                     <td style={{ ...TD, fontWeight: 700, color: "#1e293b" }}>{item.channel}</td>
                     <td style={TD}>
-                      <span style={{ color: item.role === "Differential" ? "#1d4ed8" : "#7c3aed", fontWeight: 700 }}>
+                      <span
+                        style={{
+                          color: item.role === "Relay Idiff"
+                            ? "#1d4ed8"
+                            : item.role === "Remote Current"
+                              ? "#0f766e"
+                              : "#7c3aed",
+                          fontWeight: 700,
+                        }}
+                      >
                         {item.role}
                       </span>
                     </td>
@@ -601,12 +668,13 @@ function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {sequenceEvents.map((event) => {
               const tag = lineDiffEventTag(event.name);
+              const phase = event.phase;
               return (
                 <div
                   key={event.name}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "72px minmax(0, 1fr) auto auto",
+                    gridTemplateColumns: "72px 34px minmax(0, 1fr) auto auto",
                     gap: 8,
                     alignItems: "center",
                     padding: "7px 10px",
@@ -616,6 +684,26 @@ function LineDifferentialRecap({ comtrade }: { comtrade: ComtradeData }) {
                   }}
                 >
                   <span style={{ color: "#1d4ed8", fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.08em" }}>{tag}</span>
+                  <span
+                    title={phase ? `Phase ${phase}` : "Phase not encoded"}
+                    style={{
+                      justifySelf: "start",
+                      minWidth: 24,
+                      height: 22,
+                      padding: "0 7px",
+                      borderRadius: 999,
+                      border: `1px solid ${phase ? "#93c5fd" : "#e2e8f0"}`,
+                      background: phase ? "#eff6ff" : "#f8fafc",
+                      color: phase ? "#1d4ed8" : "#94a3b8",
+                      fontSize: "0.68rem",
+                      fontWeight: 800,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {phase ?? "-"}
+                  </span>
                   <span style={{ color: "#1e293b", fontSize: "0.82rem", fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {event.name}
                   </span>

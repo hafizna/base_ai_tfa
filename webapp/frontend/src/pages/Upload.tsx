@@ -5,6 +5,7 @@ import { uploadComtrade, uploadTwsCdb } from "../api/client";
 import styles from "./Upload.module.css";
 
 const RELAY_LABELS: Record<string, string> = {
+  LINE: "21 / 87L - Line Protection",
   "21": "21 - Distance",
   "87L": "87L - Differential Line",
   CCP: "CCP / Stub Differential",
@@ -19,6 +20,12 @@ interface DetectionSuggestion {
   analysisId: string;
   suggestedType: string;
   confidence: number;
+}
+
+function suggestionAcceptedBySelection(selected: string, suggested?: string | null) {
+  if (!suggested) return true;
+  if (selected === suggested) return true;
+  return selected === "LINE" && (suggested === "21" || suggested === "87L");
 }
 
 export default function Upload() {
@@ -42,14 +49,15 @@ export default function Upload() {
     navigate("/");
     return null;
   }
+  const selectedRelayType = relayType;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (relayType === "TWS_FL" && !cdbFile) {
+    if (selectedRelayType === "TWS_FL" && !cdbFile) {
       setError("Please select a .cdb export file.");
       return;
     }
-    if (relayType !== "TWS_FL" && !comtradeReady) {
+    if (selectedRelayType !== "TWS_FL" && !comtradeReady) {
       setError("Please select one .cff file or a matching .cfg + .dat pair.");
       return;
     }
@@ -58,7 +66,7 @@ export default function Upload() {
     setLoading(true);
 
     try {
-      if (relayType === "TWS_FL") {
+      if (selectedRelayType === "TWS_FL") {
         const data = await uploadTwsCdb(cdbFile!);
         navigate(`/tws/${data.analysis_id}`);
         return;
@@ -80,14 +88,14 @@ export default function Upload() {
 
       const data = await uploadComtrade(comtradeFiles);
       const suggested = data.suggested_relay_type;
-      if (suggested && suggested !== relayType) {
+      if (!suggestionAcceptedBySelection(selectedRelayType, suggested)) {
         setSuggestion({
           analysisId: data.analysis_id,
-          suggestedType: suggested,
+          suggestedType: suggested ?? "unknown",
           confidence: data.detection_confidence ?? 0,
         });
       } else {
-        navigate(`/workspace/${relayType}/${data.analysis_id}`);
+        navigate(`/workspace/${selectedRelayType}/${data.analysis_id}`);
       }
     } catch (err: unknown) {
       const response = (err as { response?: { data?: { detail?: string } } }).response;

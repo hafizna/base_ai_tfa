@@ -13,20 +13,12 @@ interface RelayOption {
 
 const RELAY_OPTIONS: RelayOption[] = [
   {
-    id: "21",
-    label: "21 - Distance",
-    subtitle: "Distance protection and fault cause triage",
+    id: "LINE",
+    label: "21 / 87L - Line Protection",
+    subtitle: "Distance and line differential diagnostics",
     tooltip:
-      "Impedance locus diagram, zone polygon editor, phase and earth loop selector, plus AI-based fault cause ranking.",
-    icon: "21",
-  },
-  {
-    id: "87L",
-    label: "87L - Differential Line",
-    subtitle: "Line differential diagnostics",
-    tooltip:
-      "Differential vs restraint characteristic plot, SIPROTEC-style parameter editor, and internal vs external fault analysis.",
-    icon: "87L",
+      "Use this for line relays that combine distance and differential functions. If differential is blocked/unavailable, use the distance panels; if 87L data exists, diff/restraint panels are also shown.",
+    icon: "21/87L",
   },
   {
     id: "CCP",
