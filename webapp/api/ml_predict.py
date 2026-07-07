@@ -1129,8 +1129,8 @@ def _no_fault_gate(payload: dict) -> Optional[dict]:
             "verdict", weight=0.95, kind="physics",
         ),
         _ev(
-            "Rekaman kemungkinan ter-trigger oleh pickup fault detector (FD.Pkp / "
-            "FD.DPFC.Pkp) yang reset sendiri tanpa proteksi bekerja — event non-gangguan. "
+            "Rekaman kemungkinan ter-trigger oleh pickup/status non-proteksi "
+            "(mis. FD pickup, sync/teleprotection/GPS/komunikasi) tanpa proteksi bekerja. "
             "Klasifikasi penyebab dan perhitungan impedansi/locus tidak dijalankan karena "
             "tidak ada gangguan untuk dianalisa.",
             "notable", kind="physics",
