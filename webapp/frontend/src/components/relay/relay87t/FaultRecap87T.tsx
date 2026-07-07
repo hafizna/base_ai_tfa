@@ -51,6 +51,10 @@ type DigType = "trip" | "ref" | "diff" | "trigger" | "alarm" | "other";
 
 function classifyDig(name: string): DigType {
   const u = name.toUpperCase();
+  // Synchro-check channels like "CB1.25.Ok_UDiffChk/fDiffChk/phiDiffChk" report
+  // voltage/frequency/angle *difference* for recloser sync-check (25) — not
+  // differential protection (87) — so they must not be classified as "diff".
+  if (/\.25\.[A-Z_]*DIFF/.test(u)) return "other";
   if (/TRPOUT|TRP_OUT|TRP\d|TRIPOUT/.test(u)) return "trip";
   if (/64REF|REF\.OP|REF_OP|SBEF|GFR\.OP/.test(u)) return "ref";
   if (/87[TL]\.|L3D|LT3D|LDL|DIFL|DIFF/.test(u)) return "diff";
@@ -422,9 +426,14 @@ function analyzeLineDiff(comtrade: ComtradeData): LineDiffAnalysis {
     });
 
   const diffEvents = digEvents
+    // Exclude synchro-check "25.*DiffChk" (U/f/phi difference for recloser
+    // sync-check) and recloser "79.*" permissive/sequence channels — neither
+    // is differential (87) protection, even though their names contain "DIF"/"TRP".
+    .filter((event) => !/\.25\.|\.79\./i.test(event.name))
     .filter((event) => /L3D|LT3D|LDL|DIFL|DIFF|DIF[-_ ]|DIF[ABC]|87L/i.test(event.name))
     .sort((a, b) => (a.activateMs ?? Infinity) - (b.activateMs ?? Infinity));
   const tripEvents = digEvents
+    .filter((event) => !/\.79\./i.test(event.name))
     .filter((event) => /TRIP|TRP|TRL|TRLOCAL|TRREMOTE/i.test(event.name))
     .sort((a, b) => (a.activateMs ?? Infinity) - (b.activateMs ?? Infinity));
   const digitalDiffPhases = [
