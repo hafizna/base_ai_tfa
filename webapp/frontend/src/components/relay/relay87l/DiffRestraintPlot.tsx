@@ -184,6 +184,7 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
   }
 
   const localOnly = diffMode === "LOCAL_ONLY";
+  const transformerRelay = relayType === "87T";
   const noFaultMode = noFault || diffMode === "NO_FAULT";
   const maxSampleY = samples.length ? Math.max(...samples.map((s) => s.i_diff)) : 1;
   const maxSampleX = samples.length ? Math.max(...samples.map((s) => s.i_rest)) : 1;
@@ -272,12 +273,12 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     height: 400,
     margin: { t: 20, b: 50, l: 60, r: 20 },
     xaxis: {
-      title: { text: localOnly ? "Arus terminal lokal (A)" : "I Restraint (p.u.)" },
+      title: { text: localOnly ? (transformerRelay ? "Arus winding tunggal (A)" : "Arus terminal lokal (A)") : "I Restraint (p.u.)" },
       tickfont: { size: 10 },
       range: [0, plotMaxX],
     },
     yaxis: {
-      title: { text: localOnly ? "Arus terminal lokal (A)" : "I Differential (p.u.)" },
+      title: { text: localOnly ? (transformerRelay ? "Arus winding tunggal (A)" : "Arus terminal lokal (A)") : "I Differential (p.u.)" },
       tickfont: { size: 10 },
       range: [0, plotMaxY],
     },
@@ -308,7 +309,9 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     : samples.length === 0
     ? "Tekan Compute untuk memproses rekaman."
     : localOnly
-      ? "Mode LOCAL_ONLY: titik adalah arus terminal LOKAL per fasa (Ampere), bukan differential dua-terminal. Tidak ada arus sisi remote di rekaman ini, jadi kurva operate/restraint p.u. tidak diterapkan."
+      ? (transformerRelay
+          ? "Mode LOCAL_ONLY: titik adalah arus satu sisi winding per fasa (Ampere), bukan differential trafo HV-LV/MV. Minimal dua sisi winding perlu terbaca agar kurva operate/restraint p.u. diterapkan."
+          : "Mode LOCAL_ONLY: titik adalah arus terminal LOKAL per fasa (Ampere), bukan differential dua-terminal. Tidak ada arus sisi remote di rekaman ini, jadi kurva operate/restraint p.u. tidak diterapkan.")
       : "Setiap titik adalah posisi operasi sesaat dari window RMS pada rekaman: I-diff terhadap I-restraint per fasa. Banyak titik berarti banyak sampel waktu yang diplot, bukan jumlah spike arus.";
 
   const assessmentText = noFaultMode
@@ -329,6 +332,9 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
 
   // Hide the p.u. characteristic/region/fast line when they don't apply.
   const baseTraces = localOnly || noFaultMode ? [] : [operateRegion, charTrace, fastLine];
+  const displayedAssessmentText = transformerRelay && localOnly && !noFaultMode && status
+    ? "Assessment: differential trafo tidak dapat direkonstruksi karena sisi winding HV/LV/MV tidak lengkap terbaca. Plot hanya konteks arus satu sisi; periksa mapping channel winding atau sinyal trip relay."
+    : assessmentText;
 
   return (
     <div className={styles.panel}>
@@ -357,7 +363,21 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         <span className={styles.badge}>{plotExplanation}</span>
       </div>
 
-      {localOnly && samples.length > 0 && (
+      {localOnly && transformerRelay && samples.length > 0 && (
+        <div
+          className={styles.row}
+          style={{ marginBottom: 12, padding: "8px 12px", background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: 6 }}
+        >
+          <span style={{ fontSize: "0.74rem", color: "#92400e", lineHeight: 1.5 }}>
+            <strong>Differential trafo belum lengkap.</strong> Rekaman ini belum terbaca memiliki minimal
+            dua sisi winding (HV/LV/MV) atau channel differential terhitung dari relay. Plot di bawah adalah
+            <strong> arus winding tunggal per fasa</strong>, bukan diff/restraint trafo sejati. Kurva operate
+            p.u. tidak ditampilkan.
+          </span>
+        </div>
+      )}
+
+      {localOnly && !transformerRelay && samples.length > 0 && (
         <div
           className={styles.row}
           style={{ marginBottom: 12, padding: "8px 12px", background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: 6 }}
@@ -415,7 +435,7 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         />
       </div>
       <div className={styles.row} style={{ marginTop: 12 }}>
-        <span className={styles.badge}>{assessmentText}</span>
+        <span className={styles.badge}>{displayedAssessmentText}</span>
       </div>
 
       {/* Per-phase classification. In LOCAL_ONLY the ratio-to-threshold is

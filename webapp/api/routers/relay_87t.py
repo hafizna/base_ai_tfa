@@ -26,25 +26,25 @@ import re
 
 # Phase channel candidates — checked against ch["canonical_name"] and ch["name"].upper()
 HV_CHANNELS = {
-    "L1": ["IA_HV", "IHA", "IA1", "HVS.IA"],
-    "L2": ["IB_HV", "IHB", "IB1", "HVS.IB"],
-    "L3": ["IC_HV", "IHC", "IC1", "HVS.IC"],
+    "L1": ["IA_HV", "IAHV", "IHA", "IA1", "HVS.IA", "IW1A", "IAW1", "IA_W1", "W1 IL1"],
+    "L2": ["IB_HV", "IBHV", "IHB", "IB1", "HVS.IB", "IW1B", "IBW1", "IB_W1", "W1 IL2"],
+    "L3": ["IC_HV", "ICHV", "IHC", "IC1", "HVS.IC", "IW1C", "ICW1", "IC_W1", "W1 IL3"],
 }
 MV_CHANNELS = {
-    "L1": ["MVS.IA", "IA_MV", "IMA"],
-    "L2": ["MVS.IB", "IB_MV", "IMB"],
-    "L3": ["MVS.IC", "IC_MV", "IMC"],
+    "L1": ["MVS.IA", "IA_MV", "IAMV", "IMA", "IW3A", "IAW3", "IA_W3", "W3 IL1"],
+    "L2": ["MVS.IB", "IB_MV", "IBMV", "IMB", "IW3B", "IBW3", "IB_W3", "W3 IL2"],
+    "L3": ["MVS.IC", "IC_MV", "ICMV", "IMC", "IW3C", "ICW3", "IC_W3", "W3 IL3"],
 }
 LV_CHANNELS = {
-    "L1": ["IA_LV", "ILA", "IA2", "LVS.IA"],
-    "L2": ["IB_LV", "ILB", "IB2", "LVS.IB"],
-    "L3": ["IC_LV", "ILC", "IC2", "LVS.IC"],
+    "L1": ["IA_LV", "IALV", "ILA", "IA2", "LVS.IA", "IW2A", "IAW2", "IA_W2", "W2 IL1"],
+    "L2": ["IB_LV", "IBLV", "ILB", "IB2", "LVS.IB", "IW2B", "IBW2", "IB_W2", "W2 IL2"],
+    "L3": ["IC_LV", "ICLV", "ILC", "IC2", "LVS.IC", "IW2C", "ICW2", "IC_W2", "W2 IL3"],
 }
 # Relay-computed differential channels (already in pu, SIPROTEC 5 convention)
 RELAY_DIFF_CHANNELS = {
-    "L1": ["87T.IDA"],
-    "L2": ["87T.IDB"],
-    "L3": ["87T.IDC"],
+    "L1": ["87T.IDA", "IDIFA", "IDIFFA", "IDIFF_A", "IDIF_A", "DIFA"],
+    "L2": ["87T.IDB", "IDIFB", "IDIFFB", "IDIFF_B", "IDIF_B", "DIFB"],
+    "L3": ["87T.IDC", "IDIFC", "IDIFFC", "IDIFF_C", "IDIF_C", "DIFC"],
 }
 
 # Phase index for Siemens-style "iL1-S1" / "IL2-S2" naming. L1=A, L2=B, L3=C.
@@ -59,6 +59,7 @@ def _name_matches_side(name_upper: str, phase: str, side: int) -> bool:
     """
     pnum = PHASE_NUM[phase]
     pletter = {"L1": "A", "L2": "B", "L3": "C"}[phase]
+    pseq = {"L1": "R", "L2": "S", "L3": "T"}[phase]
     side_keyword = {1: "HVS?", 2: "LVS?", 3: "TVS?"}[side]
     # Siemens 7UT612: "IL1-S1", "ILA-S2"
     if re.search(rf"\bI?L?{pnum}\b.*-S{side}\b", name_upper):
@@ -72,12 +73,36 @@ def _name_matches_side(name_upper: str, phase: str, side: int) -> bool:
     suffix_word = {1: "HV", 2: "LV", 3: "TV"}[side]
     if re.search(rf"\bI{pletter}_?{suffix_word}\b", name_upper):
         return True
+    compact = re.sub(r"[^A-Z0-9]+", "", name_upper)
+    side_markers = {
+        1: ("W1", "HV", "HVS", "S1", "WIND1", "WINDING1", "SIDE1", "SEC1"),
+        2: ("W2", "LV", "LVS", "S2", "WIND2", "WINDING2", "SIDE2", "SEC2"),
+        3: ("W3", "MV", "MVS", "TV", "TVS", "S3", "WIND3", "WINDING3", "SIDE3", "SEC3"),
+    }[side]
+    phase_markers = (
+        f"IL{pnum}",
+        f"I{pletter}",
+        f"I{pnum}",
+        f"IW{side}{pletter}",
+        f"I{pletter}W{side}",
+        f"I{pletter}{suffix_word}",
+        f"I{pseq}{suffix_word}",
+    )
+    if any(marker in compact for marker in side_markers) and (
+        any(marker in compact for marker in phase_markers)
+        or compact.endswith(pletter)
+        or compact.endswith(pseq)
+    ):
+        return True
     return False
 
 
 def _find_ch(channels, candidates):
+    cand = {str(c).upper() for c in candidates}
     for ch in channels:
-        if ch.get("canonical_name") in candidates or ch["name"].upper() in candidates:
+        canon = str(ch.get("canonical_name", "") or "").upper()
+        name = str(ch.get("name", "") or "").upper()
+        if canon in cand or name in cand:
             return np.array(ch["samples"], dtype=float)
     return None
 
@@ -85,7 +110,10 @@ def _find_ch(channels, candidates):
 def _find_winding_ch(channels, phase: str, side: int):
     """Locate the per-phase current of a given transformer winding side."""
     for ch in channels:
-        if _name_matches_side(ch["name"].upper(), phase, side):
+        if ch.get("measurement") not in (None, "", "current"):
+            continue
+        name = f"{ch.get('name', '')} {ch.get('canonical_name', '')}".upper()
+        if _name_matches_side(name, phase, side):
             return np.array(ch["samples"], dtype=float)
     return None
 
