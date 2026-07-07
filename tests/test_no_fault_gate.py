@@ -7,7 +7,9 @@ label and fabricated an impedance locus from load V/I.
 """
 
 import numpy as np
+import asyncio
 
+from webapp.api.schemas import DiffRestraintAnalysisRequest
 from webapp.api.ml_predict import (
     extract_ml_features,
     run_ml_prediction,
@@ -15,6 +17,7 @@ from webapp.api.ml_predict import (
     _symmetrical_components,
 )
 from webapp.api.fault_detection import detect_fault_presence
+from webapp.api.routers import relay_87l, relay_87t
 
 
 def _balanced_load_payload(freq=50.0, sr=1200.0, dur_s=1.0, i_amp=3.7, v_amp=80.0):
@@ -121,3 +124,20 @@ def test_real_operate_bit_bypasses_gate():
     row = extract_ml_features(payload, "87L")
     assert row["protection_operated"] is True
     assert _no_fault_gate(payload) is None
+
+
+def test_differential_endpoints_stop_on_no_fault_gate(monkeypatch):
+    payload = _balanced_load_payload()
+    body = DiffRestraintAnalysisRequest(analysis_id="nofault")
+
+    monkeypatch.setattr(relay_87l, "_load_analysis_or_404", lambda _analysis_id: payload)
+    res87l = asyncio.run(relay_87l.diff_restraint(body))
+
+    monkeypatch.setattr(relay_87t, "load_analysis", lambda _analysis_id: payload)
+    res87t = asyncio.run(relay_87t.diff_restraint_87t(body))
+
+    for res in (res87l, res87t):
+        assert res.no_fault is True
+        assert res.diff_data_mode == "NO_FAULT"
+        assert res.operated_status == "NOT_OPERATED"
+        assert res.samples == []

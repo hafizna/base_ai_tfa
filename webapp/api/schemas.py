@@ -276,6 +276,8 @@ class DiffRestraintResponse(BaseModel):
     # from the relay's own per-phase diff trip signals (relay_diff_phases).
     diff_data_mode: str = "TWO_TERMINAL"
     relay_diff_phases: List[str] = []
+    no_fault: bool = False
+    no_fault_reasons: List[str] = []
 
 
 # --- Relay OCR ---

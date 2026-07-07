@@ -15,6 +15,7 @@ from ..schemas import (
     TripMarker, PhaseClassification,
 )
 from ..storage import load_analysis
+from ..fault_detection import detect_fault_presence
 from .relay_87l import (
     _characteristic_threshold, _detect_trip_markers, _classify_phases, _relay_diff_phases,
 )
@@ -233,6 +234,21 @@ async def diff_restraint_87t(body: DiffRestraintAnalysisRequest):
     if payload is None:
         raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
 
+    det = detect_fault_presence(payload)
+    if det.no_fault:
+        return DiffRestraintResponse(
+            samples=[],
+            params=body.params,
+            operated_status="NOT_OPERATED",
+            operated_phases=[],
+            trip_markers=[],
+            phase_classification=[],
+            diff_data_mode="NO_FAULT",
+            relay_diff_phases=[],
+            no_fault=True,
+            no_fault_reasons=det.reasons,
+        )
+
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None,
@@ -247,4 +263,6 @@ async def diff_restraint_87t(body: DiffRestraintAnalysisRequest):
         phase_classification=[PhaseClassification(**c) for c in result.get("phase_classification", [])],
         diff_data_mode=result.get("diff_data_mode", "TWO_TERMINAL"),
         relay_diff_phases=result.get("relay_diff_phases", []),
+        no_fault=False,
+        no_fault_reasons=[],
     )

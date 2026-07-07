@@ -1,6 +1,7 @@
 """Relay 87L (Differential Line) - diff/restraint plot + AI analysis."""
 
 import asyncio
+import re
 import sys
 from functools import partial
 from pathlib import Path
@@ -20,6 +21,7 @@ from ..schemas import (
 )
 from ..storage import load_analysis
 from ..ml_predict import run_ml_prediction
+from ..fault_detection import detect_fault_presence
 
 router = APIRouter(prefix="/api/analyze/87l", tags=["relay-87l"])
 
@@ -32,22 +34,34 @@ PHASE_CURRENT_MAP = {
 # Relay-computed differential channels (already a true two-terminal quantity).
 # If present, we have real diff data; otherwise the record is local-terminal only.
 RELAY_DIFF_CHANNELS = {
-    "L1": ["87L.IDA", "IDIFFA", "IDIFF_A", "IDA", "IDIFFL1"],
-    "L2": ["87L.IDB", "IDIFFB", "IDIFF_B", "IDB", "IDIFFL2"],
-    "L3": ["87L.IDC", "IDIFFC", "IDIFF_C", "IDC", "IDIFFL3"],
+    "L1": ["87L.IDA", "IDIFFA", "IDIFF_A", "IDIF_A", "IDA", "IDL1", "IL1D", "IDIFFL1"],
+    "L2": ["87L.IDB", "IDIFFB", "IDIFF_B", "IDIF_B", "IDB", "IDL2", "IL2D", "IDIFFL2"],
+    "L3": ["87L.IDC", "IDIFFC", "IDIFF_C", "IDIF_C", "IDC", "IDL3", "IL3D", "IDIFFL3"],
+}
+
+RELAY_RESTRAINT_CHANNELS = {
+    "L1": ["87L.IRSTA", "IRESTA", "IREST_A", "IRESTR_A", "IRSTR_A", "IBIASA", "IBIAS_A", "IBIASL1", "BIASA"],
+    "L2": ["87L.IRSTB", "IRESTB", "IREST_B", "IRESTR_B", "IRSTR_B", "IBIASB", "IBIAS_B", "IBIASL2", "BIASB"],
+    "L3": ["87L.IRSTC", "IRESTC", "IREST_C", "IRESTR_C", "IRSTR_C", "IBIASC", "IBIAS_C", "IBIASL3", "BIASC"],
 }
 
 
 def _find_ch(channels, candidates):
+    cand = _candidate_set(candidates)
     for ch in channels:
-        if ch["canonical_name"] in candidates or ch["name"].upper() in candidates:
-            return np.array(ch["samples"])
+        canon = str(ch.get("canonical_name", "") or "").upper()
+        name = str(ch.get("name", "") or "").upper()
+        if canon in cand or name in cand:
+            return np.asarray(ch.get("samples") or [], dtype=float)
     return None
 
 
 def _find_ch_obj(channels, candidates):
+    cand = _candidate_set(candidates)
     for ch in channels:
-        if ch["canonical_name"] in candidates or ch["name"].upper() in candidates:
+        canon = str(ch.get("canonical_name", "") or "").upper()
+        name = str(ch.get("name", "") or "").upper()
+        if canon in cand or name in cand:
             return ch
     return None
 
@@ -58,14 +72,79 @@ def _find_ch_obj(channels, candidates):
 # terminal explicitly. Common conventions: suffixed (Ia1, IA2, IA_REM, IAR) or
 # Siemens side tags (-S2). The local set is PHASE_CURRENT_MAP above.
 REMOTE_CURRENT_MAP = {
-    "L1": ["IA1", "IA2", "IA_REM", "IAR", "IL1-S2", "IA-S2", "I1R"],
-    "L2": ["IB1", "IB2", "IB_REM", "IBR", "IL2-S2", "IB-S2", "I2R"],
-    "L3": ["IC1", "IC2", "IC_REM", "ICR", "IL3-S2", "IC-S2", "I3R"],
+    "L1": ["IA1", "IA2", "IA_REM", "IAR", "IL1-S2", "IA-S2", "I1R", "REM L IL1 D", "REMOTE IL1"],
+    "L2": ["IB1", "IB2", "IB_REM", "IBR", "IL2-S2", "IB-S2", "I2R", "REM L IL2 D", "REMOTE IL2"],
+    "L3": ["IC1", "IC2", "IC_REM", "ICR", "IL3-S2", "IC-S2", "I3R", "REM L IL3 D", "REMOTE IL3"],
 }
+
+
+def _candidate_set(candidates) -> set[str]:
+    return {str(c).upper() for c in candidates}
 
 
 def _rms_np(x: np.ndarray) -> float:
     return float(np.sqrt(np.mean(x ** 2))) if x.size else 0.0
+
+
+def _compact(text: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "", text.upper())
+
+
+_REMOTE_PHASE_TOKENS = {
+    "L1": ("IL1", "IA", "I1", "L1"),
+    "L2": ("IL2", "IB", "I2", "L2"),
+    "L3": ("IL3", "IC", "I3", "L3"),
+}
+
+
+def _is_remote_current_channel(ch: dict, phase: str) -> bool:
+    """ABB/REL670 remote current names often look like 'REM L IL1 D'.
+
+    Some uploaded records normalize those channels to IDIFF_A/B/C, so name
+    context must win over canonical_name: REM ILx is remote terminal current,
+    not relay-computed differential.
+    """
+    name = str(ch.get("name", "") or "")
+    compact = _compact(name)
+    if "REM" not in compact and "REMOTE" not in compact:
+        return False
+    return any(tok in compact for tok in _REMOTE_PHASE_TOKENS[phase])
+
+
+def _find_remote_ch(channels, phase: str):
+    exact = _find_ch(channels, REMOTE_CURRENT_MAP[phase])
+    if exact is not None:
+        return exact
+    for ch in channels:
+        if _is_remote_current_channel(ch, phase):
+            return np.asarray(ch.get("samples") or [], dtype=float)
+    return None
+
+
+def _find_relay_diff_ch(channels, phase: str):
+    candidates = _candidate_set(RELAY_DIFF_CHANNELS[phase])
+    compact_candidates = {_compact(c) for c in candidates}
+    for ch in channels:
+        if _is_remote_current_channel(ch, phase):
+            continue
+        canon = str(ch.get("canonical_name", "") or "").upper()
+        name = str(ch.get("name", "") or "").upper()
+        compact_name = _compact(f"{name} {canon}")
+        if canon in candidates or name in candidates or any(c in compact_name for c in compact_candidates):
+            return np.asarray(ch.get("samples") or [], dtype=float)
+    return None
+
+
+def _find_relay_restraint_ch(channels, phase: str):
+    candidates = _candidate_set(RELAY_RESTRAINT_CHANNELS[phase])
+    compact_candidates = {_compact(c) for c in candidates}
+    for ch in channels:
+        canon = str(ch.get("canonical_name", "") or "").upper()
+        name = str(ch.get("name", "") or "").upper()
+        compact_name = _compact(f"{name} {canon}")
+        if canon in candidates or name in candidates or any(c in compact_name for c in compact_candidates):
+            return np.asarray(ch.get("samples") or [], dtype=float)
+    return None
 
 
 def _detect_terminal_pairs(channels, time, frequency):
@@ -89,7 +168,7 @@ def _detect_terminal_pairs(channels, time, frequency):
     pairs = {}
     for ph in ("L1", "L2", "L3"):
         local = _find_ch(channels, PHASE_CURRENT_MAP[ph])
-        remote = _find_ch(channels, REMOTE_CURRENT_MAP[ph])
+        remote = _find_remote_ch(channels, ph)
         if local is None or remote is None:
             continue
         pairs[ph] = (np.asarray(local, dtype=float), np.asarray(remote, dtype=float))
@@ -126,15 +205,21 @@ def _detect_diff_mode(channels, time=None, frequency=50.0) -> str:
     - TWO_TERMINAL_RAW: both terminal currents present -> we compute true diff.
     - LOCAL_ONLY: only one side present (rare/chopped) -> diff cannot be trusted.
     """
-    has_relay_diff = any(
-        _find_ch(channels, RELAY_DIFF_CHANNELS[ph]) is not None for ph in ("L1", "L2", "L3")
-    )
-    if has_relay_diff:
-        return "TWO_TERMINAL"
+    phases = ("L1", "L2", "L3")
+    has_relay_diff = any(_find_relay_diff_ch(channels, ph) is not None for ph in phases)
+    has_full_relay_restraint = all(_find_relay_restraint_ch(channels, ph) is not None for ph in phases)
+    pairs = None
     if time is not None:
         pairs, _ = _detect_terminal_pairs(channels, time, frequency)
-        if pairs:
+        # Raw terminal pairs are preferred when relay-only data is incomplete.
+        # A relay-computed Idiff without matching Irest/IBias can float above the
+        # characteristic just because it is in amperes while the plot expects pu.
+        if pairs and not has_full_relay_restraint:
             return "TWO_TERMINAL_RAW"
+    if has_relay_diff:
+        return "TWO_TERMINAL"
+    if pairs:
+        return "TWO_TERMINAL_RAW"
     return "LOCAL_ONLY"
 
 
@@ -183,7 +268,23 @@ def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
     mode = _detect_diff_mode(channels, time, freq)
     pairs, sign = _detect_terminal_pairs(channels, time, freq) if mode == "TWO_TERMINAL_RAW" else (None, 1.0)
 
-    if pairs:
+    if mode == "TWO_TERMINAL":
+        in_user = float(params.get("in_base_a", 0.0) or 0.0)
+        in_base = in_user if in_user > 0 else 1.0
+        for phase in ("L1", "L2", "L3"):
+            diff = _find_relay_diff_ch(channels, phase)
+            if diff is None:
+                continue
+            rest = _find_relay_restraint_ch(channels, phase)
+            for k in range(0, n, max(1, win // 4)):
+                s = max(0, k - win + 1)
+                i_diff = _rms_np(np.asarray(diff[s:k + 1], dtype=float)) / in_base
+                i_rest = (
+                    _rms_np(np.asarray(rest[s:k + 1], dtype=float)) / in_base
+                    if rest is not None else 0.0
+                )
+                samples.append({"t": float(time[k]), "i_diff": i_diff, "i_rest": i_rest, "phase": phase})
+    elif pairs:
         # TRUE two-terminal differential. Idiff = |Ilocal + s*Iremote|,
         # Irest = (|Ilocal| + |Iremote|) / 2, normalised to base current In so the
         # p.u. dual-slope characteristic applies. In comes from the user (CT/relay
@@ -223,8 +324,19 @@ def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
                 i_rms = _rms_np(i[s:k + 1])
                 samples.append({"t": float(time[k]), "i_diff": abs(i_rms), "i_rest": abs(i_rms), "phase": phase})
 
+    trip_markers = _detect_trip_markers(comtrade_data, samples)
+    relay_diff_phases = _relay_diff_phases(comtrade_data)
+    relay_diff_asserted = bool(
+        relay_diff_phases or any(m["kind"] in ("DIFF", "DIFF_FAST") for m in trip_markers)
+    )
+    relay_fast_asserted = any(m["kind"] == "DIFF_FAST" for m in trip_markers)
+
+    eval_window = _differential_evaluation_window(trip_markers, freq)
+    eval_samples = _samples_in_window(samples, eval_window) if eval_window else samples
+
+    computed_operated_phases = []
     for phase in ("L1", "L2", "L3"):
-        phase_samples = [s for s in samples if s["phase"] == phase]
+        phase_samples = [s for s in eval_samples if s["phase"] == phase]
         if not phase_samples:
             continue
         if any(
@@ -233,9 +345,18 @@ def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
             )
             for s in phase_samples
         ):
-            operated_phases.append(phase)
+            computed_operated_phases.append(phase)
 
-    if any(s["i_diff"] >= idiff_fast for s in samples):
+    if relay_diff_phases:
+        operated_phases = relay_diff_phases
+    else:
+        operated_phases = computed_operated_phases
+
+    if relay_fast_asserted:
+        status = "IDIFF_FAST_OPERATED"
+    elif relay_diff_asserted:
+        status = "IDIFF_OPERATED"
+    elif any(s["i_diff"] >= idiff_fast for s in eval_samples):
         status = "IDIFF_FAST_OPERATED"
     elif operated_phases:
         status = "IDIFF_OPERATED"
@@ -246,10 +367,15 @@ def _compute_diff_restraint(comtrade_data: dict, params: dict) -> dict:
         "samples": samples,
         "operated_status": status,
         "operated_phases": operated_phases,
-        "trip_markers": _detect_trip_markers(comtrade_data, samples),
-        "phase_classification": _classify_phases(samples, params),
+        "trip_markers": trip_markers,
+        "phase_classification": _classify_phases(
+            samples,
+            params,
+            authoritative_operated_phases=relay_diff_phases if relay_diff_phases else None,
+            evaluation_window=eval_window,
+        ),
         "diff_data_mode": mode,
-        "relay_diff_phases": _relay_diff_phases(comtrade_data),
+        "relay_diff_phases": relay_diff_phases,
     }
 
 
@@ -347,14 +473,50 @@ def _detect_trip_markers(comtrade_data: dict, samples: list) -> list:
     return markers
 
 
-def _classify_phases(samples: list, params: dict) -> list:
+def _differential_evaluation_window(trip_markers: list, frequency: float) -> "tuple[float, float] | None":
+    """Limit operate verdicts to the protection event, not later breaker/reclose transients."""
+    event_times = [
+        float(m["t"])
+        for m in trip_markers
+        if m.get("kind") in ("DIFF", "DIFF_FAST")
+    ]
+    if not event_times:
+        event_times = [
+            float(m["t"])
+            for m in trip_markers
+            if m.get("kind") == "RELAY_TRIP"
+        ]
+    if not event_times:
+        return None
+
+    cycle = 1.0 / max(float(frequency or 50.0), 1.0)
+    t0 = min(event_times)
+    return t0 - cycle, t0 + (2.0 * cycle)
+
+
+def _samples_in_window(samples: list, window: "tuple[float, float] | None") -> list:
+    if window is None:
+        return samples
+    start, end = window
+    scoped = [s for s in samples if start <= float(s.get("t", 0.0)) <= end]
+    return scoped or samples
+
+
+def _classify_phases(
+    samples: list,
+    params: dict,
+    authoritative_operated_phases: "list[str] | None" = None,
+    evaluation_window: "tuple[float, float] | None" = None,
+) -> list:
     """Per-phase verdict + max operating stats, evidence-based on the trajectory."""
     pickup = params["idiff_pickup"]
     fast = params["idiff_fast"]
     s1, i1, s2, i2 = params["slope1"], params["intersection1"], params["slope2"], params["intersection2"]
+    scoped_samples = _samples_in_window(samples, evaluation_window)
+    authoritative_set = set(authoritative_operated_phases) if authoritative_operated_phases is not None else None
     out = []
     for phase in ["L1", "L2", "L3"]:
-        pts = [s for s in samples if s["phase"] == phase]
+        pts = [s for s in scoped_samples if s["phase"] == phase]
         if not pts:
             continue
         max_idiff = max(s["i_diff"] for s in pts)
@@ -366,7 +528,10 @@ def _classify_phases(samples: list, params: dict) -> list:
             if thr > 0:
                 max_ratio = max(max_ratio, s["i_diff"] / thr)
 
-        if max_idiff >= fast:
+        if authoritative_set is not None:
+            verdict = "Internal Fault" if phase in authoritative_set else "Not Operated"
+            conf = "high"
+        elif max_idiff >= fast:
             verdict, conf = "Internal Fault", "high"
         elif max_ratio >= 1.0:
             # Inside operate region. High restraint with diff just above slope often = through-fault leakage.
@@ -396,6 +561,20 @@ def _load_analysis_or_404(analysis_id: str) -> dict:
 @router.post("/diff-restraint", response_model=DiffRestraintResponse)
 async def diff_restraint(body: DiffRestraintAnalysisRequest):
     payload = _load_analysis_or_404(body.analysis_id)
+    det = detect_fault_presence(payload)
+    if det.no_fault:
+        return DiffRestraintResponse(
+            samples=[],
+            params=body.params,
+            operated_status="NOT_OPERATED",
+            operated_phases=[],
+            trip_markers=[],
+            phase_classification=[],
+            diff_data_mode="NO_FAULT",
+            relay_diff_phases=[],
+            no_fault=True,
+            no_fault_reasons=det.reasons,
+        )
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None,
@@ -410,6 +589,8 @@ async def diff_restraint(body: DiffRestraintAnalysisRequest):
         phase_classification=[PhaseClassification(**c) for c in result.get("phase_classification", [])],
         diff_data_mode=result.get("diff_data_mode", "TWO_TERMINAL"),
         relay_diff_phases=result.get("relay_diff_phases", []),
+        no_fault=False,
+        no_fault_reasons=[],
     )
 
 

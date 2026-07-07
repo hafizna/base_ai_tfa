@@ -90,23 +90,50 @@ const VERDICT_COLOR: Record<string, string> = {
   "Not Operated": "#64748b",
 };
 
-function buildCharacteristic(p: DiffParams) {
-  const maxRest = 10;
+function thresholdAtRest(p: DiffParams, iRest: number) {
+  if (iRest <= p.intersection1) return p.idiff_pickup;
+  if (iRest <= p.intersection2) return p.idiff_pickup + p.slope1 * (iRest - p.intersection1);
+  return p.idiff_pickup + p.slope1 * (p.intersection2 - p.intersection1) + p.slope2 * (iRest - p.intersection2);
+}
+
+function buildCharacteristic(p: DiffParams, maxRest = 10) {
   const points: { x: number; y: number }[] = [];
+  const addPoint = (x: number) => {
+    const safeX = Math.max(0, Math.min(maxRest, x));
+    const last = points[points.length - 1];
+    if (last && Math.abs(last.x - safeX) < 1e-9) return;
+    points.push({ x: safeX, y: thresholdAtRest(p, safeX) });
+  };
 
-  // Pickup line (flat from 0 to intersection1)
-  points.push({ x: 0, y: p.idiff_pickup });
-  points.push({ x: p.intersection1, y: p.idiff_pickup });
-
-  // Slope 1
-  const y_at_int2 = p.idiff_pickup + p.slope1 * (p.intersection2 - p.intersection1);
-  points.push({ x: p.intersection2, y: y_at_int2 });
-
-  // Slope 2
-  const y_end = y_at_int2 + p.slope2 * (maxRest - p.intersection2);
-  points.push({ x: maxRest, y: y_end });
+  addPoint(0);
+  [p.intersection1, p.intersection2, maxRest]
+    .filter((x) => x > 0 && x <= maxRest)
+    .forEach(addPoint);
 
   return points;
+}
+
+function fastIntersectionX(p: DiffParams, maxRest: number) {
+  if (thresholdAtRest(p, 0) >= p.idiff_fast) return 0;
+  if (thresholdAtRest(p, maxRest) <= p.idiff_fast) return maxRest;
+
+  const breakpoints = [0, p.intersection1, p.intersection2, maxRest]
+    .filter((x) => x >= 0 && x <= maxRest)
+    .sort((a, b) => a - b);
+
+  for (let idx = 0; idx < breakpoints.length - 1; idx += 1) {
+    const x0 = breakpoints[idx];
+    const x1 = breakpoints[idx + 1];
+    if (x1 <= x0) continue;
+    const y0 = thresholdAtRest(p, x0);
+    const y1 = thresholdAtRest(p, x1);
+    if (p.idiff_fast >= Math.min(y0, y1) && p.idiff_fast <= Math.max(y0, y1)) {
+      if (Math.abs(y1 - y0) < 1e-9) return x1;
+      return x0 + ((p.idiff_fast - y0) / (y1 - y0)) * (x1 - x0);
+    }
+  }
+
+  return maxRest;
 }
 
 export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
@@ -119,6 +146,8 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
   const [phaseClass, setPhaseClass] = useState<PhaseClassification[]>([]);
   const [diffMode, setDiffMode] = useState<string>("TWO_TERMINAL");
   const [relayDiffPhases, setRelayDiffPhases] = useState<string[]>([]);
+  const [noFault, setNoFault] = useState(false);
+  const [noFaultReasons, setNoFaultReasons] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const activePreset = PRESETS.find((p) => p.key === selectedPreset) ?? PRESETS[0];
@@ -147,20 +176,32 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
       setPhaseClass(res.phase_classification ?? []);
       setDiffMode(res.diff_data_mode ?? "TWO_TERMINAL");
       setRelayDiffPhases(res.relay_diff_phases ?? []);
+      setNoFault(Boolean(res.no_fault));
+      setNoFaultReasons(res.no_fault_reasons ?? []);
     } finally {
       setLoading(false);
     }
   }
 
-  const charPts = buildCharacteristic(params);
+  const localOnly = diffMode === "LOCAL_ONLY";
+  const noFaultMode = noFault || diffMode === "NO_FAULT";
+  const maxSampleY = samples.length ? Math.max(...samples.map((s) => s.i_diff)) : 1;
+  const maxSampleX = samples.length ? Math.max(...samples.map((s) => s.i_rest)) : 1;
+  const plotMaxX = localOnly ? maxSampleX * 1.1 : 10;
+  const plotMaxY = localOnly
+    ? maxSampleY * 1.1
+    : Math.max(params.idiff_fast * 1.1, thresholdAtRest(params, plotMaxX) * 1.05, 1);
+  const charPts = buildCharacteristic(params, plotMaxX);
+  const regionMaxX = fastIntersectionX(params, plotMaxX);
+  const regionPts = buildCharacteristic(params, regionMaxX);
 
   // Operate region = polygon bounded below by the dual-slope characteristic
   // and above by the I-DIFF>> fast line. We draw it as a closed scattergl
   // trace with `fill: "toself"` so it follows the curve instead of sitting
   // as a rectangle behind both operate and restrain zones.
   const operateRegion: Partial<Plotly.ScatterData> = {
-    x: [...charPts.map((p) => p.x), 10, 0, charPts[0].x],
-    y: [...charPts.map((p) => p.y), params.idiff_fast, params.idiff_fast, charPts[0].y],
+    x: [...regionPts.map((p) => p.x), regionMaxX, 0, regionPts[0].x],
+    y: [...regionPts.map((p) => p.y), params.idiff_fast, params.idiff_fast, regionPts[0].y],
     type: "scatter",
     mode: "lines",
     fill: "toself",
@@ -181,7 +222,7 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
   };
 
   const fastLine: Partial<Plotly.ScatterData> = {
-    x: [0, 10],
+    x: [0, plotMaxX],
     y: [params.idiff_fast, params.idiff_fast],
     type: "scatter",
     mode: "lines",
@@ -190,23 +231,26 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
   };
 
   const phases = ["L1", "L2", "L3"];
-  const phaseTraces: Partial<Plotly.ScatterData>[] = phases.map((ph) => ({
-    x: samples.filter((s) => s.phase === ph).map((s) => s.i_rest),
-    y: samples.filter((s) => s.phase === ph).map((s) => s.i_diff),
-    type: "scatter",
-    mode: "markers",
-    name: ph,
-    marker: { color: PHASE_COLORS[ph], size: 4, opacity: 0.8 },
-  }));
+  const phaseTraces: Partial<Plotly.ScatterData>[] = phases.map((ph) => {
+    const pts = samples.filter((s) => s.phase === ph && (localOnly || s.i_diff <= params.idiff_fast));
+    return {
+      x: pts.map((s) => Math.min(s.i_rest, plotMaxX)),
+      y: pts.map((s) => s.i_diff),
+      type: "scatter",
+      mode: "markers",
+      name: ph,
+      marker: { color: PHASE_COLORS[ph], size: 4, opacity: 0.8 },
+    };
+  });
 
   // TRIP markers — one trace per trip kind, placed at the operating point at
   // the trip instant. Square 'T' so it stands out over the sample cloud.
   const tripTraces: Partial<Plotly.ScatterData>[] = Object.entries(TRIP_STYLE)
     .map(([kind, style]) => {
-      const ms = tripMarkers.filter((m) => m.kind === kind);
+      const ms = tripMarkers.filter((m) => m.kind === kind && (localOnly || m.i_diff <= params.idiff_fast));
       if (ms.length === 0) return null;
       return {
-        x: ms.map((m) => m.i_rest),
+        x: ms.map((m) => localOnly ? m.i_rest : Math.min(m.i_rest, plotMaxX)),
         y: ms.map((m) => m.i_diff),
         type: "scatter",
         mode: "text+markers",
@@ -221,36 +265,36 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     })
     .filter((t): t is Partial<Plotly.ScatterData> => t !== null);
 
-  const localOnly = diffMode === "LOCAL_ONLY";
-
   // In LOCAL_ONLY mode the samples are local-terminal current in primary Amperes,
   // not a p.u. differential — so the p.u. characteristic does not apply and the
   // axes must auto-range to the actual current, otherwise points fall off-screen.
-  const maxSampleY = samples.length ? Math.max(...samples.map((s) => s.i_diff)) : 1;
-  const maxSampleX = samples.length ? Math.max(...samples.map((s) => s.i_rest)) : 1;
-
   const layout: Partial<Plotly.Layout> = {
     height: 400,
     margin: { t: 20, b: 50, l: 60, r: 20 },
     xaxis: {
       title: { text: localOnly ? "Arus terminal lokal (A)" : "I Restraint (p.u.)" },
       tickfont: { size: 10 },
-      range: localOnly ? [0, maxSampleX * 1.1] : [0, 10],
+      range: [0, plotMaxX],
     },
     yaxis: {
       title: { text: localOnly ? "Arus terminal lokal (A)" : "I Differential (p.u.)" },
       tickfont: { size: 10 },
-      range: localOnly ? [0, maxSampleY * 1.1] : [0, params.idiff_fast * 1.1],
+      range: [0, plotMaxY],
     },
     plot_bgcolor: "#ffffff",
     paper_bgcolor: "#ffffff",
     legend: { orientation: "h", y: -0.15 },
   };
 
-  const statusClass = status === "NOT_OPERATED" ? styles.statusNot : status === "IDIFF_FAST_OPERATED" ? styles.statusFast : styles.statusOperated;
+  const statusClass = noFaultMode
+    ? styles.statusNot
+    : status === "NOT_OPERATED" ? styles.statusNot : status === "IDIFF_FAST_OPERATED" ? styles.statusFast : styles.statusOperated;
+  const relayBacked = relayType === "87L" && !localOnly && relayDiffPhases.length > 0;
   // In LOCAL_ONLY the operate verdict cannot come from the reconstructed scatter
   // (it isn't a true differential) — it comes from the relay's own diff trip.
-  const statusLabel = localOnly
+  const statusLabel = noFaultMode
+    ? "NO FAULT / TIDAK ADA GANGGUAN"
+    : localOnly
     ? (relayDiffPhases.length
         ? `RELAY DIFF OPERATED — ${relayDiffPhases.join(", ")}`
         : "RELAY DIFF — TIDAK ADA SINYAL OPERATE")
@@ -259,18 +303,24 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
     : "IDIFF OPERATED";
   const localStatusClass = relayDiffPhases.length ? styles.statusFast : styles.statusNot;
 
-  const plotExplanation = samples.length === 0
+  const plotExplanation = noFaultMode
+    ? "No-fault gate aktif: rekaman ini tidak punya bukti gangguan/proteksi operate yang cukup, jadi diff/restraint tidak dihitung."
+    : samples.length === 0
     ? "Tekan Compute untuk memproses rekaman."
     : localOnly
       ? "Mode LOCAL_ONLY: titik adalah arus terminal LOKAL per fasa (Ampere), bukan differential dua-terminal. Tidak ada arus sisi remote di rekaman ini, jadi kurva operate/restraint p.u. tidak diterapkan."
       : "Setiap titik adalah posisi operasi sesaat dari window RMS pada rekaman: I-diff terhadap I-restraint per fasa. Banyak titik berarti banyak sampel waktu yang diplot, bukan jumlah spike arus.";
 
-  const assessmentText = !status
+  const assessmentText = noFaultMode
+    ? `Assessment: rekaman ditahan sebagai NO-FAULT. ${noFaultReasons.length ? noFaultReasons.join("; ") : "Tidak ada bukti operasi proteksi atau gangguan sustained."} Differential/restraint tidak dihitung agar arus beban/spike sesaat tidak berubah menjadi false internal fault.`
+    : !status
     ? "Assessment belum dihitung."
     : localOnly
       ? (relayDiffPhases.length
           ? `Assessment: differential dua-terminal tidak dapat direkonstruksi (arus sisi remote tidak direkam). Namun relay 87L sendiri melaporkan elemen differential OPERATE pada fasa ${relayDiffPhases.join(", ")} (dari sinyal DIF_TRIP). Verdict diambil dari keputusan relay, bukan dari waveform lokal. Arus lokal hanya konteks besaran gangguan.`
           : "Assessment: differential dua-terminal tidak dapat direkonstruksi (arus sisi remote tidak direkam), dan tidak ditemukan sinyal DIF_TRIP per fasa dari relay. Tidak ada bukti operate elemen differential pada rekaman ini — periksa sinyal trip lain (Relay TRIP, OC/EF).")
+    : relayBacked
+      ? `Assessment: relay mencatat differential operate pada fasa ${relayDiffPhases.join(", ")}. Plot diff/restraint tetap ditampilkan sebagai konteks waveform; elemen I-DIFF>> fast hanya dinyatakan jika ada sinyal fast/high-set dari relay.`
     : status === "NOT_OPERATED"
       ? "Assessment: berdasarkan setting karakteristik yang dipilih, titik operasi masih berada di area restraint/non-operate. Relay diasumsikan tidak seharusnya trip untuk rekaman ini, kecuali ada setting aktual lain yang belum dimasukkan."
       : status === "IDIFF_FAST_OPERATED"
@@ -278,7 +328,7 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
         : `Assessment: titik operasi melewati kurva operate I-DIFF>${operatedPhases.length ? ` pada fasa ${operatedPhases.join(", ")}` : ""}. Dengan setting yang diberikan, relay diasumsikan bekerja sesuai karakteristik differential/restraint.`;
 
   // Hide the p.u. characteristic/region/fast line when they don't apply.
-  const baseTraces = localOnly ? [] : [operateRegion, charTrace, fastLine];
+  const baseTraces = localOnly || noFaultMode ? [] : [operateRegion, charTrace, fastLine];
 
   return (
     <div className={styles.panel}>
@@ -317,6 +367,19 @@ export default function DiffRestraintPlot({ analysisId, relayType }: Props) {
             terminal lokal (tidak ada arus sisi remote dan tidak ada channel differential terhitung dari
             relay). Plot di bawah adalah <strong>arus lokal per fasa</strong>, bukan diff/restraint sejati —
             karena itu kurva operate p.u. tidak ditampilkan. Verdict diff diambil dari sinyal trip relay.
+          </span>
+        </div>
+      )}
+
+      {noFaultMode && status && (
+        <div
+          className={styles.row}
+          style={{ marginBottom: 12, padding: "8px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6 }}
+        >
+          <span style={{ fontSize: "0.74rem", color: "#334155", lineHeight: 1.5 }}>
+            <strong>No-fault gate:</strong> differential/restraint tidak diplot karena rekaman ini
+            tidak menunjukkan gangguan sustained atau operasi proteksi.
+            {noFaultReasons.length > 0 && <> Alasan: {noFaultReasons.join("; ")}.</>}
           </span>
         </div>
       )}
