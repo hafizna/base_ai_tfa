@@ -205,6 +205,12 @@ function phaseFromNameOrCanonical(ch: Pick<AnalogChannel, "name" | "canonical_na
   return null;
 }
 
+function isRemoteLineCurrent(ch: Pick<AnalogChannel, "name" | "canonical_name">): boolean {
+  const compact = ch.name.toUpperCase().replace(/[^A-Z0-9]+/g, "");
+  if (!/REM|REMOTE/.test(compact)) return false;
+  return /(?:IL[123]|I[ABC]|I[123]|IN)/.test(compact);
+}
+
 type ChannelRole =
   | "lineCurrent"
   | "remoteCurrent"
@@ -259,6 +265,7 @@ function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" 
   // Explicit name-based detection takes priority over any unit heuristic.
   // Standalone DIFF/BIAS tokens (e.g. "REF DIFF HV") matter for relays whose
   // names don't always carry the leading "I", so detect both forms.
+  if (ch.measurement === "current" && isRemoteLineCurrent(ch)) return "remoteCurrent";
   if (/\b(?:IBIAS|IREST|IRESTR|RESTRAINT|RSTR|BIAS)\b/.test(text)) return "restraint";
   if (
     /\b(?:IDIFF|IDIF|IDL[123]?|LDL|DIFF)\b/.test(text) ||
@@ -275,7 +282,6 @@ function channelRole(ch: Pick<AnalogChannel, "name" | "canonical_name" | "unit" 
     // Siemens 7UT612 phase currents recorded in pu (e.g. "iL1-S1") and
     // ABB/GE "W1 CT IL1" / "REF HV" channels all get the windingCurrent role.
     if (extractSidedSuffix(ch.name)) return "windingCurrent";
-    if (/\bREM(?:OTE)?\b|\bREM\s+L\b/.test(text)) return "remoteCurrent";
     if (/\b(?:IN|I0|3I0|IDNS)\b/.test(text)) return "neutralCurrent";
     if (unit === "pu" || unit === "in") return "differential";
     return "lineCurrent";
@@ -308,7 +314,7 @@ function channelDisplay(ch: AnalogChannel) {
 
   if (role === "remoteCurrent") {
     return {
-      title: canonical && canonical !== raw ? `${canonical} Remote` : raw,
+      title: phase ? `I Remote ${phase}` : "I Remote",
       detail: `Remote-end line current${phaseText ? ` / ${phaseText}` : ""}`,
       raw,
     };
@@ -675,8 +681,11 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
         return role === "differential" || role === "restraint";
       })
       .map((ch) => ch.id);
+    const remoteIds = visibleAnalog
+      .filter((ch) => channelRole(ch) === "remoteCurrent")
+      .map((ch) => ch.id);
 
-    return new Set([...phaseIds, ...diffIds]);
+    return new Set([...phaseIds, ...diffIds, ...remoteIds]);
   }, [visibleAnalog]);
 
   // Auto-select channels that were active (any sample = 1) — same logic as SOE
@@ -759,7 +768,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
         ...nextChannels
           .filter((ch) => {
             const role = channelRole(ch);
-            return role === "differential" || role === "restraint";
+            return role === "differential" || role === "restraint" || role === "remoteCurrent";
           })
           .map((ch) => ch.id),
       ]

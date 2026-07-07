@@ -53,6 +53,7 @@ from reportlab.platypus import (
 )
 
 from ..storage import load_analysis
+from ..fault_detection import detect_fault_presence
 from .relay_21 import _compute_electrical_params, _compute_fault_classification
 from .relay_87l import _compute_diff_restraint
 from .relay_87t import _compute_87t
@@ -246,6 +247,7 @@ def _format_duration_ms(time_arr: list) -> str:
 
 
 RELAY_LABELS = {
+    "LINE": "21 / 87L - Line Protection",
     "21": "21 — Distance Protection",
     "87L": "87L — Line Differential",
     "CCP": "CCP / Stub Differential",
@@ -886,7 +888,7 @@ def _select_analog_diagram_channels(payload: dict, relay_type: str) -> list[dict
         _add(by_canon.get(canon))
 
     # Differential relays: include relay-computed diff / restraint magnitudes.
-    if relay_type in ("87L", "CCP", "87T", "REF"):
+    if relay_type in ("LINE", "87L", "CCP", "87T", "REF"):
         for ch in channels:
             canon = str(ch.get("canonical_name") or "").upper()
             if canon.startswith("IDIFF") or canon.startswith("IREST") or "IBIAS" in canon:
@@ -1363,6 +1365,17 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
 
 
 def _build_diff_relay_section(styles: dict, payload: dict, relay_type: str, settings: Optional[dict]) -> list:
+    det = detect_fault_presence(payload)
+    if det.no_fault:
+        title = "Transformer Differential Summary" if relay_type in ("87T", "REF") else "87L Differential Summary"
+        rows = [
+            ("Relay type", relay_type),
+            ("Operate status", "NOT_OPERATED"),
+            ("Data mode", "NO_FAULT"),
+            ("Gate reasons", "; ".join(det.reasons)),
+        ]
+        return _section_header(styles, "RELAY", title) + [_kv_table(rows, (40 * mm, 85 * mm))]
+
     params = _default_diff_params()
     diff_settings = (settings or {}).get("diff") if isinstance(settings, dict) else None
     if isinstance(diff_settings, dict):
@@ -1381,7 +1394,7 @@ def _build_diff_relay_section(styles: dict, payload: dict, relay_type: str, sett
     max_diff = max((float(s.get("i_diff") or 0) for s in samples), default=0.0)
     max_rest = max((float(s.get("i_rest") or 0) for s in samples), default=0.0)
 
-    title = "Differential / Restraint Summary"
+    title = "87L Differential Summary" if relay_type == "LINE" else "Differential / Restraint Summary"
     rows = [
         ("Relay type", relay_type),
         ("Operate status", operated_status),
@@ -1434,7 +1447,7 @@ def _build_ocr_section(styles: dict, payload: dict, settings: Optional[dict]) ->
 
 
 def _build_relay_specific_section(styles: dict, payload: dict, relay_type: str, settings: Optional[dict]) -> list:
-    if relay_type in ("87L", "CCP", "87T", "REF"):
+    if relay_type in ("LINE", "87L", "CCP", "87T", "REF"):
         return _build_diff_relay_section(styles, payload, relay_type, settings)
     if relay_type in ("OCR", "SBEF"):
         return _build_ocr_section(styles, payload, settings)
@@ -1583,6 +1596,7 @@ def _build_chart_block(styles: dict, kicker: str, chart: ChartImage, max_height_
 def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes:
     relay_type = request.relay_type.upper() if request.relay_type else "21"
     is_tws = relay_type == "TWS_FL" or payload.get("source_type") == "tws_cdb"
+    is_line_distance = relay_type in ("21", "LINE")
     relay_label = RELAY_LABELS.get(relay_type, relay_type)
     timestamp = _format_datetime()
     station = payload.get("station_name") or "Stasiun Tidak Diketahui"
@@ -1590,10 +1604,10 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
 
     no_fault = bool(request.ai_analysis.get("no_fault")) if request.ai_analysis else False
 
-    fault_class = _compute_fault_classification(payload) if relay_type == "21" else None
+    fault_class = _compute_fault_classification(payload) if is_line_distance else None
     # On a no-fault record the impedance trajectory is computed from load V/I and
     # is meaningless; suppress the fault electrical params from the report.
-    elec = _compute_electrical_params(payload) if relay_type == "21" and not no_fault else {}
+    elec = _compute_electrical_params(payload) if is_line_distance and not no_fault else {}
 
     buf = io.BytesIO()
     header_top_clearance = 22 * mm + 4 * mm  # header band + gap
@@ -1623,7 +1637,7 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     story: list = []
     if is_tws:
         story.append(_build_tws_conclusion(styles, payload, relay_label))
-    elif relay_type == "21" and fault_class is not None:
+    elif is_line_distance and fault_class is not None:
         story.append(_build_conclusion(styles, fault_class, request.ai_analysis, elec))
     else:
         story.append(_build_generic_conclusion(styles, payload, relay_label, request.ai_analysis))
@@ -1639,7 +1653,7 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
             story.extend(ai_section)
             story.append(Spacer(1, 8))
 
-        if relay_type == "21":
+        if is_line_distance:
             story.extend(_build_electrical_section(styles, elec))
             story.append(Spacer(1, 8))
 

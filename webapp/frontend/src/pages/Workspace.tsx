@@ -287,13 +287,12 @@ export default function Workspace() {
         fetchAiAnalysisSafe(),
         fetchSoeEventsSafe(),
       ]);
-      const reportRelayType = isLineRelay ? "21" : relayType;
       const relaySettings = (relayType === "OCR" || relayType === "SBEF") && ocrReportSettings
         ? { ocr: ocrReportSettings }
         : null;
 
       const blob = await generateReport(currentAnalysisId, {
-        relay_type: reportRelayType,
+        relay_type: relayType,
         ai_analysis: aiAnalysis,
         charts,
         soe_events: soeEvents,
