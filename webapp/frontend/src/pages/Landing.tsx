@@ -82,6 +82,9 @@ export default function Landing() {
         <p className={styles.subtitle}>
           Pick the protection family first, then upload a COMTRADE file set or TWS FL export for analysis.
         </p>
+        <button className={styles.simulatorLink} onClick={() => navigate("/simulator")} type="button">
+          Event Notification Simulator
+        </button>
       </header>
 
       <main className={styles.grid}>

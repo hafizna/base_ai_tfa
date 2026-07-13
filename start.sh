@@ -1,11 +1,10 @@
 #!/bin/sh
 set -eu
 
-# WEB_CONCURRENCY follows the Heroku/Railway convention. Each worker is a
-# separate Python process: it must pickle-load fault_classifier.pkl once at
-# boot (the FastAPI lifespan in webapp/api/main.py does this eagerly), so
-# memory cost is roughly N × ~180 MB. Default to 2 on free dynos, override
-# upward only when you have RAM headroom and concurrent traffic.
+# WEB_CONCURRENCY controls the worker count for the Amazon EC2/Docker Compose
+# deployment. Each worker is a separate Python process: it must load the model
+# bundle once at boot, so memory cost is roughly N x ~180 MB. Override upward
+# only when the EC2 instance has enough RAM headroom and concurrent traffic.
 PORT_VALUE="${PORT:-8000}"
 WORKERS_VALUE="${WEB_CONCURRENCY:-2}"
 

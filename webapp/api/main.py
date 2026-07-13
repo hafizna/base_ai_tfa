@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from . import ml_predict
-from .routers import upload, relay_21, relay_87l, relay_87t, relay_ocr, relay_ref, tws, report, training
+from .routers import event_simulator, upload, relay_21, relay_87l, relay_87t, relay_ocr, relay_ref, tws, report, training
 from .storage import get_session_ttl_hours, get_storage_backend
 
 logger = logging.getLogger("uvicorn")
@@ -54,7 +54,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="COMTRADE Fault Analyser",
     version="2.1.0",
-    description="Relay-type-aware COMTRADE analysis platform for DFR UIT JBT",
+    description="Relay-type-aware COMTRADE analysis and IEC 61850 notification simulation platform for DFR UIT JBT",
     lifespan=lifespan,
 )
 
@@ -85,6 +85,7 @@ app.include_router(relay_ref.router)
 app.include_router(tws.router)
 app.include_router(report.router)
 app.include_router(training.router)
+app.include_router(event_simulator.router)
 
 
 @app.get("/api/health")

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AnalysisProvider } from "./context/AnalysisContext";
+import EventSimulator from "./pages/EventSimulator";
 import Landing from "./pages/Landing";
 import TwsViewer from "./pages/TwsViewer";
 import Upload from "./pages/Upload";
@@ -11,6 +12,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/simulator" element={<EventSimulator />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/workspace/:relayType/:analysisId" element={<Workspace />} />
           <Route path="/tws/:analysisId" element={<TwsViewer />} />

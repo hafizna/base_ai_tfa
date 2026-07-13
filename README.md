@@ -2,7 +2,7 @@
 
 Sistem klasifikasi penyebab gangguan transmisi berbasis COMTRADE IEEE C37.111.
 
-Update terakhir: 3 Juni 2026
+Update terakhir: 13 Juli 2026
 
 ---
 
@@ -14,6 +14,14 @@ sebelum tim lapangan tiba: probabilistik untuk gangguan penghantar (prediksi pen
 fisik) dan evidence-based triage untuk gangguan trafo (interpretasi sinyal lokal +
 pemetaan evidence yang masih dibutuhkan). Untuk gangguan penghantar, sistem saat ini
 mengklasifikasikan penyebab fisik ke dalam 7 kelas:
+
+Selain workflow upload COMTRADE, aplikasi sekarang memiliki **Event Notification
+Simulator** untuk mendemokan bagaimana perubahan sinyal MMS/IEC 61850 yang sudah
+dimapping di TFA dapat terlihat sebagai notifikasi, grouped incident, trace JSON,
+dan artifact analitik. Simulator ini mengikuti mapping klaster notifikasi pada
+`TFA_Notif_Architecture_v1.0`: Tier 1 `GANGGUAN`, Tier 2 `CB RECLOSE`, Tier 3
+`STATUS CB`, Tier 4 `ALARM OPERASIONAL`, sedangkan sinyal measurement seperti
+`RFLO/MMXU/MX` hanya menjadi context dan tidak dibuat notifikasi.
 
 | Kelas | Deskripsi |
 |---|---|
@@ -101,8 +109,10 @@ Bila file berasal dari DFR eksternal (Qualitrol, Toshiba standalone) tanpa sinya
 | `models/proba_calibrator.pkl` | (Opsional) calibrator hasil `models/calibrate.py`; auto-detected saat inference |
 | `webapp/api/main.py` | FastAPI backend root, lifespan warmup (eager model preload), GZipMiddleware, mount semua router |
 | `webapp/api/routers/` | Router per-rele: `upload`, `relay_21`, `relay_87l`, `relay_87t`, `relay_ocr`, `relay_ref` |
+| `webapp/api/routers/event_simulator.py` | Lab simulator notifikasi MMS/IEC 61850 berbasis mapping dokumen TFA: scenario NR-PCR931S, ABB RED670, MiCOM P545, grouped incident, trace JSON, artifact measurement |
 | `webapp/api/ml_predict.py` | Builder fitur 17-dim + Tier 1 wiring + LightGBM + calibration + structured evidence + introspection fields untuk React UI |
 | `webapp/frontend/` | React (Vite) UI yang terhubung ke FastAPI via `/api/*` (proxy `:5173 → :8000`) |
+| `webapp/frontend/src/pages/EventSimulator.tsx` | Halaman `/simulator` untuk replay step-by-step event, notification outbox, grouped incident, dan JSON artifacts |
 | `webapp/frontend/src/components/relay/shared/AIFaultResultView.tsx` | Render AI fault result + Provenance panel (Tier 1, applied caps, model meta) + collapsible JSON API Inspector |
 | `profiling/` | py-spy helper script (PS + sh) untuk capture flamegraph; output di `profiling/flamegraphs/` (gitignored). Lihat `profiling/README.md` |
 | `batch_extract.py` | Ekstraksi fitur batch dari seluruh raw_data/ termasuk corpus kandidat 87L |
@@ -130,6 +140,20 @@ npm run dev
 
 Frontend Vite dev server proxies `/api/*` → `http://localhost:8000`,
 so kedua proses harus berjalan bersamaan saat development.
+
+Halaman simulator notifikasi tersedia di:
+
+- Development: `http://localhost:5173/simulator`
+- Production/AWS: `https://<domain-produksi>/simulator` atau `http://<ec2-host>:8000/simulator`
+
+Endpoint API simulator:
+
+- `GET /api/event-simulator/scenarios`
+- `GET /api/event-simulator/scenarios/{scenario_id}`
+
+Scenario saat ini mengikuti mapping dokumen TFA untuk NR-PCR931S, ABB RED670,
+dan MiCOM P545. Output API menyertakan `trace`, `artifacts.data_mapping`,
+`artifacts.decision_tree`, `ignored_measurements`, dan `notification_outbox`.
 
 ### Ekstraksi arsip (ZIP/RAR)
 ```bash
@@ -167,10 +191,36 @@ python models/calibrate.py --method isotonic  # isotonic (butuh ≥30 sampel/kel
 python models/predict.py path/to/file.cfg
 ```
 
-### Production deployment
+### Production deployment (Amazon EC2)
+
+Deployment produksi saat ini ditargetkan ke **Amazon EC2** menggunakan Docker
+Compose. Konfigurasi Railway/Nixpacks lama sudah tidak dipakai sebagai jalur
+deploy utama.
+
 ```bash
-# start.sh menjalankan uvicorn dengan WEB_CONCURRENCY (default 2 worker).
-# Tiap worker reload model bundle (~180 MB RSS), jadi tune sesuai RAM.
+# Di server Amazon EC2
+git clone https://github.com/hafizna/base_ai_tfa.git
+cd base_ai_tfa
+
+# Optional tapi direkomendasikan: token admin untuk export/clear training archive.
+printf 'TRAINING_ADMIN_TOKEN=%s\n' 'ganti-dengan-token-panjang' > .env
+
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml logs -f web
+```
+
+Runtime container menjalankan `start.sh`, yang membaca `PORT` dan
+`WEB_CONCURRENCY`. Tiap worker memuat model bundle sendiri, jadi tuning worker
+harus disesuaikan dengan RAM instance EC2.
+
+Health check:
+
+- Local container: `http://127.0.0.1:8000/api/health`
+- Reverse proxy/domain: `https://<domain-produksi>/api/health`
+
+```bash
+# start.sh menjalankan uvicorn dengan WEB_CONCURRENCY untuk runtime EC2.
+# Tiap worker reload model bundle (~180 MB RSS), jadi tune sesuai RAM instance.
 WEB_CONCURRENCY=4 ./start.sh
 
 # FastAPI lifespan otomatis warmup model + sklearn/LightGBM saat boot,
@@ -297,6 +347,33 @@ Workspace 87T saat ini hanya menampilkan analisa rekaman COMTRADE,
 ## Arah Berikutnya Sebelum Data Tambahan Datang
 
 Beberapa pekerjaan penting masih bisa dikerjakan **tanpa menunggu data baru**:
+
+### Notification/event simulator
+
+1. Sambungkan simulator ke mode ingest yang lebih realistis:
+   - file replay JSON untuk sequence MMS
+   - optional polling mock service
+   - attachment COMTRADE otomatis ke grouped incident
+
+2. Tambahkan user access matrix sesuai dokumen TFA:
+   - GI menerima semua tier
+   - ULTG menerima Tier 1/2/4 dan Tier 3 optional
+   - UIT menerima Tier 1/2 dan Tier 4 aggregated
+   - Kantor Pusat hanya Tier 1 significant event
+
+3. Tambahkan two-layer grouping:
+   - Layer 1: bay/relay incident window 5 detik
+   - Layer 2: multi-relay/busbar/trafo correlation window
+   - event measurement RFLO/MMXU tetap context, bukan notif
+
+4. Jadikan JSON trace sebagai artifact audit developer:
+   - raw event
+   - data mapping row
+   - classification decision
+   - timer/debounce/reclose queue
+   - emitted notification payload
+
+### Transformer/context-aware analysis
 
 1. Rapikan filosofi keputusan trafo menjadi output bertingkat, bukan satu label tunggal.
    Pisahkan:
@@ -599,14 +676,22 @@ base_ai_tfa/                          ← repo root
   Dockerfile                            ← multi-stage: vite build → python runtime
   Procfile                              ← web: ./start.sh
   start.sh                              ← uvicorn dengan WEB_CONCURRENCY env (default 2)
-  nixpacks.toml
-  railway.json
   requirements.txt
 ```
 
 ---
 
 ## Optimasi Performa (Opsi A)
+
+### Tambahan UI/API terbaru
+
+| Area | File | Catatan |
+|---|---|---|
+| Event simulator API | `webapp/api/routers/event_simulator.py` | Scenario MMS/IEC 61850 berbasis mapping dokumen TFA Sec 4.1-4.3; menghasilkan grouped incident, notification outbox, trace JSON, dan artifact measurement |
+| Event simulator UI | `webapp/frontend/src/pages/EventSimulator.tsx` | Halaman `/simulator` untuk replay step-by-step bagaimana event terlihat oleh TFA |
+| Deployment AWS | `docker-compose.prod.yml`, `Dockerfile`, `start.sh` | Jalur production utama Amazon EC2/Docker Compose; konfigurasi Railway/Nixpacks lama sudah dihapus |
+
+---
 
 Roadmap inkremental untuk menjaga app tetap di Python (tanpa rewrite ke Rust/Go).
 Tujuan: kurangi p50 latency request tanpa kehilangan fleksibilitas eksperimen ML.
@@ -666,6 +751,8 @@ ke feature & correctness.
 | Backend FastAPI + frontend React/Vite | Selesai | Migrasi dari Flask + Jinja templates (legacy app dihapus April 2026) |
 | Batch extraction pipeline | Selesai | ZIP/RAR via 7-Zip, skip duplikat, error log, simpan corpus 87L |
 | **Profiling instrumentation (py-spy)** | Selesai | Opsi A #1 — helper script + flamegraph output |
+| **Event Notification Simulator** | Selesai | Halaman `/simulator` + API `/api/event-simulator/*`; scenario mengikuti mapping dokumen TFA Sec 4.1-4.3 untuk NR-PCR931S, ABB RED670, dan MiCOM P545 |
+| **Amazon EC2 deployment path** | Selesai | Production path utama memakai Dockerfile + `docker-compose.prod.yml`; Railway/Nixpacks config lama dihapus |
 | Kurasi data stakeholder | Berlanjut | Isi `correct`/`notes` di `labeled_features.csv` |
 | Data kelas POHON | Kurang | Perlu minimal 10+ rekaman berlabel POHON untuk training |
 

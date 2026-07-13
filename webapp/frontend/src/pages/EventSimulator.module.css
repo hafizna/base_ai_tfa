@@ -1,0 +1,501 @@
+.page {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(241, 245, 249, 0.92)),
+    var(--bg-soft);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  max-width: 1480px;
+  margin: 0 auto 18px;
+}
+
+.backBtn,
+.controls button,
+.jsonTabs button {
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.backBtn {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.backBtn:hover,
+.controls button:hover:not(:disabled),
+.jsonTabs button:hover {
+  border-color: rgba(31, 111, 235, 0.45);
+  color: var(--brand-deep);
+}
+
+.controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.kicker {
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  color: var(--ink);
+  font-size: 1.75rem;
+  font-weight: 850;
+}
+
+.headerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 520px;
+}
+
+.headerMeta span {
+  padding: 7px 10px;
+  border: 1px solid rgba(31, 111, 235, 0.16);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 18px;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.scenarioPanel,
+.livePanel,
+.timelinePanel,
+.jsonPanel,
+.controlBand {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 14px 34px rgba(31, 42, 55, 0.08);
+}
+
+.scenarioPanel {
+  align-self: start;
+  padding: 14px;
+}
+
+.panelTitle {
+  margin-bottom: 12px;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scenarioList {
+  display: grid;
+  gap: 10px;
+}
+
+.scenarioBtn {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  min-height: 116px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.scenarioBtn:hover,
+.scenarioBtnActive {
+  border-color: rgba(31, 111, 235, 0.5);
+  background: #f8fbff;
+}
+
+.scenarioBtn span {
+  font-size: 0.94rem;
+  font-weight: 850;
+  line-height: 1.28;
+}
+
+.scenarioBtn small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.scenarioBtn em {
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.workbench {
+  min-width: 0;
+}
+
+.controlBand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 16px;
+}
+
+.scenarioTitle {
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 1.08rem;
+  font-weight: 850;
+}
+
+.controlBand p {
+  max-width: 840px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(56px, auto)) minmax(160px, 220px) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls button {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.controls input {
+  accent-color: var(--brand);
+}
+
+.controls span {
+  min-width: 52px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.livePanel,
+.timelinePanel,
+.jsonPanel {
+  min-width: 0;
+  padding: 16px;
+}
+
+.currentStep,
+.incidentBox {
+  display: grid;
+  gap: 12px;
+}
+
+.timeBadge,
+.tierPill {
+  justify-self: start;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(31, 111, 235, 0.1);
+  color: var(--brand-deep);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.tierPill {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--danger);
+}
+
+.currentStep h2,
+.incidentBox h2 {
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.incidentBox p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.currentStep dl {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+}
+
+.currentStep dl div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.currentStep dt {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.currentStep dd {
+  margin: 0;
+  color: #1e293b;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metrics span {
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.notifList {
+  display: grid;
+  gap: 10px;
+  max-height: 264px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.notificationItem {
+  display: grid;
+  gap: 5px;
+  min-height: 86px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--brand);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.notificationItem span {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.notificationItem strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.notificationItem small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.timelinePanel {
+  margin-bottom: 16px;
+}
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.traceItem {
+  display: grid;
+  gap: 6px;
+  min-height: 118px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.traceItemSeen {
+  background: #f8fafc;
+}
+
+.traceItemActive {
+  border-color: rgba(217, 119, 6, 0.7);
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.12);
+}
+
+.traceItem span {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.traceItem strong {
+  color: #0f172a;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.traceItem small {
+  align-self: end;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.jsonPanel {
+  margin-bottom: 18px;
+}
+
+.jsonTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.jsonTabs button {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 0.78rem;
+}
+
+.jsonTabActive {
+  border-color: rgba(31, 111, 235, 0.62) !important;
+  background: rgba(31, 111, 235, 0.1) !important;
+  color: var(--brand-deep) !important;
+}
+
+.jsonPanel pre {
+  max-height: 560px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #0f172a;
+  color: #dbeafe;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.empty,
+.loading,
+.error {
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.empty {
+  padding: 14px;
+}
+
+.loading,
+.error {
+  padding: 22px;
+}
+
+.error {
+  max-width: 1480px;
+  margin: 0 auto 16px;
+  border-color: rgba(220, 38, 38, 0.28);
+  background: rgba(254, 242, 242, 0.82);
+  color: var(--danger);
+}
+
+@media (max-width: 1180px) {
+  .header,
+  .shell,
+  .controlBand,
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .headerMeta {
+    justify-content: flex-start;
+  }
+
+  .scenarioPanel {
+    position: static;
+  }
+
+  .scenarioList {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 14px;
+  }
+
+  .controls {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .controls input,
+  .controls span {
+    grid-column: 1 / -1;
+  }
+
+  .controls span {
+    text-align: left;
+  }
+
+  .currentStep dl div {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline {
+    grid-template-columns: 1fr;
+  }
+}

@@ -70,6 +70,25 @@
   color: var(--muted);
 }
 
+.simulatorLink {
+  margin-top: 20px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(31, 111, 235, 0.28);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--brand-deep);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(31, 42, 55, 0.08);
+}
+
+.simulatorLink:hover {
+  border-color: rgba(31, 111, 235, 0.5);
+  background: #f8fbff;
+}
+
 .grid {
   position: relative;
   z-index: 1;

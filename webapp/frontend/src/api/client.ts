@@ -439,6 +439,80 @@ export interface TrainingStatus {
   total_bytes: number;
 }
 
+export interface EventSimulatorScenarioSummary {
+  id: string;
+  title: string;
+  subtitle: string;
+  station_name: string;
+  asset_name: string;
+  event_count: number;
+}
+
+export interface EventSimulatorNotification {
+  id: string;
+  incident_id: string;
+  tier: number;
+  cluster: string;
+  label: string;
+  color: string;
+  title: string;
+  message: string;
+  first_event_ms: number;
+  last_event_ms: number;
+  emit_ms: number;
+  event_ids: string[];
+  timing_note: string;
+}
+
+export interface EventSimulatorIncident {
+  id: string;
+  station_name: string;
+  asset_name: string;
+  asset_id: string;
+  start_ms: number;
+  last_event_ms: number;
+  status: string;
+  primary_tier: number | null;
+  title: string;
+  summary: string;
+  event_count: number;
+  events: Record<string, unknown>[];
+  measurements: Record<string, unknown>[];
+  artifacts: Record<string, unknown>[];
+  notifications: EventSimulatorNotification[];
+  relay_functions: string[];
+  cb_states: Record<string, unknown>[];
+  reclose_sequence: Record<string, unknown>[];
+}
+
+export interface EventSimulatorTraceStep {
+  step: number;
+  t_ms: number;
+  raw_event: Record<string, unknown> | null;
+  mapping: Record<string, unknown> | null;
+  classification: Record<string, unknown> | null;
+  decision: string;
+  emitted_before_this_event: EventSimulatorNotification[];
+  emitted_from_this_event: EventSimulatorNotification[];
+  incident_snapshot: Record<string, unknown> | null;
+}
+
+export interface EventSimulatorRun {
+  scenario: {
+    id: string;
+    title: string;
+    subtitle: string;
+    description: string;
+    station_name: string;
+    asset_name: string;
+    asset_id: string;
+  };
+  incidents: EventSimulatorIncident[];
+  notifications: EventSimulatorNotification[];
+  trace: EventSimulatorTraceStep[];
+  artifacts: Record<string, unknown>;
+}
+
 function trainingHeaders(token: string) {
   return { "X-Training-Admin-Token": token };
 }
@@ -470,5 +544,15 @@ export async function clearTrainingArchive(token: string) {
     { confirm: "CLEAR" },
     { headers: trainingHeaders(token), timeout: 60000 },
   );
+  return data;
+}
+
+export async function fetchEventSimulatorScenarios() {
+  const { data } = await api.get<EventSimulatorScenarioSummary[]>("/api/event-simulator/scenarios");
+  return data;
+}
+
+export async function fetchEventSimulatorRun(scenarioId: string) {
+  const { data } = await api.get<EventSimulatorRun>(`/api/event-simulator/scenarios/${scenarioId}`);
   return data;
 }
