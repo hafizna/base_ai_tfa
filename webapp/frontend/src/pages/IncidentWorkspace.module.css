@@ -1,0 +1,382 @@
+.page {
+  min-height: 100vh;
+  padding: 32px 32px 64px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.backLink {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.error {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.headerCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  background: white;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.titleInput {
+  flex: 1;
+  font-size: 1.3rem;
+  font-weight: 700;
+  border: none;
+  outline: none;
+  padding: 4px 0;
+}
+
+.statusSelect {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-weight: 600;
+}
+
+.archiveButton {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  background: white;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.headerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-weight: 400;
+  color: #111827;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 12px;
+}
+
+.sectionHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sectionHeaderRow h2 {
+  margin: 0;
+}
+
+.smallButton {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent, #d97706);
+  color: var(--accent, #d97706);
+  background: white;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.subsection {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.subsection h3 {
+  font-size: 0.92rem;
+  margin: 0 0 10px;
+  color: #374151;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: #9ca3af;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+.recordList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recordCard {
+  display: flex;
+  gap: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: white;
+  align-items: flex-start;
+}
+
+.recordOrderControls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 28px;
+}
+
+.recordOrderControls button {
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  width: 24px;
+  height: 22px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.recordOrderControls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.recordOrderControls span {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+.recordBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.recordTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recordLink {
+  font-weight: 700;
+  color: #1f6feb;
+  text-decoration: none;
+}
+
+.recordLink:hover {
+  text-decoration: underline;
+}
+
+.roleBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #f3f4f6;
+  color: #4b5563;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.recordMeta {
+  font-size: 0.8rem;
+  color: #6b7280;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.warningList {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.warningBadge {
+  font-size: 0.72rem;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.detachButton {
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  background: white;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.evidenceForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+
+.evidenceForm select,
+.evidenceForm input,
+.evidenceForm textarea {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-family: inherit;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modalActions button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+}
+
+.evidenceListWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.evidenceItem {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.evidenceType {
+  font-weight: 700;
+  margin-right: 8px;
+}
+
+.evidenceConfidence {
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.evidenceDescription {
+  color: #374151;
+}
+
+.evidenceSource {
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.evidenceItem button {
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  background: white;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.summaryNote {
+  color: #6b7280;
+  font-size: 0.88rem;
+  margin: 0 0 12px;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.summaryGrid > div {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryGrid strong {
+  font-size: 1.1rem;
+}
+
+.summaryGrid span {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.missingList {
+  margin: 0;
+  padding-left: 20px;
+  color: #92400e;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

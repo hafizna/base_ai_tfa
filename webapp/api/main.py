@@ -6,6 +6,7 @@ Run from the repo root:
 """
 
 import logging
+import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -20,13 +21,21 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from . import ml_predict
-from .routers import event_simulator, upload, relay_21, relay_87l, relay_87t, relay_ocr, relay_ref, tws, report, training
+from .routers import event_simulator, incidents, upload, relay_21, relay_87l, relay_87t, relay_ocr, relay_ref, tws, report, training
 from .storage import get_session_ttl_hours, get_storage_backend
 
 logger = logging.getLogger("uvicorn")
 
 # Cache so /api/health can report the warmup result without re-running it.
 _WARMUP_STATE: dict = {"ran": False}
+
+# Stage 2 (multi-COMTRADE incident reconstruction) feature flag. Defaults to
+# enabled since the backend is fully implemented and tested; set
+# MULTI_COMTRADE_ENABLED=0 to hide/disable the Stage 2 UI (batch upload,
+# reconstruction) while keeping Stage 1 manual incidents and the existing
+# single-record workflow available, same convention as
+# training_retention.RETENTION_ENABLED.
+MULTI_COMTRADE_ENABLED = os.getenv("MULTI_COMTRADE_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 
 @asynccontextmanager
@@ -86,6 +95,7 @@ app.include_router(tws.router)
 app.include_router(report.router)
 app.include_router(training.router)
 app.include_router(event_simulator.router)
+app.include_router(incidents.router)
 
 
 @app.get("/api/health")
@@ -96,6 +106,9 @@ async def health():
         "analysis_storage": get_storage_backend(),
         "analysis_ttl_hours": get_session_ttl_hours(),
         "warmup": _WARMUP_STATE,
+        "feature_flags": {
+            "multi_comtrade_enabled": MULTI_COMTRADE_ENABLED,
+        },
     }
 
 

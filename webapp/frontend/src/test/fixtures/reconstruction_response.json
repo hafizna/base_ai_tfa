@@ -1,0 +1,2058 @@
+{
+  "incident_id": "analysis-id-01",
+  "upload": {
+    "incident_id": "analysis-id-01",
+    "records_created": [
+      {
+        "analysis_id": "analysis-id-02",
+        "incident_record_id": "analysis-id-03",
+        "source_files": [
+          "record1.cfg",
+          "record1.dat"
+        ],
+        "status": "created",
+        "error": null
+      },
+      {
+        "analysis_id": "analysis-id-04",
+        "incident_record_id": "analysis-id-05",
+        "source_files": [
+          "record2.cfg",
+          "record2.dat"
+        ],
+        "status": "created",
+        "error": null
+      }
+    ],
+    "errors": [],
+    "reconstruction_status": "completed"
+  },
+  "incident": {
+    "incident_id": "analysis-id-01",
+    "title": "GI COMAL Bay 1 recloser sequence",
+    "status": "DRAFT",
+    "station_name": "GOLDEN TEST",
+    "bay_name": "BAY 1",
+    "asset_id": null,
+    "asset_name": null,
+    "asset_type": null,
+    "voltage_level_kv": null,
+    "protection_family": null,
+    "incident_start_iso": null,
+    "incident_end_iso": null,
+    "clock_assessment": "UNKNOWN",
+    "clock_assessment_reason": null,
+    "record_ids": [
+      "analysis-id-02",
+      "analysis-id-04"
+    ],
+    "evidence_ids": [],
+    "observed_summary": {
+      "record_count": 2,
+      "records_with_absolute_time": 0,
+      "records_without_absolute_time": 2,
+      "protection_types": [],
+      "faulted_phase_sets": [
+        [
+          "A"
+        ],
+        [
+          "A"
+        ]
+      ],
+      "reclose_outcomes": [
+        null,
+        null
+      ],
+      "cause_hypotheses_per_record": [
+        {
+          "analysis_id": "analysis-id-02",
+          "top_hypothesis": null,
+          "confidence": null,
+          "scope": "RECORD_LOCAL_SIGNATURE"
+        },
+        {
+          "analysis_id": "analysis-id-04",
+          "top_hypothesis": null,
+          "confidence": null,
+          "scope": "RECORD_LOCAL_SIGNATURE"
+        }
+      ]
+    },
+    "incident_interpretation": {
+      "summary": "Multiple records are attached. Automated inter-record reconstruction has not yet been performed.",
+      "scope": "INCIDENT_RECORD_COLLECTION_SUMMARY"
+    },
+    "incident_hypotheses": [],
+    "missing_evidence": [
+      {
+        "type": "RECORDS_MISSING_ABSOLUTE_TIME",
+        "description": "One or more attached records lack an absolute timestamp."
+      },
+      {
+        "type": "REMOTE_END_UNAVAILABLE",
+        "description": "No remote-end record is attached."
+      }
+    ],
+    "operator_notes": null,
+    "created_at": "2026-07-13T09:33:44.824550+00:00",
+    "updated_at": "2026-07-13T09:33:45.851148+00:00",
+    "schema_version": "stage2",
+    "records": [
+      {
+        "incident_record_id": "analysis-id-03",
+        "incident_id": "analysis-id-01",
+        "analysis_id": "analysis-id-02",
+        "source_filename": "record1.cfg+record1.dat",
+        "station_name": "GOLDEN TEST",
+        "bay_name": null,
+        "relay_id": "RELAY_21",
+        "relay_model": null,
+        "protection_type": null,
+        "record_start_iso": null,
+        "trigger_time_iso": null,
+        "trigger_offset_s": 0.0,
+        "sequence_index": 0,
+        "manual_order": null,
+        "order_source": "UPLOAD_ORDER",
+        "attachment_role": "UNKNOWN",
+        "inclusion_status": "INCLUDED",
+        "exclusion_reason": null,
+        "canonical_snapshot": {
+          "record_id": "analysis-id-02",
+          "source_metadata": {
+            "station_name": "GOLDEN TEST",
+            "rec_dev_id": "RELAY_21",
+            "rev_year": "1999",
+            "frequency": 50.0,
+            "total_samples": 1200,
+            "trigger_time_s": 0.0,
+            "start_time_iso": null,
+            "trigger_time_iso": null,
+            "trigger_offset_s": 0.0,
+            "time_code": "0",
+            "local_code": "0",
+            "clock_quality": "0"
+          },
+          "data_quality": {
+            "has_voltage_channels": false,
+            "has_current_channels": true,
+            "has_digital_channels": true,
+            "current_only": true,
+            "analog_channel_count": 3,
+            "status_channel_count": 1,
+            "parser_warnings": [
+              "Absolute COMTRADE start/trigger timestamp not available - timing is relative only"
+            ],
+            "timing_warnings": [
+              "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+              "No voltage channels present - timing/impedance evidence is current-only",
+              "Fault clearing evidence not available - duration left unset rather than guessed"
+            ]
+          },
+          "event_window": {
+            "record_start_ms": 0.0,
+            "trigger_time_ms": null,
+            "inception_idx": 360,
+            "inception_time_ms": 300.00001192092896,
+            "clearing_idx": null,
+            "clearing_time_ms": null,
+            "fault_duration_ms": null,
+            "method": "current_derivative",
+            "timing_source": "current_derivative",
+            "confidence": 0.8,
+            "faulted_phases": [
+              "A"
+            ],
+            "reclose_events": [],
+            "warnings": [
+              "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+              "No voltage channels present - timing/impedance evidence is current-only",
+              "Fault clearing evidence not available - duration left unset rather than guessed"
+            ]
+          },
+          "fault_episodes": [
+            {
+              "episode_index": 0,
+              "inception_time_ms": 300.00001192092896,
+              "clearing_time_ms": null,
+              "fault_duration_ms": null,
+              "faulted_phases": [
+                "A"
+              ],
+              "detection_method": "current_derivative",
+              "confidence": 0.8,
+              "reclose_events": []
+            }
+          ],
+          "protection_operations": [],
+          "electrical_measurements": {},
+          "observed_facts": {
+            "faulted_phases": [
+              "A"
+            ],
+            "reclose_attempted": false,
+            "reclose_events": []
+          },
+          "protection_interpretation": {
+            "event_class": "FAULT_EVENT",
+            "summary": "Fault detected from available waveform/status evidence."
+          },
+          "cause_hypotheses": [],
+          "missing_evidence": [
+            {
+              "type": "VOLTAGE_CHANNELS",
+              "description": "No voltage channels present - impedance/locus and voltage-sag evidence unavailable."
+            },
+            {
+              "type": "CLEARING_EVIDENCE",
+              "description": "Fault clearing time could not be determined from available evidence."
+            },
+            {
+              "type": "REMOTE_END_RECORD",
+              "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+            }
+          ],
+          "provenance": {
+            "timing_source": "current_derivative",
+            "timing_confidence": 0.8,
+            "no_fault_gate_reasons": [
+              "kanal proteksi beroperasi (TRIP/Op)",
+              "lonjakan arus 15.07× prefault",
+              "ketidakseimbangan urutan (I0/I1 71.5%, I2/I1 70.9%)"
+            ],
+            "schema_version": "stage0"
+          }
+        },
+        "attachment_warnings": [
+          {
+            "type": "NO_ABSOLUTE_TIME",
+            "description": "This record has no absolute (wall-clock) timestamp; ordering will rely on manual/upload order.",
+            "requires_review": false
+          }
+        ],
+        "created_at": "2026-07-13T09:33:45.021961+00:00"
+      },
+      {
+        "incident_record_id": "analysis-id-05",
+        "incident_id": "analysis-id-01",
+        "analysis_id": "analysis-id-04",
+        "source_filename": "record2.cfg+record2.dat",
+        "station_name": "GOLDEN TEST",
+        "bay_name": null,
+        "relay_id": "RELAY_87L",
+        "relay_model": null,
+        "protection_type": null,
+        "record_start_iso": null,
+        "trigger_time_iso": null,
+        "trigger_offset_s": 0.0,
+        "sequence_index": 1,
+        "manual_order": null,
+        "order_source": "UPLOAD_ORDER",
+        "attachment_role": "UNKNOWN",
+        "inclusion_status": "INCLUDED",
+        "exclusion_reason": null,
+        "canonical_snapshot": {
+          "record_id": "analysis-id-04",
+          "source_metadata": {
+            "station_name": "GOLDEN TEST",
+            "rec_dev_id": "RELAY_87L",
+            "rev_year": "1999",
+            "frequency": 50.0,
+            "total_samples": 1200,
+            "trigger_time_s": 0.0,
+            "start_time_iso": null,
+            "trigger_time_iso": null,
+            "trigger_offset_s": 0.0,
+            "time_code": "0",
+            "local_code": "0",
+            "clock_quality": "0"
+          },
+          "data_quality": {
+            "has_voltage_channels": false,
+            "has_current_channels": true,
+            "has_digital_channels": true,
+            "current_only": true,
+            "analog_channel_count": 3,
+            "status_channel_count": 1,
+            "parser_warnings": [
+              "Absolute COMTRADE start/trigger timestamp not available - timing is relative only"
+            ],
+            "timing_warnings": [
+              "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+              "No voltage channels present - timing/impedance evidence is current-only",
+              "Fault clearing evidence not available - duration left unset rather than guessed"
+            ]
+          },
+          "event_window": {
+            "record_start_ms": 0.0,
+            "trigger_time_ms": null,
+            "inception_idx": 600,
+            "inception_time_ms": 500.0,
+            "clearing_idx": null,
+            "clearing_time_ms": null,
+            "fault_duration_ms": null,
+            "method": "current_derivative",
+            "timing_source": "current_derivative",
+            "confidence": 0.8,
+            "faulted_phases": [
+              "A"
+            ],
+            "reclose_events": [],
+            "warnings": [
+              "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+              "No voltage channels present - timing/impedance evidence is current-only",
+              "Fault clearing evidence not available - duration left unset rather than guessed"
+            ]
+          },
+          "fault_episodes": [
+            {
+              "episode_index": 0,
+              "inception_time_ms": 500.0,
+              "clearing_time_ms": null,
+              "fault_duration_ms": null,
+              "faulted_phases": [
+                "A"
+              ],
+              "detection_method": "current_derivative",
+              "confidence": 0.8,
+              "reclose_events": []
+            }
+          ],
+          "protection_operations": [],
+          "electrical_measurements": {},
+          "observed_facts": {
+            "faulted_phases": [
+              "A"
+            ],
+            "reclose_attempted": false,
+            "reclose_events": []
+          },
+          "protection_interpretation": {
+            "event_class": "FAULT_EVENT",
+            "summary": "Fault detected from available waveform/status evidence."
+          },
+          "cause_hypotheses": [],
+          "missing_evidence": [
+            {
+              "type": "VOLTAGE_CHANNELS",
+              "description": "No voltage channels present - impedance/locus and voltage-sag evidence unavailable."
+            },
+            {
+              "type": "CLEARING_EVIDENCE",
+              "description": "Fault clearing time could not be determined from available evidence."
+            },
+            {
+              "type": "REMOTE_END_RECORD",
+              "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+            }
+          ],
+          "provenance": {
+            "timing_source": "current_derivative",
+            "timing_confidence": 0.8,
+            "no_fault_gate_reasons": [
+              "kanal proteksi beroperasi (TRIP/Op)",
+              "lonjakan arus 15.07× prefault",
+              "ketidakseimbangan urutan (I0/I1 71.5%, I2/I1 70.9%)"
+            ],
+            "schema_version": "stage0"
+          }
+        },
+        "attachment_warnings": [
+          {
+            "type": "NO_ABSOLUTE_TIME",
+            "description": "This record has no absolute (wall-clock) timestamp; ordering will rely on manual/upload order.",
+            "requires_review": false
+          }
+        ],
+        "created_at": "2026-07-13T09:33:45.198259+00:00"
+      }
+    ],
+    "provenance": {
+      "schema_version": "stage2",
+      "incident_engine_version": "stage1.0",
+      "record_snapshot_versions": [
+        {
+          "analysis_id": "analysis-id-02",
+          "canonical_schema_version": "stage0",
+          "model_version": null,
+          "feature_version": null,
+          "timing_source": "current_derivative"
+        },
+        {
+          "analysis_id": "analysis-id-04",
+          "canonical_schema_version": "stage0",
+          "model_version": null,
+          "feature_version": null,
+          "timing_source": "current_derivative"
+        }
+      ],
+      "created_at": "2026-07-13T09:33:44.824550+00:00",
+      "updated_at": "2026-07-13T09:33:45.851148+00:00"
+    }
+  },
+  "reconstruction": {
+    "reconstruction_id": "analysis-id-06",
+    "incident_id": "analysis-id-01",
+    "engine_version": "stage2.0",
+    "schema_version": "stage2",
+    "same_bay_status": "CONFIRMED_SAME_BAY",
+    "same_bay_evidence": [
+      {
+        "type": "EXPLICIT_BAY_NAME",
+        "description": "Incident bay name 'BAY 1' provided by user."
+      },
+      {
+        "type": "STATION_NAME_CONSISTENT",
+        "description": "All records agree with incident station 'GOLDEN TEST'."
+      },
+      {
+        "type": "DIFFERENT_RELAY_IDS",
+        "description": "Records come from different relay/device ids: ['RELAY_21', 'RELAY_87L'] — consistent with same-bay multi-relay capture (e.g. distance + differential)."
+      }
+    ],
+    "same_bay_override": null,
+    "alignment": {
+      "status": "ORDER_ONLY",
+      "confidence": 0.2,
+      "order_source": "UPLOAD_ORDER",
+      "record_order": [
+        "analysis-id-03",
+        "analysis-id-05"
+      ],
+      "pairwise_gaps_ms": [],
+      "overlap_groups": [],
+      "warnings": [
+        {
+          "type": "NO_ABSOLUTE_TIME_AVAILABLE",
+          "description": "No record in this incident carries an absolute (wall-clock) timestamp. Ordering reflects upload/manual order only."
+        }
+      ],
+      "assumptions": [
+        "Record order does not reflect verified chronology; treat sequence as provisional."
+      ]
+    },
+    "timeline_event_ids": [
+      "71856af03962405d8c0312d4aecfacc4-1",
+      "71856af03962405d8c0312d4aecfacc4-2",
+      "71856af03962405d8c0312d4aecfacc4-3",
+      "71856af03962405d8c0312d4aecfacc4-4",
+      "71856af03962405d8c0312d4aecfacc4-5",
+      "71856af03962405d8c0312d4aecfacc4-6",
+      "71856af03962405d8c0312d4aecfacc4-7",
+      "71856af03962405d8c0312d4aecfacc4-8",
+      "71856af03962405d8c0312d4aecfacc4-9",
+      "71856af03962405d8c0312d4aecfacc4-10"
+    ],
+    "relationship_ids": [
+      "71856af03962405d8c0312d4aecfacc4-11"
+    ],
+    "episode_ids": [
+      "71856af03962405d8c0312d4aecfacc4-12",
+      "71856af03962405d8c0312d4aecfacc4-13"
+    ],
+    "observed_incident_facts": {
+      "record_count": 2,
+      "episode_count": 2,
+      "incident_duration_ms": null,
+      "phase_sequence": [
+        [
+          "A"
+        ],
+        [
+          "A"
+        ]
+      ],
+      "reclose_sequence": [
+        null,
+        null
+      ]
+    },
+    "protection_sequence_interpretation": {
+      "event_class": "MULTIPLE_EPISODES_MIXED_RELATIONSHIP",
+      "summary": "2 fault episodes were reconstructed with mixed relationships between them; see per-episode relationship_to_previous for detail."
+    },
+    "incident_hypotheses": [],
+    "physical_cause_evidence": {
+      "scope": "RECORD_LOCAL_SIGNATURES",
+      "records": [
+        {
+          "analysis_id": "analysis-id-02",
+          "incident_record_id": "analysis-id-03",
+          "top_hypothesis": "PETIR",
+          "confidence": 0.92,
+          "cause_ranking": [
+            {
+              "cause": "PETIR",
+              "label": "Petir / Lightning",
+              "confidence": 0.92
+            },
+            {
+              "cause": "BENDA_ASING",
+              "label": "Benda Asing",
+              "confidence": 0.075
+            },
+            {
+              "cause": "HEWAN",
+              "label": "Hewan / Binatang",
+              "confidence": 0.001
+            },
+            {
+              "cause": "KONDUKTOR",
+              "label": "Konduktor / Tower",
+              "confidence": 0.0
+            },
+            {
+              "cause": "LAYANG",
+              "label": "Layang-Layang / Kite",
+              "confidence": 0.0
+            },
+            {
+              "cause": "PERALATAN",
+              "label": "Peralatan Rusak / Anomali Proteksi",
+              "confidence": 0.0
+            },
+            {
+              "cause": "POHON",
+              "label": "Pohon / Vegetasi",
+              "confidence": 0.0
+            }
+          ],
+          "model_version": "untrained+a6c3e8ed7b41",
+          "feature_version": "v1.2025-04",
+          "calibration_method": "temperature_T1.5",
+          "timing_source": "current_derivative",
+          "timing_confidence": 0.8,
+          "raw_probabilities": {
+            "BENDA_ASING": 0.0225,
+            "HEWAN": 0.0,
+            "KONDUKTOR": 0.0,
+            "LAYANG": 0.0,
+            "PERALATAN": 0.0,
+            "PETIR": 0.9775,
+            "POHON": 0.0
+          },
+          "calibrated_probabilities": {
+            "BENDA_ASING": 0.0747,
+            "HEWAN": 0.0006,
+            "KONDUKTOR": 0.0003,
+            "LAYANG": 0.0,
+            "PERALATAN": 0.0001,
+            "PETIR": 0.9241,
+            "POHON": 0.0001
+          },
+          "applied_caps": [
+            {
+              "name": "ceiling_92",
+              "before": 0.9241474677652239,
+              "after": 0.92,
+              "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."
+            }
+          ]
+        },
+        {
+          "analysis_id": "analysis-id-04",
+          "incident_record_id": "analysis-id-05",
+          "top_hypothesis": "PETIR",
+          "confidence": 0.92,
+          "cause_ranking": [
+            {
+              "cause": "PETIR",
+              "label": "Petir / Lightning",
+              "confidence": 0.92
+            },
+            {
+              "cause": "BENDA_ASING",
+              "label": "Benda Asing",
+              "confidence": 0.075
+            },
+            {
+              "cause": "HEWAN",
+              "label": "Hewan / Binatang",
+              "confidence": 0.001
+            },
+            {
+              "cause": "KONDUKTOR",
+              "label": "Konduktor / Tower",
+              "confidence": 0.0
+            },
+            {
+              "cause": "LAYANG",
+              "label": "Layang-Layang / Kite",
+              "confidence": 0.0
+            },
+            {
+              "cause": "PERALATAN",
+              "label": "Peralatan Rusak / Anomali Proteksi",
+              "confidence": 0.0
+            },
+            {
+              "cause": "POHON",
+              "label": "Pohon / Vegetasi",
+              "confidence": 0.0
+            }
+          ],
+          "model_version": "untrained+a6c3e8ed7b41",
+          "feature_version": "v1.2025-04",
+          "calibration_method": "temperature_T1.5",
+          "timing_source": "current_derivative",
+          "timing_confidence": 0.8,
+          "raw_probabilities": {
+            "BENDA_ASING": 0.0225,
+            "HEWAN": 0.0,
+            "KONDUKTOR": 0.0,
+            "LAYANG": 0.0,
+            "PERALATAN": 0.0,
+            "PETIR": 0.9775,
+            "POHON": 0.0
+          },
+          "calibrated_probabilities": {
+            "BENDA_ASING": 0.0747,
+            "HEWAN": 0.0006,
+            "KONDUKTOR": 0.0003,
+            "LAYANG": 0.0,
+            "PERALATAN": 0.0001,
+            "PETIR": 0.9241,
+            "POHON": 0.0001
+          },
+          "applied_caps": [
+            {
+              "name": "ceiling_92",
+              "before": 0.9241432019456871,
+              "after": 0.92,
+              "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."
+            }
+          ]
+        }
+      ],
+      "consistency": "CONSISTENT",
+      "incident_root_cause": "UNCONFIRMED"
+    },
+    "narrative": "2 COMTRADE records from the same bay were reconstructed into 2 fault episodes.\n\nEpisode 1 was a single-line-to-ground (A fault).\nEpisode 2 was a single-line-to-ground (A fault). This episode has an uncertain relationship to the previous episode.\n\nThe per-record physical-cause signatures are consistent with each other.\nThe physical initiating cause remains unconfirmed from local COMTRADE evidence alone; external evidence (field inspection, lightning detection, protection engineer review) is needed to confirm it.",
+    "record_snapshot_versions": [
+      {
+        "analysis_id": "analysis-id-02",
+        "incident_record_id": "analysis-id-03",
+        "canonical_schema_version": "stage0",
+        "model_version": null,
+        "feature_version": null,
+        "timing_source": "current_derivative"
+      },
+      {
+        "analysis_id": "analysis-id-04",
+        "incident_record_id": "analysis-id-05",
+        "canonical_schema_version": "stage0",
+        "model_version": null,
+        "feature_version": null,
+        "timing_source": "current_derivative"
+      }
+    ],
+    "is_latest": true,
+    "supersedes": null,
+    "created_at": "2026-07-13T09:33:45.785286+00:00",
+    "timeline": [
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-1",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-03",
+        "episode_id": null,
+        "event_type": "RECORD_START",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": 0.0,
+        "source": "canonical_event_window",
+        "label": "Record start (record1.cfg+record1.dat)",
+        "details": {
+          "analysis_id": "analysis-id-02"
+        },
+        "confidence": 0.0,
+        "provenance": {
+          "analysis_id": "analysis-id-02",
+          "incident_record_id": "analysis-id-03",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-10",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-05",
+        "episode_id": null,
+        "event_type": "CLOCK_WARNING",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": null,
+        "source": "canonical_data_quality",
+        "label": "Fault clearing evidence not available - duration left unset rather than guessed",
+        "details": {},
+        "confidence": 0.5,
+        "provenance": {
+          "analysis_id": "analysis-id-04",
+          "incident_record_id": "analysis-id-05",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-2",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-03",
+        "episode_id": null,
+        "event_type": "FAULT_INCEPTION",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": 300.00001192092896,
+        "source": "canonical_event_window",
+        "label": "Fault inception (A)",
+        "details": {
+          "faulted_phases": [
+            "A"
+          ]
+        },
+        "confidence": 0.8,
+        "provenance": {
+          "analysis_id": "analysis-id-02",
+          "incident_record_id": "analysis-id-03",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-3",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-03",
+        "episode_id": null,
+        "event_type": "CLOCK_WARNING",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": null,
+        "source": "canonical_data_quality",
+        "label": "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+        "details": {},
+        "confidence": 0.5,
+        "provenance": {
+          "analysis_id": "analysis-id-02",
+          "incident_record_id": "analysis-id-03",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-4",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-03",
+        "episode_id": null,
+        "event_type": "CLOCK_WARNING",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": null,
+        "source": "canonical_data_quality",
+        "label": "No voltage channels present - timing/impedance evidence is current-only",
+        "details": {},
+        "confidence": 0.5,
+        "provenance": {
+          "analysis_id": "analysis-id-02",
+          "incident_record_id": "analysis-id-03",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-5",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-03",
+        "episode_id": null,
+        "event_type": "CLOCK_WARNING",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": null,
+        "source": "canonical_data_quality",
+        "label": "Fault clearing evidence not available - duration left unset rather than guessed",
+        "details": {},
+        "confidence": 0.5,
+        "provenance": {
+          "analysis_id": "analysis-id-02",
+          "incident_record_id": "analysis-id-03",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-6",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-05",
+        "episode_id": null,
+        "event_type": "RECORD_START",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": 0.0,
+        "source": "canonical_event_window",
+        "label": "Record start (record2.cfg+record2.dat)",
+        "details": {
+          "analysis_id": "analysis-id-04"
+        },
+        "confidence": 0.0,
+        "provenance": {
+          "analysis_id": "analysis-id-04",
+          "incident_record_id": "analysis-id-05",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-7",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-05",
+        "episode_id": null,
+        "event_type": "FAULT_INCEPTION",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": 500.0,
+        "source": "canonical_event_window",
+        "label": "Fault inception (A)",
+        "details": {
+          "faulted_phases": [
+            "A"
+          ]
+        },
+        "confidence": 0.8,
+        "provenance": {
+          "analysis_id": "analysis-id-04",
+          "incident_record_id": "analysis-id-05",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-8",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-05",
+        "episode_id": null,
+        "event_type": "CLOCK_WARNING",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": null,
+        "source": "canonical_data_quality",
+        "label": "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+        "details": {},
+        "confidence": 0.5,
+        "provenance": {
+          "analysis_id": "analysis-id-04",
+          "incident_record_id": "analysis-id-05",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      },
+      {
+        "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-9",
+        "incident_id": "analysis-id-01",
+        "incident_record_id": "analysis-id-05",
+        "episode_id": null,
+        "event_type": "CLOCK_WARNING",
+        "absolute_time_iso": null,
+        "relative_incident_ms": null,
+        "relative_record_ms": null,
+        "source": "canonical_data_quality",
+        "label": "No voltage channels present - timing/impedance evidence is current-only",
+        "details": {},
+        "confidence": 0.5,
+        "provenance": {
+          "analysis_id": "analysis-id-04",
+          "incident_record_id": "analysis-id-05",
+          "canonical_schema_version": "stage0",
+          "timing_source": "current_derivative"
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "relationship_id": "71856af03962405d8c0312d4aecfacc4-11",
+        "incident_id": "analysis-id-01",
+        "left_record_id": "analysis-id-03",
+        "right_record_id": "analysis-id-05",
+        "relationship_type": "UNCERTAIN",
+        "confidence": 0.3,
+        "evidence_for": [],
+        "evidence_against": [],
+        "assumptions": [
+          "Temporal gap is unknown; classification relies on record order and fault-signature evidence only."
+        ],
+        "warnings": [
+          {
+            "type": "NO_ABSOLUTE_TIME",
+            "description": "At least one record lacks absolute time; relationship relies on order and signature only."
+          }
+        ],
+        "metrics": {
+          "waveform_similarity": {
+            "computed": false,
+            "reason": "missing_absolute_time"
+          },
+          "digital_sequence_similarity": 1.0
+        },
+        "overridden": false,
+        "override_operator": null,
+        "override_reason": null,
+        "override_previous_type": null,
+        "override_at_iso": null,
+        "reconstruction_version": null
+      }
+    ],
+    "episodes": [
+      {
+        "episode_id": "71856af03962405d8c0312d4aecfacc4-12",
+        "incident_id": "analysis-id-01",
+        "member_record_ids": [
+          "analysis-id-03"
+        ],
+        "episode_index": 0,
+        "start_iso": null,
+        "end_iso": null,
+        "duration_ms": null,
+        "faulted_phases": [
+          "A"
+        ],
+        "fault_type": "SLG",
+        "zone_operations": [],
+        "trip_types": [],
+        "reclose_outcome": null,
+        "electrical_summary": {},
+        "local_cause_hypotheses": [
+          {
+            "analysis_id": "analysis-id-02",
+            "top_hypothesis": "PETIR",
+            "confidence": 0.92,
+            "cause_ranking": [
+              {
+                "cause": "PETIR",
+                "label": "Petir / Lightning",
+                "confidence": 0.92
+              },
+              {
+                "cause": "BENDA_ASING",
+                "label": "Benda Asing",
+                "confidence": 0.075
+              },
+              {
+                "cause": "HEWAN",
+                "label": "Hewan / Binatang",
+                "confidence": 0.001
+              },
+              {
+                "cause": "KONDUKTOR",
+                "label": "Konduktor / Tower",
+                "confidence": 0.0
+              },
+              {
+                "cause": "LAYANG",
+                "label": "Layang-Layang / Kite",
+                "confidence": 0.0
+              },
+              {
+                "cause": "PERALATAN",
+                "label": "Peralatan Rusak / Anomali Proteksi",
+                "confidence": 0.0
+              },
+              {
+                "cause": "POHON",
+                "label": "Pohon / Vegetasi",
+                "confidence": 0.0
+              }
+            ],
+            "model_version": "untrained+a6c3e8ed7b41",
+            "timing_source": "current_derivative",
+            "scope": "RECORD_LOCAL_SIGNATURE"
+          }
+        ],
+        "relationship_to_previous": null,
+        "confidence": 0.8,
+        "observed_facts": {
+          "member_record_ids": [
+            "analysis-id-03"
+          ],
+          "faulted_phases": [
+            "A"
+          ],
+          "reclose_outcome": null
+        },
+        "interpretation": {
+          "event_classes": [
+            "FAULT_EVENT"
+          ]
+        },
+        "missing_evidence": [
+          {
+            "type": "NO_ABSOLUTE_TIME",
+            "description": "No member record has an absolute timestamp for this episode."
+          }
+        ],
+        "provenance": {
+          "member_analysis_ids": [
+            "analysis-id-02"
+          ]
+        }
+      },
+      {
+        "episode_id": "71856af03962405d8c0312d4aecfacc4-13",
+        "incident_id": "analysis-id-01",
+        "member_record_ids": [
+          "analysis-id-05"
+        ],
+        "episode_index": 1,
+        "start_iso": null,
+        "end_iso": null,
+        "duration_ms": null,
+        "faulted_phases": [
+          "A"
+        ],
+        "fault_type": "SLG",
+        "zone_operations": [],
+        "trip_types": [],
+        "reclose_outcome": null,
+        "electrical_summary": {},
+        "local_cause_hypotheses": [
+          {
+            "analysis_id": "analysis-id-04",
+            "top_hypothesis": "PETIR",
+            "confidence": 0.92,
+            "cause_ranking": [
+              {
+                "cause": "PETIR",
+                "label": "Petir / Lightning",
+                "confidence": 0.92
+              },
+              {
+                "cause": "BENDA_ASING",
+                "label": "Benda Asing",
+                "confidence": 0.075
+              },
+              {
+                "cause": "HEWAN",
+                "label": "Hewan / Binatang",
+                "confidence": 0.001
+              },
+              {
+                "cause": "KONDUKTOR",
+                "label": "Konduktor / Tower",
+                "confidence": 0.0
+              },
+              {
+                "cause": "LAYANG",
+                "label": "Layang-Layang / Kite",
+                "confidence": 0.0
+              },
+              {
+                "cause": "PERALATAN",
+                "label": "Peralatan Rusak / Anomali Proteksi",
+                "confidence": 0.0
+              },
+              {
+                "cause": "POHON",
+                "label": "Pohon / Vegetasi",
+                "confidence": 0.0
+              }
+            ],
+            "model_version": "untrained+a6c3e8ed7b41",
+            "timing_source": "current_derivative",
+            "scope": "RECORD_LOCAL_SIGNATURE"
+          }
+        ],
+        "relationship_to_previous": "UNCERTAIN",
+        "confidence": 0.8,
+        "observed_facts": {
+          "member_record_ids": [
+            "analysis-id-05"
+          ],
+          "faulted_phases": [
+            "A"
+          ],
+          "reclose_outcome": null
+        },
+        "interpretation": {
+          "event_classes": [
+            "FAULT_EVENT"
+          ]
+        },
+        "missing_evidence": [
+          {
+            "type": "NO_ABSOLUTE_TIME",
+            "description": "No member record has an absolute timestamp for this episode."
+          }
+        ],
+        "provenance": {
+          "member_analysis_ids": [
+            "analysis-id-04"
+          ]
+        }
+      }
+    ]
+  },
+  "reconstructions": [
+    {
+      "reconstruction_id": "analysis-id-06",
+      "incident_id": "analysis-id-01",
+      "engine_version": "stage2.0",
+      "schema_version": "stage2",
+      "same_bay_status": "CONFIRMED_SAME_BAY",
+      "same_bay_evidence": [
+        {
+          "type": "EXPLICIT_BAY_NAME",
+          "description": "Incident bay name 'BAY 1' provided by user."
+        },
+        {
+          "type": "STATION_NAME_CONSISTENT",
+          "description": "All records agree with incident station 'GOLDEN TEST'."
+        },
+        {
+          "type": "DIFFERENT_RELAY_IDS",
+          "description": "Records come from different relay/device ids: ['RELAY_21', 'RELAY_87L'] — consistent with same-bay multi-relay capture (e.g. distance + differential)."
+        }
+      ],
+      "same_bay_override": null,
+      "alignment": {
+        "status": "ORDER_ONLY",
+        "confidence": 0.2,
+        "order_source": "UPLOAD_ORDER",
+        "record_order": [
+          "analysis-id-03",
+          "analysis-id-05"
+        ],
+        "pairwise_gaps_ms": [],
+        "overlap_groups": [],
+        "warnings": [
+          {
+            "type": "NO_ABSOLUTE_TIME_AVAILABLE",
+            "description": "No record in this incident carries an absolute (wall-clock) timestamp. Ordering reflects upload/manual order only."
+          }
+        ],
+        "assumptions": [
+          "Record order does not reflect verified chronology; treat sequence as provisional."
+        ]
+      },
+      "timeline_event_ids": [
+        "71856af03962405d8c0312d4aecfacc4-1",
+        "71856af03962405d8c0312d4aecfacc4-2",
+        "71856af03962405d8c0312d4aecfacc4-3",
+        "71856af03962405d8c0312d4aecfacc4-4",
+        "71856af03962405d8c0312d4aecfacc4-5",
+        "71856af03962405d8c0312d4aecfacc4-6",
+        "71856af03962405d8c0312d4aecfacc4-7",
+        "71856af03962405d8c0312d4aecfacc4-8",
+        "71856af03962405d8c0312d4aecfacc4-9",
+        "71856af03962405d8c0312d4aecfacc4-10"
+      ],
+      "relationship_ids": [
+        "71856af03962405d8c0312d4aecfacc4-11"
+      ],
+      "episode_ids": [
+        "71856af03962405d8c0312d4aecfacc4-12",
+        "71856af03962405d8c0312d4aecfacc4-13"
+      ],
+      "observed_incident_facts": {
+        "record_count": 2,
+        "episode_count": 2,
+        "incident_duration_ms": null,
+        "phase_sequence": [
+          [
+            "A"
+          ],
+          [
+            "A"
+          ]
+        ],
+        "reclose_sequence": [
+          null,
+          null
+        ]
+      },
+      "protection_sequence_interpretation": {
+        "event_class": "MULTIPLE_EPISODES_MIXED_RELATIONSHIP",
+        "summary": "2 fault episodes were reconstructed with mixed relationships between them; see per-episode relationship_to_previous for detail."
+      },
+      "incident_hypotheses": [],
+      "physical_cause_evidence": {
+        "scope": "RECORD_LOCAL_SIGNATURES",
+        "records": [
+          {
+            "analysis_id": "analysis-id-02",
+            "incident_record_id": "analysis-id-03",
+            "top_hypothesis": "PETIR",
+            "confidence": 0.92,
+            "cause_ranking": [
+              {
+                "cause": "PETIR",
+                "label": "Petir / Lightning",
+                "confidence": 0.92
+              },
+              {
+                "cause": "BENDA_ASING",
+                "label": "Benda Asing",
+                "confidence": 0.075
+              },
+              {
+                "cause": "HEWAN",
+                "label": "Hewan / Binatang",
+                "confidence": 0.001
+              },
+              {
+                "cause": "KONDUKTOR",
+                "label": "Konduktor / Tower",
+                "confidence": 0.0
+              },
+              {
+                "cause": "LAYANG",
+                "label": "Layang-Layang / Kite",
+                "confidence": 0.0
+              },
+              {
+                "cause": "PERALATAN",
+                "label": "Peralatan Rusak / Anomali Proteksi",
+                "confidence": 0.0
+              },
+              {
+                "cause": "POHON",
+                "label": "Pohon / Vegetasi",
+                "confidence": 0.0
+              }
+            ],
+            "model_version": "untrained+a6c3e8ed7b41",
+            "feature_version": "v1.2025-04",
+            "calibration_method": "temperature_T1.5",
+            "timing_source": "current_derivative",
+            "timing_confidence": 0.8,
+            "raw_probabilities": {
+              "BENDA_ASING": 0.0225,
+              "HEWAN": 0.0,
+              "KONDUKTOR": 0.0,
+              "LAYANG": 0.0,
+              "PERALATAN": 0.0,
+              "PETIR": 0.9775,
+              "POHON": 0.0
+            },
+            "calibrated_probabilities": {
+              "BENDA_ASING": 0.0747,
+              "HEWAN": 0.0006,
+              "KONDUKTOR": 0.0003,
+              "LAYANG": 0.0,
+              "PERALATAN": 0.0001,
+              "PETIR": 0.9241,
+              "POHON": 0.0001
+            },
+            "applied_caps": [
+              {
+                "name": "ceiling_92",
+                "before": 0.9241474677652239,
+                "after": 0.92,
+                "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."
+              }
+            ]
+          },
+          {
+            "analysis_id": "analysis-id-04",
+            "incident_record_id": "analysis-id-05",
+            "top_hypothesis": "PETIR",
+            "confidence": 0.92,
+            "cause_ranking": [
+              {
+                "cause": "PETIR",
+                "label": "Petir / Lightning",
+                "confidence": 0.92
+              },
+              {
+                "cause": "BENDA_ASING",
+                "label": "Benda Asing",
+                "confidence": 0.075
+              },
+              {
+                "cause": "HEWAN",
+                "label": "Hewan / Binatang",
+                "confidence": 0.001
+              },
+              {
+                "cause": "KONDUKTOR",
+                "label": "Konduktor / Tower",
+                "confidence": 0.0
+              },
+              {
+                "cause": "LAYANG",
+                "label": "Layang-Layang / Kite",
+                "confidence": 0.0
+              },
+              {
+                "cause": "PERALATAN",
+                "label": "Peralatan Rusak / Anomali Proteksi",
+                "confidence": 0.0
+              },
+              {
+                "cause": "POHON",
+                "label": "Pohon / Vegetasi",
+                "confidence": 0.0
+              }
+            ],
+            "model_version": "untrained+a6c3e8ed7b41",
+            "feature_version": "v1.2025-04",
+            "calibration_method": "temperature_T1.5",
+            "timing_source": "current_derivative",
+            "timing_confidence": 0.8,
+            "raw_probabilities": {
+              "BENDA_ASING": 0.0225,
+              "HEWAN": 0.0,
+              "KONDUKTOR": 0.0,
+              "LAYANG": 0.0,
+              "PERALATAN": 0.0,
+              "PETIR": 0.9775,
+              "POHON": 0.0
+            },
+            "calibrated_probabilities": {
+              "BENDA_ASING": 0.0747,
+              "HEWAN": 0.0006,
+              "KONDUKTOR": 0.0003,
+              "LAYANG": 0.0,
+              "PERALATAN": 0.0001,
+              "PETIR": 0.9241,
+              "POHON": 0.0001
+            },
+            "applied_caps": [
+              {
+                "name": "ceiling_92",
+                "before": 0.9241432019456871,
+                "after": 0.92,
+                "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."
+              }
+            ]
+          }
+        ],
+        "consistency": "CONSISTENT",
+        "incident_root_cause": "UNCONFIRMED"
+      },
+      "narrative": "2 COMTRADE records from the same bay were reconstructed into 2 fault episodes.\n\nEpisode 1 was a single-line-to-ground (A fault).\nEpisode 2 was a single-line-to-ground (A fault). This episode has an uncertain relationship to the previous episode.\n\nThe per-record physical-cause signatures are consistent with each other.\nThe physical initiating cause remains unconfirmed from local COMTRADE evidence alone; external evidence (field inspection, lightning detection, protection engineer review) is needed to confirm it.",
+      "record_snapshot_versions": [
+        {
+          "analysis_id": "analysis-id-02",
+          "incident_record_id": "analysis-id-03",
+          "canonical_schema_version": "stage0",
+          "model_version": null,
+          "feature_version": null,
+          "timing_source": "current_derivative"
+        },
+        {
+          "analysis_id": "analysis-id-04",
+          "incident_record_id": "analysis-id-05",
+          "canonical_schema_version": "stage0",
+          "model_version": null,
+          "feature_version": null,
+          "timing_source": "current_derivative"
+        }
+      ],
+      "is_latest": true,
+      "supersedes": null,
+      "created_at": "2026-07-13T09:33:45.785286+00:00"
+    }
+  ],
+  "timeline": [
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-1",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-03",
+      "episode_id": null,
+      "event_type": "RECORD_START",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": 0.0,
+      "source": "canonical_event_window",
+      "label": "Record start (record1.cfg+record1.dat)",
+      "details": {
+        "analysis_id": "analysis-id-02"
+      },
+      "confidence": 0.0,
+      "provenance": {
+        "analysis_id": "analysis-id-02",
+        "incident_record_id": "analysis-id-03",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-10",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-05",
+      "episode_id": null,
+      "event_type": "CLOCK_WARNING",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": null,
+      "source": "canonical_data_quality",
+      "label": "Fault clearing evidence not available - duration left unset rather than guessed",
+      "details": {},
+      "confidence": 0.5,
+      "provenance": {
+        "analysis_id": "analysis-id-04",
+        "incident_record_id": "analysis-id-05",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-2",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-03",
+      "episode_id": null,
+      "event_type": "FAULT_INCEPTION",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": 300.00001192092896,
+      "source": "canonical_event_window",
+      "label": "Fault inception (A)",
+      "details": {
+        "faulted_phases": [
+          "A"
+        ]
+      },
+      "confidence": 0.8,
+      "provenance": {
+        "analysis_id": "analysis-id-02",
+        "incident_record_id": "analysis-id-03",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-3",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-03",
+      "episode_id": null,
+      "event_type": "CLOCK_WARNING",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": null,
+      "source": "canonical_data_quality",
+      "label": "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+      "details": {},
+      "confidence": 0.5,
+      "provenance": {
+        "analysis_id": "analysis-id-02",
+        "incident_record_id": "analysis-id-03",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-4",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-03",
+      "episode_id": null,
+      "event_type": "CLOCK_WARNING",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": null,
+      "source": "canonical_data_quality",
+      "label": "No voltage channels present - timing/impedance evidence is current-only",
+      "details": {},
+      "confidence": 0.5,
+      "provenance": {
+        "analysis_id": "analysis-id-02",
+        "incident_record_id": "analysis-id-03",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-5",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-03",
+      "episode_id": null,
+      "event_type": "CLOCK_WARNING",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": null,
+      "source": "canonical_data_quality",
+      "label": "Fault clearing evidence not available - duration left unset rather than guessed",
+      "details": {},
+      "confidence": 0.5,
+      "provenance": {
+        "analysis_id": "analysis-id-02",
+        "incident_record_id": "analysis-id-03",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-6",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-05",
+      "episode_id": null,
+      "event_type": "RECORD_START",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": 0.0,
+      "source": "canonical_event_window",
+      "label": "Record start (record2.cfg+record2.dat)",
+      "details": {
+        "analysis_id": "analysis-id-04"
+      },
+      "confidence": 0.0,
+      "provenance": {
+        "analysis_id": "analysis-id-04",
+        "incident_record_id": "analysis-id-05",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-7",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-05",
+      "episode_id": null,
+      "event_type": "FAULT_INCEPTION",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": 500.0,
+      "source": "canonical_event_window",
+      "label": "Fault inception (A)",
+      "details": {
+        "faulted_phases": [
+          "A"
+        ]
+      },
+      "confidence": 0.8,
+      "provenance": {
+        "analysis_id": "analysis-id-04",
+        "incident_record_id": "analysis-id-05",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-8",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-05",
+      "episode_id": null,
+      "event_type": "CLOCK_WARNING",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": null,
+      "source": "canonical_data_quality",
+      "label": "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+      "details": {},
+      "confidence": 0.5,
+      "provenance": {
+        "analysis_id": "analysis-id-04",
+        "incident_record_id": "analysis-id-05",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    },
+    {
+      "timeline_event_id": "71856af03962405d8c0312d4aecfacc4-9",
+      "incident_id": "analysis-id-01",
+      "incident_record_id": "analysis-id-05",
+      "episode_id": null,
+      "event_type": "CLOCK_WARNING",
+      "absolute_time_iso": null,
+      "relative_incident_ms": null,
+      "relative_record_ms": null,
+      "source": "canonical_data_quality",
+      "label": "No voltage channels present - timing/impedance evidence is current-only",
+      "details": {},
+      "confidence": 0.5,
+      "provenance": {
+        "analysis_id": "analysis-id-04",
+        "incident_record_id": "analysis-id-05",
+        "canonical_schema_version": "stage0",
+        "timing_source": "current_derivative"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationship_id": "71856af03962405d8c0312d4aecfacc4-11",
+      "incident_id": "analysis-id-01",
+      "left_record_id": "analysis-id-03",
+      "right_record_id": "analysis-id-05",
+      "relationship_type": "UNCERTAIN",
+      "confidence": 0.3,
+      "evidence_for": [],
+      "evidence_against": [],
+      "assumptions": [
+        "Temporal gap is unknown; classification relies on record order and fault-signature evidence only."
+      ],
+      "warnings": [
+        {
+          "type": "NO_ABSOLUTE_TIME",
+          "description": "At least one record lacks absolute time; relationship relies on order and signature only."
+        }
+      ],
+      "metrics": {
+        "waveform_similarity": {
+          "computed": false,
+          "reason": "missing_absolute_time"
+        },
+        "digital_sequence_similarity": 1.0
+      },
+      "overridden": false,
+      "override_operator": null,
+      "override_reason": null,
+      "override_previous_type": null,
+      "override_at_iso": null,
+      "reconstruction_version": null
+    }
+  ],
+  "episodes": [
+    {
+      "episode_id": "71856af03962405d8c0312d4aecfacc4-12",
+      "incident_id": "analysis-id-01",
+      "member_record_ids": [
+        "analysis-id-03"
+      ],
+      "episode_index": 0,
+      "start_iso": null,
+      "end_iso": null,
+      "duration_ms": null,
+      "faulted_phases": [
+        "A"
+      ],
+      "fault_type": "SLG",
+      "zone_operations": [],
+      "trip_types": [],
+      "reclose_outcome": null,
+      "electrical_summary": {},
+      "local_cause_hypotheses": [
+        {
+          "analysis_id": "analysis-id-02",
+          "top_hypothesis": "PETIR",
+          "confidence": 0.92,
+          "cause_ranking": [
+            {
+              "cause": "PETIR",
+              "label": "Petir / Lightning",
+              "confidence": 0.92
+            },
+            {
+              "cause": "BENDA_ASING",
+              "label": "Benda Asing",
+              "confidence": 0.075
+            },
+            {
+              "cause": "HEWAN",
+              "label": "Hewan / Binatang",
+              "confidence": 0.001
+            },
+            {
+              "cause": "KONDUKTOR",
+              "label": "Konduktor / Tower",
+              "confidence": 0.0
+            },
+            {
+              "cause": "LAYANG",
+              "label": "Layang-Layang / Kite",
+              "confidence": 0.0
+            },
+            {
+              "cause": "PERALATAN",
+              "label": "Peralatan Rusak / Anomali Proteksi",
+              "confidence": 0.0
+            },
+            {
+              "cause": "POHON",
+              "label": "Pohon / Vegetasi",
+              "confidence": 0.0
+            }
+          ],
+          "model_version": "untrained+a6c3e8ed7b41",
+          "timing_source": "current_derivative",
+          "scope": "RECORD_LOCAL_SIGNATURE"
+        }
+      ],
+      "relationship_to_previous": null,
+      "confidence": 0.8,
+      "observed_facts": {
+        "member_record_ids": [
+          "analysis-id-03"
+        ],
+        "faulted_phases": [
+          "A"
+        ],
+        "reclose_outcome": null
+      },
+      "interpretation": {
+        "event_classes": [
+          "FAULT_EVENT"
+        ]
+      },
+      "missing_evidence": [
+        {
+          "type": "NO_ABSOLUTE_TIME",
+          "description": "No member record has an absolute timestamp for this episode."
+        }
+      ],
+      "provenance": {
+        "member_analysis_ids": [
+          "analysis-id-02"
+        ]
+      }
+    },
+    {
+      "episode_id": "71856af03962405d8c0312d4aecfacc4-13",
+      "incident_id": "analysis-id-01",
+      "member_record_ids": [
+        "analysis-id-05"
+      ],
+      "episode_index": 1,
+      "start_iso": null,
+      "end_iso": null,
+      "duration_ms": null,
+      "faulted_phases": [
+        "A"
+      ],
+      "fault_type": "SLG",
+      "zone_operations": [],
+      "trip_types": [],
+      "reclose_outcome": null,
+      "electrical_summary": {},
+      "local_cause_hypotheses": [
+        {
+          "analysis_id": "analysis-id-04",
+          "top_hypothesis": "PETIR",
+          "confidence": 0.92,
+          "cause_ranking": [
+            {
+              "cause": "PETIR",
+              "label": "Petir / Lightning",
+              "confidence": 0.92
+            },
+            {
+              "cause": "BENDA_ASING",
+              "label": "Benda Asing",
+              "confidence": 0.075
+            },
+            {
+              "cause": "HEWAN",
+              "label": "Hewan / Binatang",
+              "confidence": 0.001
+            },
+            {
+              "cause": "KONDUKTOR",
+              "label": "Konduktor / Tower",
+              "confidence": 0.0
+            },
+            {
+              "cause": "LAYANG",
+              "label": "Layang-Layang / Kite",
+              "confidence": 0.0
+            },
+            {
+              "cause": "PERALATAN",
+              "label": "Peralatan Rusak / Anomali Proteksi",
+              "confidence": 0.0
+            },
+            {
+              "cause": "POHON",
+              "label": "Pohon / Vegetasi",
+              "confidence": 0.0
+            }
+          ],
+          "model_version": "untrained+a6c3e8ed7b41",
+          "timing_source": "current_derivative",
+          "scope": "RECORD_LOCAL_SIGNATURE"
+        }
+      ],
+      "relationship_to_previous": "UNCERTAIN",
+      "confidence": 0.8,
+      "observed_facts": {
+        "member_record_ids": [
+          "analysis-id-05"
+        ],
+        "faulted_phases": [
+          "A"
+        ],
+        "reclose_outcome": null
+      },
+      "interpretation": {
+        "event_classes": [
+          "FAULT_EVENT"
+        ]
+      },
+      "missing_evidence": [
+        {
+          "type": "NO_ABSOLUTE_TIME",
+          "description": "No member record has an absolute timestamp for this episode."
+        }
+      ],
+      "provenance": {
+        "member_analysis_ids": [
+          "analysis-id-04"
+        ]
+      }
+    }
+  ],
+  "records": [
+    {
+      "incident_record_id": "analysis-id-03",
+      "incident_id": "analysis-id-01",
+      "analysis_id": "analysis-id-02",
+      "source_filename": "record1.cfg+record1.dat",
+      "station_name": "GOLDEN TEST",
+      "bay_name": null,
+      "relay_id": "RELAY_21",
+      "relay_model": null,
+      "protection_type": null,
+      "record_start_iso": null,
+      "trigger_time_iso": null,
+      "trigger_offset_s": 0.0,
+      "sequence_index": 0,
+      "manual_order": null,
+      "order_source": "UPLOAD_ORDER",
+      "attachment_role": "UNKNOWN",
+      "inclusion_status": "INCLUDED",
+      "exclusion_reason": null,
+      "canonical_snapshot": {
+        "record_id": "analysis-id-02",
+        "source_metadata": {
+          "station_name": "GOLDEN TEST",
+          "rec_dev_id": "RELAY_21",
+          "rev_year": "1999",
+          "frequency": 50.0,
+          "total_samples": 1200,
+          "trigger_time_s": 0.0,
+          "start_time_iso": null,
+          "trigger_time_iso": null,
+          "trigger_offset_s": 0.0,
+          "time_code": "0",
+          "local_code": "0",
+          "clock_quality": "0"
+        },
+        "data_quality": {
+          "has_voltage_channels": false,
+          "has_current_channels": true,
+          "has_digital_channels": true,
+          "current_only": true,
+          "analog_channel_count": 3,
+          "status_channel_count": 1,
+          "parser_warnings": [
+            "Absolute COMTRADE start/trigger timestamp not available - timing is relative only"
+          ],
+          "timing_warnings": [
+            "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+            "No voltage channels present - timing/impedance evidence is current-only",
+            "Fault clearing evidence not available - duration left unset rather than guessed"
+          ]
+        },
+        "event_window": {
+          "record_start_ms": 0.0,
+          "trigger_time_ms": null,
+          "inception_idx": 360,
+          "inception_time_ms": 300.00001192092896,
+          "clearing_idx": null,
+          "clearing_time_ms": null,
+          "fault_duration_ms": null,
+          "method": "current_derivative",
+          "timing_source": "current_derivative",
+          "confidence": 0.8,
+          "faulted_phases": [
+            "A"
+          ],
+          "reclose_events": [],
+          "warnings": [
+            "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+            "No voltage channels present - timing/impedance evidence is current-only",
+            "Fault clearing evidence not available - duration left unset rather than guessed"
+          ]
+        },
+        "fault_episodes": [
+          {
+            "episode_index": 0,
+            "inception_time_ms": 300.00001192092896,
+            "clearing_time_ms": null,
+            "fault_duration_ms": null,
+            "faulted_phases": [
+              "A"
+            ],
+            "detection_method": "current_derivative",
+            "confidence": 0.8,
+            "reclose_events": []
+          }
+        ],
+        "protection_operations": [],
+        "electrical_measurements": {},
+        "observed_facts": {
+          "faulted_phases": [
+            "A"
+          ],
+          "reclose_attempted": false,
+          "reclose_events": []
+        },
+        "protection_interpretation": {
+          "event_class": "FAULT_EVENT",
+          "summary": "Fault detected from available waveform/status evidence."
+        },
+        "cause_hypotheses": [],
+        "missing_evidence": [
+          {
+            "type": "VOLTAGE_CHANNELS",
+            "description": "No voltage channels present - impedance/locus and voltage-sag evidence unavailable."
+          },
+          {
+            "type": "CLEARING_EVIDENCE",
+            "description": "Fault clearing time could not be determined from available evidence."
+          },
+          {
+            "type": "REMOTE_END_RECORD",
+            "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+          }
+        ],
+        "provenance": {
+          "timing_source": "current_derivative",
+          "timing_confidence": 0.8,
+          "no_fault_gate_reasons": [
+            "kanal proteksi beroperasi (TRIP/Op)",
+            "lonjakan arus 15.07× prefault",
+            "ketidakseimbangan urutan (I0/I1 71.5%, I2/I1 70.9%)"
+          ],
+          "schema_version": "stage0"
+        }
+      },
+      "attachment_warnings": [
+        {
+          "type": "NO_ABSOLUTE_TIME",
+          "description": "This record has no absolute (wall-clock) timestamp; ordering will rely on manual/upload order.",
+          "requires_review": false
+        }
+      ],
+      "created_at": "2026-07-13T09:33:45.021961+00:00"
+    },
+    {
+      "incident_record_id": "analysis-id-05",
+      "incident_id": "analysis-id-01",
+      "analysis_id": "analysis-id-04",
+      "source_filename": "record2.cfg+record2.dat",
+      "station_name": "GOLDEN TEST",
+      "bay_name": null,
+      "relay_id": "RELAY_87L",
+      "relay_model": null,
+      "protection_type": null,
+      "record_start_iso": null,
+      "trigger_time_iso": null,
+      "trigger_offset_s": 0.0,
+      "sequence_index": 1,
+      "manual_order": null,
+      "order_source": "UPLOAD_ORDER",
+      "attachment_role": "UNKNOWN",
+      "inclusion_status": "INCLUDED",
+      "exclusion_reason": null,
+      "canonical_snapshot": {
+        "record_id": "analysis-id-04",
+        "source_metadata": {
+          "station_name": "GOLDEN TEST",
+          "rec_dev_id": "RELAY_87L",
+          "rev_year": "1999",
+          "frequency": 50.0,
+          "total_samples": 1200,
+          "trigger_time_s": 0.0,
+          "start_time_iso": null,
+          "trigger_time_iso": null,
+          "trigger_offset_s": 0.0,
+          "time_code": "0",
+          "local_code": "0",
+          "clock_quality": "0"
+        },
+        "data_quality": {
+          "has_voltage_channels": false,
+          "has_current_channels": true,
+          "has_digital_channels": true,
+          "current_only": true,
+          "analog_channel_count": 3,
+          "status_channel_count": 1,
+          "parser_warnings": [
+            "Absolute COMTRADE start/trigger timestamp not available - timing is relative only"
+          ],
+          "timing_warnings": [
+            "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+            "No voltage channels present - timing/impedance evidence is current-only",
+            "Fault clearing evidence not available - duration left unset rather than guessed"
+          ]
+        },
+        "event_window": {
+          "record_start_ms": 0.0,
+          "trigger_time_ms": null,
+          "inception_idx": 600,
+          "inception_time_ms": 500.0,
+          "clearing_idx": null,
+          "clearing_time_ms": null,
+          "fault_duration_ms": null,
+          "method": "current_derivative",
+          "timing_source": "current_derivative",
+          "confidence": 0.8,
+          "faulted_phases": [
+            "A"
+          ],
+          "reclose_events": [],
+          "warnings": [
+            "Absolute COMTRADE start/trigger timestamp not available - timing is relative only",
+            "No voltage channels present - timing/impedance evidence is current-only",
+            "Fault clearing evidence not available - duration left unset rather than guessed"
+          ]
+        },
+        "fault_episodes": [
+          {
+            "episode_index": 0,
+            "inception_time_ms": 500.0,
+            "clearing_time_ms": null,
+            "fault_duration_ms": null,
+            "faulted_phases": [
+              "A"
+            ],
+            "detection_method": "current_derivative",
+            "confidence": 0.8,
+            "reclose_events": []
+          }
+        ],
+        "protection_operations": [],
+        "electrical_measurements": {},
+        "observed_facts": {
+          "faulted_phases": [
+            "A"
+          ],
+          "reclose_attempted": false,
+          "reclose_events": []
+        },
+        "protection_interpretation": {
+          "event_class": "FAULT_EVENT",
+          "summary": "Fault detected from available waveform/status evidence."
+        },
+        "cause_hypotheses": [],
+        "missing_evidence": [
+          {
+            "type": "VOLTAGE_CHANNELS",
+            "description": "No voltage channels present - impedance/locus and voltage-sag evidence unavailable."
+          },
+          {
+            "type": "CLEARING_EVIDENCE",
+            "description": "Fault clearing time could not be determined from available evidence."
+          },
+          {
+            "type": "REMOTE_END_RECORD",
+            "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+          }
+        ],
+        "provenance": {
+          "timing_source": "current_derivative",
+          "timing_confidence": 0.8,
+          "no_fault_gate_reasons": [
+            "kanal proteksi beroperasi (TRIP/Op)",
+            "lonjakan arus 15.07× prefault",
+            "ketidakseimbangan urutan (I0/I1 71.5%, I2/I1 70.9%)"
+          ],
+          "schema_version": "stage0"
+        }
+      },
+      "attachment_warnings": [
+        {
+          "type": "NO_ABSOLUTE_TIME",
+          "description": "This record has no absolute (wall-clock) timestamp; ordering will rely on manual/upload order.",
+          "requires_review": false
+        }
+      ],
+      "created_at": "2026-07-13T09:33:45.198259+00:00"
+    }
+  ]
+}

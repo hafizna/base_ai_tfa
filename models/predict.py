@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 
 warnings.filterwarnings("ignore")
 
@@ -817,8 +818,18 @@ def _load_model() -> Optional[dict]:
         return pickle.load(f)
 
 
-def _build_feature_vector(row: dict, feature_cols: list[str] | None = None) -> np.ndarray:
-    """Build the numpy feature vector expected by the Tier 2 multi-class classifier."""
+def _build_feature_vector(row: dict, feature_cols: list[str] | None = None) -> "pd.DataFrame":
+    """Build the feature row expected by the Tier 2 multi-class classifier.
+
+    Returns a single-row ``pandas.DataFrame`` with columns named and ordered
+    exactly as ``feature_cols`` (the same ``df[FEATURE_COLS]`` shape used in
+    ``models/train.py``) rather than a bare numpy array. LightGBM/sklearn
+    estimators fitted on a DataFrame remember their input feature names and
+    emit a UserWarning ("X does not have valid feature names...") when later
+    given an unnamed ndarray — passing a DataFrame here keeps the inference
+    input contract identical to training and removes that warning at the
+    source instead of suppressing it.
+    """
     di_dt  = float(row.get("di_dt_max", 0) or 0)
     peak_i = float(row.get("peak_fault_current_a", 0) or 0)
 
@@ -843,7 +854,7 @@ def _build_feature_vector(row: dict, feature_cols: list[str] | None = None) -> n
         "zone_enc": encode_zone(row.get("zone_operated", "")),
     }
     vec = [feature_map.get(col, float(row.get(col, 0) or 0)) for col in feature_cols]
-    return np.array(vec, dtype=float).reshape(1, -1)
+    return pd.DataFrame([vec], columns=feature_cols, dtype=float)
 
 
 _SOE_LOOP_PATTERNS = (

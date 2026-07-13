@@ -95,7 +95,7 @@ async function copyToClipboard(text: string) {
 
 export default function AIFaultResultView({
   result,
-  classificationTitle = "Cause Fingerprint",
+  classificationTitle = "Cause Hypotheses",
   evidenceTitle = "Diagnostic Notes",
   permanentLabel = "Permanent fault behavior",
   transientLabel = "Transient fault behavior",
@@ -134,13 +134,18 @@ export default function AIFaultResultView({
       ) : (
         <section className={styles.aiVerdictStrip}>
           <div className={styles.aiVerdictMain}>
-            <span className={styles.aiEyebrow}>Primary pattern</span>
+            <span className={styles.aiEyebrow}>Most consistent signature (hypothesis)</span>
             <div className={styles.aiVerdictTitle}>{topCause?.label ?? "No dominant cause"}</div>
             <div className={styles.aiVerdictMeta}>
               <span className={isPermanent ? styles.aiFaultPermanent : styles.aiFaultTransient}>
                 {isPermanent ? permanentLabel : transientLabel}
               </span>
               <span>{result.cause_ranking.length} ranked candidates</span>
+            </div>
+            <div className={styles.aiVerdictMeta}>
+              <span style={{ color: "#92400e" }}>
+                Hipotesis berbasis evidence lokal — belum tentu penyebab final. Verifikasi lapangan disarankan.
+              </span>
             </div>
           </div>
 
@@ -150,7 +155,7 @@ export default function AIFaultResultView({
             aria-label={`Overall confidence ${confidence.toFixed(0)}%`}
           >
             <span>{confidence.toFixed(0)}%</span>
-            <small>AI confidence</small>
+            <small>Pattern-match confidence</small>
           </div>
         </section>
       )}

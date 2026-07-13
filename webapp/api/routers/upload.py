@@ -15,6 +15,7 @@ from core.cff_parser import CffParseError, parse_cff_bytes
 from core.comtrade_parser import ComtradeRecord, parse_comtrade
 from core.protection_router import ProtectionType, determine_protection
 from ..json_safety import replace_non_finite_numbers
+from ..record_analysis import build_record_analysis
 from ..schemas import AnalysisCreatedResponse, AnalysisSummaryOut, ComtradeOut, RecalcByIdRequest
 from ..storage import load_analysis, save_analysis, update_analysis
 from ..training_retention import RetainedUploadFile, retain_upload
@@ -37,6 +38,12 @@ def _record_to_out(record: ComtradeRecord) -> dict:
         "rev_year": record.rev_year,
         "sampling_rates": record.sampling_rates,
         "trigger_time": record.trigger_time,
+        "start_time_iso": record.start_time_iso,
+        "trigger_time_iso": record.trigger_time_iso,
+        "trigger_offset_s": record.trigger_offset_s,
+        "time_code": record.time_code,
+        "local_code": record.local_code,
+        "clock_quality": record.clock_quality,
         "total_samples": record.total_samples,
         "frequency": record.frequency,
         "time": record.time.tolist(),
@@ -115,6 +122,12 @@ def _analysis_to_summary(analysis_id: str, payload: dict) -> AnalysisSummaryOut:
         rev_year=payload.get("rev_year", ""),
         sampling_rates=payload.get("sampling_rates", []),
         trigger_time=payload.get("trigger_time", 0.0),
+        start_time_iso=payload.get("start_time_iso"),
+        trigger_time_iso=payload.get("trigger_time_iso"),
+        trigger_offset_s=payload.get("trigger_offset_s", payload.get("trigger_time", 0.0)),
+        time_code=payload.get("time_code"),
+        local_code=payload.get("local_code"),
+        clock_quality=payload.get("clock_quality"),
         total_samples=payload.get("total_samples", 0),
         frequency=payload.get("frequency", 0.0),
         duration_ms=duration_ms,
@@ -309,6 +322,25 @@ async def get_analysis_summary(analysis_id: str):
     if payload is None:
         raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
     return _analysis_to_summary(analysis_id, payload)
+
+
+@router.get("/analysis/{analysis_id}/canonical")
+async def get_canonical_analysis(analysis_id: str):
+    """Stage 0 canonical single-record analysis.
+
+    Single source of truth for fault timing (inception/clearing/duration),
+    observed facts, protection interpretation, cause hypotheses, missing
+    evidence, and provenance for one COMTRADE record. Other endpoints
+    (fault-classification, electrical-params, locus-events, full-soe,
+    extract-features, ai-analysis) are expected to agree with the
+    ``event_window`` returned here.
+    """
+    payload = load_analysis(analysis_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Analysis session not found or expired.")
+    loop = asyncio.get_event_loop()
+    analysis = await loop.run_in_executor(None, build_record_analysis, analysis_id, payload)
+    return replace_non_finite_numbers(analysis.to_dict())
 
 
 @router.post("/recalculate-ratio")

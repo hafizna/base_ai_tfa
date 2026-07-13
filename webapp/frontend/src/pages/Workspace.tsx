@@ -22,6 +22,7 @@ import {
   type ReportChart,
   type ReportSoeEvent,
 } from "../api/client";
+import AddToIncidentModal from "../components/panels/AddToIncidentModal";
 import COMTRADEExplorer from "../components/panels/COMTRADEExplorer";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
 import TrainingFeedbackPanel from "../components/panels/TrainingFeedbackPanel";
@@ -118,6 +119,7 @@ export default function Workspace() {
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [ocrReportSettings, setOcrReportSettings] = useState<OCRReportSettings | null>(null);
+  const [showAddToIncident, setShowAddToIncident] = useState(false);
 
   useEffect(() => {
     if (!analysisId) return;
@@ -476,9 +478,22 @@ export default function Workspace() {
                 {isGeneratingPdf ? "Menyiapkan PDF…" : "📄 Download PDF Report"}
               </button>
             )}
+            {comtrade && currentAnalysisId && (
+              <button className={styles.printBtn} onClick={() => setShowAddToIncident(true)} type="button">
+                Add to Incident
+              </button>
+            )}
           </div>
         )}
       </header>
+
+      {showAddToIncident && currentAnalysisId && (
+        <AddToIncidentModal
+          analysisId={currentAnalysisId}
+          stationName={comtrade?.station_name}
+          onClose={() => setShowAddToIncident(false)}
+        />
+      )}
 
       <main className={styles.content}>
         {loading && <div className={styles.loadingState}>Loading waveforms...</div>}
@@ -527,7 +542,7 @@ export default function Workspace() {
                 {renderPrimaryAnalysisPanel()}
 
                 <PanelErrorBoundary label="COMTRADE Explorer">
-                  <COMTRADEExplorer comtrade={comtrade} />
+                  <COMTRADEExplorer comtrade={comtrade} analysisId={currentAnalysisId} />
                 </PanelErrorBoundary>
 
                 {renderRelayVisualPanel()}

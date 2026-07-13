@@ -4,9 +4,54 @@ import {
   downloadTrainingArchive,
   fetchTrainingStatus,
   submitTrainingFeedback,
+  type GroundTruthConfidence,
+  type GroundTruthSource,
   type TrainingStatus,
 } from "../../api/client";
 import styles from "./TrainingFeedbackPanel.module.css";
+
+const GROUND_TRUTH_SOURCE_OPTIONS: GroundTruthSource[] = [
+  "RELAY_EVENT_REPORT",
+  "OPERATOR_SOE",
+  "REMOTE_END_COMTRADE",
+  "DFR_RECORD",
+  "FIELD_INSPECTION",
+  "LIGHTNING_DETECTION",
+  "PATROL_REPORT",
+  "PROTECTION_ENGINEER_REVIEW",
+  "UNCONFIRMED_ASSUMPTION",
+  "OTHER",
+];
+
+const GROUND_TRUTH_CONFIDENCE_OPTIONS: GroundTruthConfidence[] = [
+  "CONFIRMED",
+  "PROBABLE",
+  "POSSIBLE",
+  "UNKNOWN",
+];
+
+/** Tri-state Correct/Wrong/Unset control for one correction layer. */
+function TriState({
+  value,
+  onChange,
+}: {
+  value: boolean | null;
+  onChange: (next: boolean | null) => void;
+}) {
+  return (
+    <div className={styles.miniSegmented}>
+      <button type="button" className={value === true ? styles.active : ""} onClick={() => onChange(true)}>
+        OK
+      </button>
+      <button type="button" className={value === false ? styles.active : ""} onClick={() => onChange(false)}>
+        Wrong
+      </button>
+      <button type="button" className={value === null ? styles.active : ""} onClick={() => onChange(null)}>
+        —
+      </button>
+    </div>
+  );
+}
 
 const TOKEN_KEY = "base_ai_tfa_training_admin_token";
 
@@ -81,6 +126,37 @@ export default function TrainingFeedbackPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Stage 0: per-layer ground-truth correction fields.
+  const [showCorrections, setShowCorrections] = useState(false);
+  const [parsingCorrect, setParsingCorrect] = useState<boolean | null>(null);
+  const [channelMappingCorrect, setChannelMappingCorrect] = useState<boolean | null>(null);
+  const [inceptionCorrect, setInceptionCorrect] = useState<boolean | null>(null);
+  const [correctedInceptionMs, setCorrectedInceptionMs] = useState("");
+  const [clearingCorrect, setClearingCorrect] = useState<boolean | null>(null);
+  const [correctedClearingMs, setCorrectedClearingMs] = useState("");
+  const [faultedPhasesCorrect, setFaultedPhasesCorrect] = useState<boolean | null>(null);
+  const [actualFaultedPhases, setActualFaultedPhases] = useState("");
+  const [faultTypeCorrect, setFaultTypeCorrect] = useState<boolean | null>(null);
+  const [actualFaultType, setActualFaultType] = useState("");
+  const [zoneCorrect, setZoneCorrect] = useState<boolean | null>(null);
+  const [actualZone, setActualZone] = useState("");
+  const [tripTypeCorrect, setTripTypeCorrect] = useState<boolean | null>(null);
+  const [actualTripType, setActualTripType] = useState("");
+  const [recloseCorrect, setRecloseCorrect] = useState<boolean | null>(null);
+  const [actualRecloseOutcome, setActualRecloseOutcome] = useState("");
+  const [segmentationCorrect, setSegmentationCorrect] = useState<boolean | null>(null);
+  const [actualEpisodeCount, setActualEpisodeCount] = useState("");
+  const [protectionInterpretationCorrect, setProtectionInterpretationCorrect] = useState<boolean | null>(null);
+  const [actualEventClass, setActualEventClass] = useState("");
+  const [causeCorrect, setCauseCorrect] = useState<boolean | null>(null);
+  const [actualCause, setActualCause] = useState("");
+  const [groundTruthSource, setGroundTruthSource] = useState<GroundTruthSource[]>([]);
+  const [groundTruthConfidence, setGroundTruthConfidence] = useState<GroundTruthConfidence>("UNKNOWN");
+
+  function toggleGroundTruthSource(src: GroundTruthSource) {
+    setGroundTruthSource((prev) => (prev.includes(src) ? prev.filter((s) => s !== src) : [...prev, src]));
+  }
+
   async function refreshStatus() {
     try {
       setStatus(await fetchTrainingStatus());
@@ -122,6 +198,33 @@ export default function TrainingFeedbackPanel({
         include_for_training: includeForTraining,
         operator,
         notes,
+        parsing_correct: parsingCorrect,
+        channel_mapping_correct: channelMappingCorrect,
+        inception_correct: inceptionCorrect,
+        corrected_inception_time_ms: correctedInceptionMs.trim() ? Number(correctedInceptionMs) : null,
+        clearing_correct: clearingCorrect,
+        corrected_clearing_time_ms: correctedClearingMs.trim() ? Number(correctedClearingMs) : null,
+        faulted_phases_correct: faultedPhasesCorrect,
+        actual_faulted_phases: actualFaultedPhases
+          .split(/[,+\s]+/)
+          .map((p) => p.trim().toUpperCase())
+          .filter(Boolean),
+        fault_type_correct: faultTypeCorrect,
+        actual_fault_type: actualFaultType,
+        zone_correct: zoneCorrect,
+        actual_zone: actualZone,
+        trip_type_correct: tripTypeCorrect,
+        actual_trip_type: actualTripType,
+        reclose_correct: recloseCorrect,
+        actual_reclose_outcome: actualRecloseOutcome,
+        event_segmentation_correct: segmentationCorrect,
+        actual_episode_count: actualEpisodeCount.trim() ? Number(actualEpisodeCount) : null,
+        protection_interpretation_correct: protectionInterpretationCorrect,
+        actual_event_class: actualEventClass,
+        cause_correct: causeCorrect,
+        actual_cause: actualCause,
+        ground_truth_source: groundTruthSource,
+        ground_truth_confidence: groundTruthConfidence,
       });
       setMessage("Feedback saved for the training dataset.");
       setNotes("");
@@ -279,6 +382,182 @@ export default function TrainingFeedbackPanel({
           Include this case when building the next training dataset
         </label>
       </div>
+
+      <button
+        type="button"
+        className={styles.sectionToggle}
+        onClick={() => setShowCorrections((v) => !v)}
+      >
+        <span>Per-layer ground-truth corrections (optional)</span>
+        <span>{showCorrections ? "Hide" : "Show"}</span>
+      </button>
+
+      {showCorrections && (
+        <div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Parsing correct</span>
+            <TriState value={parsingCorrect} onChange={setParsingCorrect} />
+            <span />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Channel mapping correct</span>
+            <TriState value={channelMappingCorrect} onChange={setChannelMappingCorrect} />
+            <span />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Inception correct</span>
+            <TriState value={inceptionCorrect} onChange={setInceptionCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="corrected inception (ms)"
+              value={correctedInceptionMs}
+              onChange={(e) => setCorrectedInceptionMs(e.target.value)}
+              disabled={inceptionCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Clearing correct</span>
+            <TriState value={clearingCorrect} onChange={setClearingCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="corrected clearing (ms)"
+              value={correctedClearingMs}
+              onChange={(e) => setCorrectedClearingMs(e.target.value)}
+              disabled={clearingCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Faulted phases correct</span>
+            <TriState value={faultedPhasesCorrect} onChange={setFaultedPhasesCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="e.g. A+B"
+              value={actualFaultedPhases}
+              onChange={(e) => setActualFaultedPhases(e.target.value)}
+              disabled={faultedPhasesCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Fault type correct</span>
+            <TriState value={faultTypeCorrect} onChange={setFaultTypeCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="e.g. DLG"
+              value={actualFaultType}
+              onChange={(e) => setActualFaultType(e.target.value)}
+              disabled={faultTypeCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Zone correct</span>
+            <TriState value={zoneCorrect} onChange={setZoneCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="e.g. Z1"
+              value={actualZone}
+              onChange={(e) => setActualZone(e.target.value)}
+              disabled={zoneCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Trip type correct</span>
+            <TriState value={tripTypeCorrect} onChange={setTripTypeCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="single_pole / three_pole"
+              value={actualTripType}
+              onChange={(e) => setActualTripType(e.target.value)}
+              disabled={tripTypeCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Reclose outcome correct</span>
+            <TriState value={recloseCorrect} onChange={setRecloseCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="successful / failed"
+              value={actualRecloseOutcome}
+              onChange={(e) => setActualRecloseOutcome(e.target.value)}
+              disabled={recloseCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Event segmentation correct</span>
+            <TriState value={segmentationCorrect} onChange={setSegmentationCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="actual episode count"
+              value={actualEpisodeCount}
+              onChange={(e) => setActualEpisodeCount(e.target.value)}
+              disabled={segmentationCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Protection interpretation correct</span>
+            <TriState value={protectionInterpretationCorrect} onChange={setProtectionInterpretationCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="e.g. TRANSIENT_LINE_FAULT"
+              value={actualEventClass}
+              onChange={(e) => setActualEventClass(e.target.value)}
+              disabled={protectionInterpretationCorrect !== false}
+            />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Cause correct</span>
+            <TriState value={causeCorrect} onChange={setCauseCorrect} />
+            <input
+              className={styles.miniInput}
+              placeholder="e.g. PETIR"
+              value={actualCause}
+              onChange={(e) => setActualCause(e.target.value)}
+              disabled={causeCorrect !== false}
+            />
+          </div>
+
+          <div className={styles.field} style={{ marginTop: 10 }}>
+            <span className={styles.label}>Ground truth source</span>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {GROUND_TRUTH_SOURCE_OPTIONS.map((src) => (
+                <button
+                  key={src}
+                  type="button"
+                  className={styles.miniSegmented}
+                  onClick={() => toggleGroundTruthSource(src)}
+                  style={{
+                    border: "1.5px solid",
+                    borderColor: groundTruthSource.includes(src) ? "#2563eb" : "#cbd5e1",
+                    background: groundTruthSource.includes(src) ? "#eff6ff" : "#fff",
+                    color: groundTruthSource.includes(src) ? "#1d4ed8" : "#475569",
+                    borderRadius: 6,
+                    padding: "4px 8px",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {src}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className={styles.field} style={{ marginTop: 10, maxWidth: 260 }}>
+            <span className={styles.label}>Ground truth confidence</span>
+            <select
+              className={styles.select}
+              value={groundTruthConfidence}
+              onChange={(e) => setGroundTruthConfidence(e.target.value as GroundTruthConfidence)}
+            >
+              {GROUND_TRUTH_CONFIDENCE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       <div className={styles.actions}>
         <button className={styles.primary} type="button" onClick={handleSubmit} disabled={busy}>

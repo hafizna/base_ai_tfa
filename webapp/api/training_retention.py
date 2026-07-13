@@ -28,16 +28,48 @@ RAW_DIR = TRAINING_DATA_DIR / "raw"
 LABELS_DIR = TRAINING_DATA_DIR / "labels"
 EXPORTS_DIR = TRAINING_DATA_DIR / "exports"
 
+# NOTE: the CSV header is written once, from whichever process creates
+# feedback.csv first (see `write_header` below) - if this list grows, older
+# CSV files on disk keep their original header and simply leave new columns
+# blank via DictWriter's restval. feedback.jsonl is schema-flexible and
+# always carries the full granular payload; treat it as the source of truth
+# for anything not present in an older CSV header.
 FEEDBACK_COLUMNS = [
     "submitted_at_utc",
     "analysis_id",
     "relay_type",
+    # Legacy (Stage -1) fields — kept for backward compatibility.
     "ai_correct",
     "actual_label",
     "fault_type",
     "include_for_training",
     "operator",
     "notes",
+    # Stage 0: per-layer ground-truth correction fields.
+    "parsing_correct",
+    "channel_mapping_correct",
+    "inception_correct",
+    "corrected_inception_time_ms",
+    "clearing_correct",
+    "corrected_clearing_time_ms",
+    "faulted_phases_correct",
+    "actual_faulted_phases",
+    "fault_type_correct",
+    "actual_fault_type",
+    "zone_correct",
+    "actual_zone",
+    "trip_type_correct",
+    "actual_trip_type",
+    "reclose_correct",
+    "actual_reclose_outcome",
+    "event_segmentation_correct",
+    "actual_episode_count",
+    "protection_interpretation_correct",
+    "actual_event_class",
+    "cause_correct",
+    "actual_cause",
+    "ground_truth_source",
+    "ground_truth_confidence",
 ]
 
 
@@ -140,6 +172,10 @@ def retain_upload(
     return record_dir
 
 
+def _bool_cell(value: Any) -> str:
+    return "" if value is None else str(bool(value))
+
+
 def append_feedback(feedback: dict[str, Any]) -> dict[str, Any]:
     ensure_dirs()
     submitted_at = datetime.now(timezone.utc).isoformat()
@@ -147,12 +183,38 @@ def append_feedback(feedback: dict[str, Any]) -> dict[str, Any]:
         "submitted_at_utc": submitted_at,
         "analysis_id": str(feedback.get("analysis_id") or ""),
         "relay_type": str(feedback.get("relay_type") or ""),
-        "ai_correct": "" if feedback.get("ai_correct") is None else str(bool(feedback.get("ai_correct"))),
+        # Legacy fields.
+        "ai_correct": _bool_cell(feedback.get("ai_correct")),
         "actual_label": str(feedback.get("actual_label") or ""),
         "fault_type": str(feedback.get("fault_type") or ""),
         "include_for_training": str(bool(feedback.get("include_for_training", True))),
         "operator": str(feedback.get("operator") or ""),
         "notes": str(feedback.get("notes") or ""),
+        # Stage 0 per-layer ground-truth correction fields.
+        "parsing_correct": _bool_cell(feedback.get("parsing_correct")),
+        "channel_mapping_correct": _bool_cell(feedback.get("channel_mapping_correct")),
+        "inception_correct": _bool_cell(feedback.get("inception_correct")),
+        "corrected_inception_time_ms": "" if feedback.get("corrected_inception_time_ms") is None else str(feedback.get("corrected_inception_time_ms")),
+        "clearing_correct": _bool_cell(feedback.get("clearing_correct")),
+        "corrected_clearing_time_ms": "" if feedback.get("corrected_clearing_time_ms") is None else str(feedback.get("corrected_clearing_time_ms")),
+        "faulted_phases_correct": _bool_cell(feedback.get("faulted_phases_correct")),
+        "actual_faulted_phases": "+".join(feedback.get("actual_faulted_phases") or []),
+        "fault_type_correct": _bool_cell(feedback.get("fault_type_correct")),
+        "actual_fault_type": str(feedback.get("actual_fault_type") or ""),
+        "zone_correct": _bool_cell(feedback.get("zone_correct")),
+        "actual_zone": str(feedback.get("actual_zone") or ""),
+        "trip_type_correct": _bool_cell(feedback.get("trip_type_correct")),
+        "actual_trip_type": str(feedback.get("actual_trip_type") or ""),
+        "reclose_correct": _bool_cell(feedback.get("reclose_correct")),
+        "actual_reclose_outcome": str(feedback.get("actual_reclose_outcome") or ""),
+        "event_segmentation_correct": _bool_cell(feedback.get("event_segmentation_correct")),
+        "actual_episode_count": "" if feedback.get("actual_episode_count") is None else str(feedback.get("actual_episode_count")),
+        "protection_interpretation_correct": _bool_cell(feedback.get("protection_interpretation_correct")),
+        "actual_event_class": str(feedback.get("actual_event_class") or ""),
+        "cause_correct": _bool_cell(feedback.get("cause_correct")),
+        "actual_cause": str(feedback.get("actual_cause") or ""),
+        "ground_truth_source": "+".join(feedback.get("ground_truth_source") or []),
+        "ground_truth_confidence": str(feedback.get("ground_truth_confidence") or "UNKNOWN"),
     }
 
     csv_path = LABELS_DIR / "feedback.csv"

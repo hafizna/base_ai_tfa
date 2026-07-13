@@ -38,6 +38,7 @@ from models.predict import _petir_subtype_description, _augment_row_with_soe_con
 from models.rules import apply_rules  # noqa: E402
 from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
 from .fault_detection import detect_fault_presence, _is_operate_status  # noqa: E402
+from core.event_analysis import build_event_window  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
 _CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calibrator.pkl"
@@ -689,14 +690,17 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
     if v_primary is None:
         v_primary = va if va is not None else (vb if vb is not None else vc)
 
-    # --- Fault inception detection (same logic as relay_21._extract_features_from_payload) ---
+    # --- Fault inception: canonical single source of truth (core.event_analysis),
+    # shared with relay_21 electrical-params/extract-features/locus-events/full-soe
+    # so AI feature extraction never disagrees with what the UI marks as inception. ---
     pre_end = min(2 * cycle_n, len(i_primary) // 4)
     pre_rms = float(np.sqrt(np.mean(i_primary[:pre_end] ** 2))) if pre_end > 1 else 0.0
-    threshold = max(pre_rms * 2.0, np.max(np.abs(i_primary)) * 0.3, 0.05)
-    inception_idx = next(
-        (k for k in range(pre_end, len(i_primary)) if abs(i_primary[k]) > threshold),
-        int(np.argmax(np.abs(i_primary))),
-    )
+    threshold = max(pre_rms, np.max(np.abs(i_primary)) * 0.05, 0.05)
+    window = build_event_window(payload)
+    if window.inception_idx is not None and window.inception_idx < len(i_primary):
+        inception_idx = window.inception_idx
+    else:
+        inception_idx = int(np.argmax(np.abs(i_primary)))
     extinction_idx = len(i_primary) - 1
     for k in range(inception_idx + cycle_n, len(i_primary)):
         s = max(0, k - cycle_n // 2)
@@ -1198,6 +1202,17 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     # this is a no-op until a future change passes a real SOE through.
     row = _augment_row_with_soe_context(row, soe=None)
 
+    # Canonical timing provenance — every downstream response (Tier 1 rule hit
+    # or Tier 2 model) carries the same inception source/confidence used to
+    # build the feature row, so the AI panel's "Model Provenance" section can
+    # show it without a second detector call.
+    _timing_window = build_event_window(payload)
+    meta = {
+        **meta,
+        "timing_source": _timing_window.method,
+        "timing_confidence": round(_timing_window.confidence, 3),
+    }
+
     # ------------------------------------------------------------------
     # Tier 1 — deterministic rules
     # ------------------------------------------------------------------
@@ -1315,6 +1330,17 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
         key=lambda x: x["confidence"], reverse=True,
     )
 
+    # The ceiling/ambiguity/equipment caps above only capped the scalar
+    # `confidence`, not the per-class `ranking` built from the uncapped
+    # calibrated_proba — without this, cause_ranking[0]["confidence"] could
+    # report a higher (pre-cap) number than overall_confidence for the same
+    # top class. Clamp the top-ranked entry down to the capped scalar so
+    # every consumer (this endpoint, the AI panel, and Stage 2 reconstruction
+    # cause evidence) sees one consistent capped confidence.
+    if ranking and pred == ranking[0]["cause"] and ranking[0]["confidence"] > confidence:
+        ranking[0]["confidence"] = round(confidence, 3)
+        ranking.sort(key=lambda x: x["confidence"], reverse=True)
+
     # PETIR + caution-digital cap
     digital_cb_open_phases = row.get("digital_cb_open_phases") or []
     digital_startup_to_trip = row.get("digital_startup_to_trip_ms")
@@ -1345,7 +1371,7 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
 
     raw_dict = {cls: round(float(p), 4) for cls, p in zip(classes, raw_proba)}
     cal_dict = {cls: round(float(p), 4) for cls, p in zip(classes, calibrated_proba)}
-    feature_vector_used = {col: float(X[0, i]) for i, col in enumerate(feature_cols)} if feature_cols else None
+    feature_vector_used = {col: float(X.iloc[0, i]) for i, col in enumerate(feature_cols)} if feature_cols else None
 
     meta = dict(meta)
     meta["calibration_method_used"] = calibration_method

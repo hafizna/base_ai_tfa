@@ -1,0 +1,129 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 16px;
+  text-align: center;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+}
+
+.orderWarning {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 6px 8px;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.orderControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.orderControls button {
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.orderControls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.recordLink {
+  border: none;
+  background: none;
+  color: #1f6feb;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.recordLink:hover {
+  text-decoration: underline;
+}
+
+.orderSourceTag {
+  font-size: 0.62rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+.subMeta {
+  font-size: 0.68rem;
+  color: #9ca3af;
+}
+
+.warningBadges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.warningBadge {
+  font-size: 0.62rem;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.detachButton {
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  background: white;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+
+.note {
+  font-size: 0.74rem;
+  color: #9ca3af;
+}

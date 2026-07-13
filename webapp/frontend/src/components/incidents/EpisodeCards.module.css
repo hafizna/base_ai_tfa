@@ -1,0 +1,153 @@
+.empty {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 16px;
+  text-align: center;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: white;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.episodeTitle {
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.relationBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.confidenceBadge {
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-left: auto;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px 16px;
+}
+
+.metaGrid div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metaGrid dt {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.metaGrid dd {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #111827;
+  font-weight: 600;
+}
+
+.section {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+}
+
+.sectionLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.memberList {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+}
+
+.factBlock {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.factLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.factLabelHypothesis {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #a855f7;
+  text-transform: uppercase;
+}
+
+.factBlock p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #374151;
+  word-break: break-word;
+}
+
+.mutedNote {
+  color: #9ca3af !important;
+  font-style: italic;
+}
+
+.hypothesisList,
+.missingList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scopeTag {
+  margin-left: 8px;
+  font-size: 0.62rem;
+  color: #a855f7;
+  background: #faf5ff;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.missingList {
+  color: #92400e;
+}

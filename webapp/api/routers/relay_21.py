@@ -20,8 +20,23 @@ from ..schemas import (
 from ..storage import load_analysis
 from ..ml_predict import run_ml_prediction, extract_ml_features, _digital_sequence_features
 from ..fault_detection import detect_fault_presence, _is_operate_status
+from core.event_analysis import build_event_window
 
 router = APIRouter(prefix="/api/analyze/21", tags=["relay-21"])
+
+
+def _canonical_inception_idx(payload: dict, time: np.ndarray) -> tuple[int, str, float]:
+    """Single source of truth for the fault-inception sample index.
+
+    Returns (inception_idx, timing_source, timing_confidence). Falls back to
+    index 0 with source "trigger_fallback"/"no_fault_evidence" when the
+    canonical detector found no usable evidence — callers must not treat that
+    as a detected inception.
+    """
+    window = build_event_window(payload)
+    if window.inception_idx is not None and window.inception_idx < len(time):
+        return window.inception_idx, window.method, window.confidence
+    return 0, window.method, window.confidence
 
 # Phase-to-channel mappings for each loop
 LOOP_CHANNELS = {
@@ -337,18 +352,14 @@ def _extract_features_from_payload(payload: dict) -> dict:
     if i is None:
         return empty
 
-    # Pre-fault RMS (first 2 cycles or first quarter of record)
     pre_end = min(2 * cycle_n, len(i) // 4)
     pre_rms = float(np.sqrt(np.mean(i[:pre_end] ** 2))) if pre_end > 1 else 0.0
+    threshold = max(pre_rms, np.max(np.abs(i)) * 0.05, 0.05)
 
-    # Fault inception: first sample exceeding 2× pre-fault RMS
-    threshold = max(pre_rms * 2.0, np.max(np.abs(i)) * 0.3, 0.05)
-    inception_idx = next(
-        (k for k in range(pre_end, len(i)) if abs(i[k]) > threshold),
-        int(np.argmax(np.abs(i))),
-    )
+    # Canonical inception/clearing — single source of truth shared with
+    # electrical-params, locus-events, full-soe, and AI feature extraction.
+    inception_idx, _timing_source, _timing_confidence = _canonical_inception_idx(payload, time)
 
-    # Fault extinction: RMS drops back below threshold
     extinction_idx = len(i) - 1
     for k in range(inception_idx + cycle_n, len(i)):
         s = max(0, k - cycle_n // 2)
@@ -424,15 +435,17 @@ def _compute_electrical_params(payload: dict) -> dict:
     i_ref = max(available, key=lambda arr: float(np.max(np.abs(arr)))) if available else None
 
     pre_end = min(2 * cycle_n, len(i_ref) // 4) if i_ref is not None else 0
-    inception_idx = 0
     extinction_idx = len(time) - 1
 
+    # Canonical inception — single source of truth shared with extract-features,
+    # locus-events, full-soe, and AI feature extraction.
+    inception_idx, timing_source, timing_confidence = _canonical_inception_idx(payload, time)
+
     if i_ref is not None and pre_end > 1:
-        pre_rms = float(np.sqrt(np.mean(i_ref[:pre_end] ** 2)))
-        threshold = max(pre_rms * 2.0, np.max(np.abs(i_ref)) * 0.3, 0.05)
-        inception_idx = next(
-            (idx for idx in range(pre_end, len(i_ref)) if abs(i_ref[idx]) > threshold),
-            int(np.argmax(np.abs(i_ref))),
+        threshold = max(
+            float(np.sqrt(np.mean(i_ref[:pre_end] ** 2))),
+            np.max(np.abs(i_ref)) * 0.05,
+            0.05,
         )
         for idx in range(inception_idx + cycle_n, len(i_ref)):
             start = max(0, idx - cycle_n // 2)
@@ -513,7 +526,8 @@ def _compute_electrical_params(payload: dict) -> dict:
         valid = i_abs[pre_end:limit] > current_gate
         if not np.any(valid):
             continue
-        z_vals = np.abs((v_phase[pre_end:limit] * 1000.0) / i_phase[pre_end:limit])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            z_vals = np.abs((v_phase[pre_end:limit] * 1000.0) / i_phase[pre_end:limit])
         z_vals = z_vals[np.isfinite(z_vals) & valid]
         if z_vals.size:
             z_min_values.append(float(np.min(z_vals)))
@@ -554,6 +568,8 @@ def _compute_electrical_params(payload: dict) -> dict:
 
     result["fault_duration_ms"] = round((time[extinction_idx] - time[inception_idx]) * 1000, 1)
     result["inception_time_ms"] = round(float(time[inception_idx]) * 1000, 1)
+    result["timing_source"] = timing_source
+    result["timing_confidence"] = round(timing_confidence, 3)
 
     # Shared no-fault gate: if no real fault is present, the fault-window
     # parameters above are computed from load V/I and are misleading. Flag it
@@ -602,6 +618,7 @@ def _compute_fault_classification(payload: dict) -> dict:
         }
 
     row = extract_ml_features(payload, "21")
+    window = build_event_window(payload)
     total_ms = round(float((time[-1] - time[0]) * 1000), 1)
     fault_ms = float(row.get("fault_duration_ms", 0) or 0)
     prefault_ms = max(0.0, round(total_ms - fault_ms, 1))
@@ -643,35 +660,20 @@ def _compute_fault_classification(payload: dict) -> dict:
         "total_ms": total_ms,
         "ar_status": ar_status,
         "no_fault": False,
+        "timing_source": window.method,
+        "timing_confidence": round(window.confidence, 3),
     }
 
 
 def _inception_idx_from_payload(payload: dict) -> tuple[np.ndarray, int]:
-    """Re-derive the fault-inception index the same way _compute_electrical_params does,
-    so locus-event rel_ms aligns with the inception marker already on the plot."""
-    channels = payload.get("analog_channels", [])
+    """Canonical fault-inception index, shared with electrical-params,
+    extract-features, and AI feature extraction so locus-event / SOE rel_ms
+    always aligns with the inception marker shown on the waveform plot."""
     time = np.array(payload.get("time", []))
-    freq = float(payload.get("frequency", 50.0))
     if len(time) < 4:
         return time, 0
-
-    ia = _find_phase_current(channels, "A")
-    ib = _find_phase_current(channels, "B")
-    ic = _find_phase_current(channels, "C")
-    sr = 1.0 / (time[1] - time[0]) if len(time) > 1 else 1000.0
-    cycle_n = max(4, int(sr / freq))
-    available = [arr for arr in (ia, ib, ic) if arr is not None]
-    i_ref = max(available, key=lambda arr: float(np.max(np.abs(arr)))) if available else None
-    pre_end = min(2 * cycle_n, len(i_ref) // 4) if i_ref is not None else 0
-    if i_ref is not None and pre_end > 1:
-        pre_rms = float(np.sqrt(np.mean(i_ref[:pre_end] ** 2)))
-        threshold = max(pre_rms * 2.0, np.max(np.abs(i_ref)) * 0.3, 0.05)
-        inception_idx = next(
-            (idx for idx in range(pre_end, len(i_ref)) if abs(i_ref[idx]) > threshold),
-            int(np.argmax(np.abs(i_ref))),
-        )
-        return time, inception_idx
-    return time, 0
+    inception_idx, _timing_source, _timing_confidence = _canonical_inception_idx(payload, time)
+    return time, inception_idx
 
 
 # Curated key-event classification. Only protection-relevant channels become
@@ -711,8 +713,9 @@ def _compute_full_soe_events(payload: dict) -> dict:
     """
     time, inception_idx = _inception_idx_from_payload(payload)
     if len(time) == 0:
-        return {"inception_time_ms": None, "events": []}
+        return {"inception_time_ms": None, "events": [], "timing_source": "insufficient_data", "timing_confidence": 0.0}
 
+    window = build_event_window(payload)
     inception_s = float(time[inception_idx]) if inception_idx < len(time) else float(time[0])
     events: list[dict] = []
 
@@ -750,6 +753,8 @@ def _compute_full_soe_events(payload: dict) -> dict:
     return {
         "inception_time_ms": round(inception_s * 1000.0, 2),
         "events": events,
+        "timing_source": window.method,
+        "timing_confidence": round(window.confidence, 3),
     }
 
 
@@ -757,8 +762,9 @@ def _compute_locus_events(payload: dict) -> dict:
     """Curated digital events with timestamps, anchored to fault inception."""
     time, inception_idx = _inception_idx_from_payload(payload)
     if len(time) == 0:
-        return {"inception_time_ms": None, "events": []}
+        return {"inception_time_ms": None, "events": [], "timing_source": "insufficient_data", "timing_confidence": 0.0}
 
+    window = build_event_window(payload)
     inception_s = float(time[inception_idx]) if inception_idx < len(time) else float(time[0])
     events: list[dict] = []
 
@@ -791,6 +797,8 @@ def _compute_locus_events(payload: dict) -> dict:
     return {
         "inception_time_ms": round(inception_s * 1000.0, 2),
         "events": events,
+        "timing_source": window.method,
+        "timing_confidence": round(window.confidence, 3),
     }
 
 

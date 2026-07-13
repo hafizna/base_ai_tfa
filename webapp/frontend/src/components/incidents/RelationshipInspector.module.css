@@ -1,0 +1,262 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.empty {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 16px;
+  text-align: center;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterButton,
+.filterActive {
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.filterActive {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: white;
+}
+
+.cardUncertain {
+  border-color: #d1d5db;
+  background: #fafafa;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.recordPair {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.typeBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  text-transform: uppercase;
+}
+
+.type_DUPLICATE_TRIGGER {
+  background: #fde68a;
+  color: #92400e;
+}
+
+.type_OVERLAPPING_CAPTURE {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.type_CONTINUATION,
+.type_RECLOSE_SEQUENCE {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.type_REPEATED_FAULT {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.type_POSSIBLE_EVOLVING_FAULT {
+  background: #fce7f3;
+  color: #a21caf;
+}
+
+.type_NEW_FAULT_EPISODE {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.type_UNCERTAIN,
+.type_UNRELATED {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.confidence {
+  font-size: 0.74rem;
+  color: #9ca3af;
+}
+
+.overriddenBadge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+
+.uncertainNote {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.evidenceGrid ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+}
+
+.evidenceLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.muted {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  margin: 4px 0 0;
+}
+
+.metricsRow {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: #374151;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.assumptions,
+.warnings {
+  font-size: 0.8rem;
+}
+
+.assumptions ul,
+.warnings ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.warnings {
+  color: #9a3412;
+}
+
+.overrideProvenance {
+  font-size: 0.78rem;
+  color: #6b7280;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.overrideButton {
+  align-self: flex-start;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.overrideForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+}
+
+.overrideForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.overrideForm select,
+.overrideForm input,
+.overrideForm textarea {
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-weight: 400;
+  font-family: inherit;
+}
+
+.error {
+  font-size: 0.78rem;
+  color: #b91c1c;
+}
+
+.overrideActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.overrideActions button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.confirmButton {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}

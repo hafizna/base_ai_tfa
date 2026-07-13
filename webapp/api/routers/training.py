@@ -10,13 +10,35 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .. import training_retention
+from ..record_analysis import build_record_analysis
+from ..storage import load_analysis
 
 router = APIRouter(prefix="/api/training", tags=["training-retention"])
+
+# Ground-truth source / confidence enums (Stage 0). Kept as plain strings
+# (not a pydantic Enum) so unrecognised/legacy values never hard-fail
+# submission — the frontend enforces the option list.
+GROUND_TRUTH_SOURCES = {
+    "RELAY_EVENT_REPORT",
+    "OPERATOR_SOE",
+    "REMOTE_END_COMTRADE",
+    "DFR_RECORD",
+    "FIELD_INSPECTION",
+    "LIGHTNING_DETECTION",
+    "PATROL_REPORT",
+    "PROTECTION_ENGINEER_REVIEW",
+    "UNCONFIRMED_ASSUMPTION",
+    "OTHER",
+}
+GROUND_TRUTH_CONFIDENCE_LEVELS = {"CONFIRMED", "PROBABLE", "POSSIBLE", "UNKNOWN"}
 
 
 class TrainingFeedbackRequest(BaseModel):
     analysis_id: str
     relay_type: str
+
+    # --- Legacy fields (Stage -1). Kept for backward compatibility with
+    # existing feedback rows and any caller not yet using the granular form. ---
     ai_correct: Optional[bool] = None
     actual_label: str = ""
     fault_type: str = ""
@@ -24,6 +46,44 @@ class TrainingFeedbackRequest(BaseModel):
     operator: str = ""
     notes: str = ""
     ai_prediction: Optional[dict[str, Any]] = None
+
+    # --- Stage 0: per-layer ground-truth correction fields. All optional so
+    # existing callers submitting only the legacy fields keep working. ---
+    parsing_correct: Optional[bool] = None
+    channel_mapping_correct: Optional[bool] = None
+
+    inception_correct: Optional[bool] = None
+    corrected_inception_time_ms: Optional[float] = None
+
+    clearing_correct: Optional[bool] = None
+    corrected_clearing_time_ms: Optional[float] = None
+
+    faulted_phases_correct: Optional[bool] = None
+    actual_faulted_phases: Optional[list[str]] = None
+
+    fault_type_correct: Optional[bool] = None
+    actual_fault_type: str = ""
+
+    zone_correct: Optional[bool] = None
+    actual_zone: str = ""
+
+    trip_type_correct: Optional[bool] = None
+    actual_trip_type: str = ""
+
+    reclose_correct: Optional[bool] = None
+    actual_reclose_outcome: str = ""
+
+    event_segmentation_correct: Optional[bool] = None
+    actual_episode_count: Optional[int] = None
+
+    protection_interpretation_correct: Optional[bool] = None
+    actual_event_class: str = ""
+
+    cause_correct: Optional[bool] = None
+    actual_cause: str = ""
+
+    ground_truth_source: list[str] = Field(default_factory=list)
+    ground_truth_confidence: str = "UNKNOWN"
 
 
 class TrainingClearRequest(BaseModel):
@@ -52,6 +112,24 @@ async def submit_training_feedback(
 ):
     _require_admin_token(x_training_admin_token)
     payload = body.model_dump() if hasattr(body, "model_dump") else body.dict()
+
+    invalid_sources = set(payload.get("ground_truth_source") or []) - GROUND_TRUTH_SOURCES
+    if invalid_sources:
+        raise HTTPException(status_code=422, detail=f"Unknown ground_truth_source value(s): {sorted(invalid_sources)}")
+    if payload.get("ground_truth_confidence") not in GROUND_TRUTH_CONFIDENCE_LEVELS:
+        raise HTTPException(status_code=422, detail="ground_truth_confidence must be one of CONFIRMED, PROBABLE, POSSIBLE, UNKNOWN")
+
+    # Snapshot the canonical analysis at feedback time so a correction stays
+    # auditable even after the model or canonical-timing logic changes later.
+    analysis_snapshot = None
+    try:
+        stored = load_analysis(payload["analysis_id"])
+        if stored is not None:
+            analysis_snapshot = build_record_analysis(payload["analysis_id"], stored).to_dict()
+    except Exception:
+        analysis_snapshot = None
+    payload["canonical_analysis_snapshot"] = analysis_snapshot
+
     row = training_retention.append_feedback(payload)
     return {"status": "ok", "feedback": row}
 

@@ -28,6 +28,14 @@ export interface ComtradeData {
   rev_year: string;
   sampling_rates: [number, number][];
   trigger_time: number;
+  // Absolute COMTRADE timing metadata (Stage 0). null when the source file did
+  // not carry a usable wall-clock timestamp - never inferred/guessed client-side.
+  start_time_iso?: string | null;
+  trigger_time_iso?: string | null;
+  trigger_offset_s?: number;
+  time_code?: string | null;
+  local_code?: string | null;
+  clock_quality?: string | null;
   total_samples: number;
   frequency: number;
   time: number[];

@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { fetchCanonicalAnalysis, type CanonicalEventWindow } from "../../api/client";
 import type { AnalogChannel, ComtradeData, StatusChannel } from "../../context/AnalysisContext";
 import Plot from "../plot/PlotlyChart";
 import styles from "./Panel.module.css";
 
 interface Props {
   comtrade: ComtradeData;
+  analysisId?: string;
 }
+
+/** Backend timing_source values that mean "no real inception was detected". */
+const NO_DETECTION_METHODS = new Set([
+  "trigger_fallback",
+  "no_fault_evidence",
+  "insufficient_data",
+]);
 
 const MAX_PLOT_POINTS = 5000;
 const PLOT_LEFT_MARGIN = 120; // shared margin keeps analog & digital x-axes aligned
@@ -590,7 +599,21 @@ function firstSustainedIndex(flags: boolean[], startIdx: number, samplesNeeded: 
   return null;
 }
 
-function detectAnalogInceptionMs(comtrade: ComtradeData, cycleN: number): number | null {
+/**
+ * @deprecated FRONTEND FALLBACK ONLY. This is the pre-Stage-0 client-side
+ * inception detector. The backend canonical event window
+ * (`fetchCanonicalAnalysis` → `event_window`) is now the source of truth for
+ * fault inception everywhere (SOE, locus events, electrical params, feature
+ * extraction, AI inference, report). This function must only be used to draw
+ * a marker when the backend could not produce one, and any marker it
+ * produces MUST be labeled "frontend fallback" in the UI — never presented
+ * as a detected fault inception.
+ *
+ * TODO(stage0-followup): remove this function entirely once the backend
+ * canonical timing has been validated across enough real records that a
+ * client-side fallback is no longer needed.
+ */
+function detectAnalogInceptionMsFallback(comtrade: ComtradeData, cycleN: number): number | null {
   const timeMs = comtrade.time.map((t) => t * 1000);
   if (timeMs.length < Math.max(20, cycleN * 2)) return null;
 
@@ -630,7 +653,7 @@ function detectAnalogInceptionMs(comtrade: ComtradeData, cycleN: number): number
   return Number.isFinite(timeMs[idx]) ? timeMs[idx] : null;
 }
 
-export default function COMTRADEExplorer({ comtrade }: Props) {
+export default function COMTRADEExplorer({ comtrade, analysisId }: Props) {
   const analogChannels = comtrade.analog_channels;
   const statusChannels = comtrade.status_channels;
   const sr = comtrade.sampling_rates[0]?.[0] ?? "-";
@@ -640,6 +663,26 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
       : "-";
 
   const sampledTimeMs = useMemo(() => comtrade.time.map((t) => t * 1000), [comtrade.time]);
+
+  // Canonical backend event window — the source of truth for fault inception.
+  // The old client-side detector only runs as a labeled fallback when this is
+  // unavailable or the backend found no usable evidence.
+  const [canonicalWindow, setCanonicalWindow] = useState<CanonicalEventWindow | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setCanonicalWindow(null);
+    if (!analysisId) return;
+    fetchCanonicalAnalysis(analysisId)
+      .then((data) => {
+        if (!cancelled) setCanonicalWindow(data.event_window);
+      })
+      .catch(() => {
+        if (!cancelled) setCanonicalWindow(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
 
   // Detect winding-side or multi-bay groups
   const channelGroups = useMemo(() => detectChannelGroups(analogChannels), [analogChannels]);
@@ -716,12 +759,31 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     return Math.max(2, Math.round(fs / freq));
   }, [comtrade]);
 
-  // Detect fault inception from the earliest sustained analog disturbance.
-  // Digital pickup/trip signals can legitimately lead the analogue fault, so they
-  // are not used for this marker.
-  const inceptionTimeMs = useMemo((): number | null => {
-    return detectAnalogInceptionMs(comtrade, cycleN);
+  // Frontend fallback detector — only used when the backend canonical window
+  // is unavailable or has no detected inception. Never used by SOE, feature
+  // extraction, AI, or report; those always read the backend event_window.
+  const fallbackInceptionTimeMs = useMemo((): number | null => {
+    return detectAnalogInceptionMsFallback(comtrade, cycleN);
   }, [comtrade, cycleN]);
+
+  const canonicalHasInception =
+    canonicalWindow !== null &&
+    canonicalWindow.inception_time_ms !== null &&
+    !NO_DETECTION_METHODS.has(canonicalWindow.method);
+
+  const inceptionTimeMs: number | null = canonicalHasInception
+    ? (canonicalWindow!.inception_time_ms as number)
+    : fallbackInceptionTimeMs;
+
+  const inceptionIsFallback = !canonicalHasInception && fallbackInceptionTimeMs !== null;
+  const inceptionSourceLabel = canonicalHasInception
+    ? canonicalWindow!.timing_source
+    : inceptionIsFallback
+      ? "frontend fallback"
+      : null;
+  const inceptionConfidencePct = canonicalHasInception
+    ? Math.round((canonicalWindow!.confidence ?? 0) * 100)
+    : null;
 
   // Trigger offset from CFG (ms from recording start). 0 = unknown.
   const triggerOffsetMs = comtrade.trigger_time * 1000;
@@ -964,6 +1026,21 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     line: { color: "#7c3aed", width: 1.5, dash: "longdash" },
   } as Plotly.Shape : null;
 
+  // Canonical fault-clearing marker — only drawn when the backend actually
+  // has clearing evidence (never fabricated from the frontend fallback).
+  const clearingDisplayMs = useMemo((): number | null => {
+    if (canonicalWindow?.clearing_time_ms == null) return null;
+    const offset = normalizeToInception && inceptionTimeMs !== null ? inceptionTimeMs : 0;
+    return canonicalWindow.clearing_time_ms - offset;
+  }, [canonicalWindow, normalizeToInception, inceptionTimeMs]);
+
+  const clearingShape: Plotly.Shape | null = clearingDisplayMs !== null ? {
+    type: "line",
+    x0: clearingDisplayMs, x1: clearingDisplayMs,
+    yref: "paper", y0: 0, y1: 1,
+    line: { color: "#16a34a", width: 1.5, dash: "dash" },
+  } as Plotly.Shape : null;
+
   const digitalHoverShape: Plotly.Shape | null = digitalHoverMs !== null ? {
     type: "line",
     x0: digitalHoverMs,
@@ -1012,6 +1089,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     shapes: [
       recordStartShape,
       ...(inceptionShape && !normalizeToInception ? [inceptionShape] : []),
+      ...(clearingShape ? [clearingShape] : []),
       ...(triggerShape ? [triggerShape] : []),
     ],
   });
@@ -1063,6 +1141,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     shapes: [
       recordStartShape,
       ...(inceptionShape && !normalizeToInception ? [inceptionShape] : []),
+      ...(clearingShape ? [clearingShape] : []),
       ...(triggerShape ? [triggerShape] : []),
     ],
   });
@@ -1102,6 +1181,7 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
     shapes: [
       recordStartShape,
       ...(inceptionShape && !normalizeToInception ? [inceptionShape] : []),
+      ...(clearingShape ? [clearingShape] : []),
       ...(triggerShape ? [triggerShape] : []),
       ...(digitalHoverShape ? [digitalHoverShape] : []),
     ],
@@ -1159,7 +1239,9 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
         <div>
           <div className={styles.waveTitle}>COMTRADE Explorer</div>
           <div className={styles.waveSub}>
-            Semua plot tersinkron. Garis abu-abu (---) = awal rekaman. Garis ungu (-- --) = trigger CFG. Garis merah (dot) = inception terdeteksi.
+            Semua plot tersinkron. Garis abu-abu (---) = awal rekaman (record start). Garis ungu (-- --) = trigger CFG.
+            Garis merah (dot) = fault inception{inceptionIsFallback ? " (frontend fallback)" : ""}.
+            {canonicalWindow?.clearing_time_ms != null ? " Garis hijau (dash) = fault clearing." : ""}
           </div>
         </div>
         <div className={styles.waveBadges}>
@@ -1169,6 +1251,29 @@ export default function COMTRADEExplorer({ comtrade }: Props) {
           {triggerOffsetMs > 0 && (
             <span className={styles.waveBadge} style={{ background: "#fffbeb", color: "#92400e", borderColor: "#fbbf24" }}>
               Pre-fault: {triggerOffsetMs.toFixed(0)} ms
+            </span>
+          )}
+          {inceptionTimeMs !== null && (
+            <span
+              className={styles.waveBadge}
+              title={
+                inceptionIsFallback
+                  ? "Fault inception\nSource: frontend fallback (JS detector)\nBackend timing not available for this record"
+                  : `Fault inception\nSource: ${inceptionSourceLabel}\nConfidence: ${inceptionConfidencePct}%`
+              }
+              style={
+                inceptionIsFallback
+                  ? { background: "#fef2f2", color: "#b91c1c", borderColor: "#fca5a5" }
+                  : { background: "#fef2f2", color: "#991b1b", borderColor: "#f87171" }
+              }
+            >
+              Inception: {inceptionTimeMs.toFixed(1)} ms
+              {inceptionIsFallback ? " (frontend fallback)" : ` (${inceptionConfidencePct}%)`}
+            </span>
+          )}
+          {canonicalWindow?.clearing_time_ms != null && (
+            <span className={styles.waveBadge} style={{ background: "#f0fdf4", color: "#166534", borderColor: "#86efac" }}>
+              Clearing: {canonicalWindow.clearing_time_ms.toFixed(1)} ms
             </span>
           )}
           <span className={styles.waveBadge}>Analog: {analogChannels.length}</span>

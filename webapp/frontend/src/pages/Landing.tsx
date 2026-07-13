@@ -85,6 +85,9 @@ export default function Landing() {
         <button className={styles.simulatorLink} onClick={() => navigate("/simulator")} type="button">
           Event Notification Simulator
         </button>
+        <button className={styles.simulatorLink} onClick={() => navigate("/incidents")} type="button">
+          Incidents
+        </button>
       </header>
 
       <main className={styles.grid}>

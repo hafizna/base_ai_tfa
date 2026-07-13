@@ -1,0 +1,61 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: white;
+}
+
+.tileLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
+.tileValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tone_good .tileValue,
+.tone_good.tile {
+  color: #15803d;
+}
+
+.tone_good.tile {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.tone_good .tileValue {
+  color: #15803d;
+}
+
+.tone_neutral.tile {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.tone_neutral .tileValue {
+  color: #1d4ed8;
+}
+
+.tone_warn.tile {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.tone_warn .tileValue {
+  color: #9a3412;
+}

@@ -1,0 +1,96 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scopeTag {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #a855f7;
+  background: #faf5ff;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.consistencyBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.tone_good {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tone_neutral {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.tone_warn {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.rootCause {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-left: auto;
+}
+
+.disclaimer {
+  font-size: 0.78rem;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0;
+}
+
+.empty {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 16px;
+  text-align: center;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 6px 10px;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+
+.mono {
+  font-family: monospace;
+  font-size: 0.75rem;
+}

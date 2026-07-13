@@ -29,6 +29,14 @@ class ComtradeOut(BaseModel):
     rev_year: str
     sampling_rates: List[Tuple[float, int]]
     trigger_time: float
+    # Absolute COMTRADE timing metadata (Stage 0). None when the source file did
+    # not carry a usable wall-clock timestamp - never inferred/guessed.
+    start_time_iso: Optional[str] = None
+    trigger_time_iso: Optional[str] = None
+    trigger_offset_s: float = 0.0
+    time_code: Optional[str] = None
+    local_code: Optional[str] = None
+    clock_quality: Optional[str] = None
     total_samples: int
     frequency: float
     time: List[float]
@@ -79,6 +87,12 @@ class AnalysisSummaryOut(BaseModel):
     rev_year: str
     sampling_rates: List[Tuple[float, int]]
     trigger_time: float
+    start_time_iso: Optional[str] = None
+    trigger_time_iso: Optional[str] = None
+    trigger_offset_s: float = 0.0
+    time_code: Optional[str] = None
+    local_code: Optional[str] = None
+    clock_quality: Optional[str] = None
     total_samples: int
     frequency: float
     duration_ms: float
@@ -178,6 +192,8 @@ class LocusEvent(BaseModel):
 class LocusEventsResponse(BaseModel):
     inception_time_ms: Optional[float]
     events: List[LocusEvent]
+    timing_source: Optional[str] = None
+    timing_confidence: Optional[float] = None
 
 
 class AIFaultFeatures(BaseModel):

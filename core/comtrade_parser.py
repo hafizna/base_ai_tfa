@@ -96,6 +96,17 @@ class ComtradeRecord:
     cfg_path: str
     dat_path: Optional[str]
 
+    # Absolute COMTRADE timing metadata (Stage 0). All optional — COMTRADE files
+    # do not always carry a usable wall-clock timestamp, and we never guess one.
+    # ISO 8601, no timezone conversion or inference applied — this is the naive
+    # local datetime exactly as the CFG's date/time lines encode it.
+    start_time_iso: Optional[str] = None
+    trigger_time_iso: Optional[str] = None
+    trigger_offset_s: float = 0.0      # Same value as trigger_time; kept as an explicit alias
+    time_code: Optional[str] = None    # CFG line 2 "time_code" (COMTRADE 2013 timezone field)
+    local_code: Optional[str] = None   # CFG line 2 "local_code"
+    clock_quality: Optional[str] = None  # Sync/leap-second quality flag, if present in the CFG
+
     # Parsing diagnostics
     warnings: List[str] = field(default_factory=list)  # Any issues found during parsing
 
@@ -181,6 +192,8 @@ def parse_comtrade(cfg_path: str, dat_path: Optional[str] = None) -> Optional[Co
         # The comtrade library stores start_time / trigger_time as datetime objects;
         # float(datetime) raises TypeError which we handle here.
         trigger_time = 0.0
+        start_time_iso: Optional[str] = None
+        trigger_time_iso: Optional[str] = None
         if hasattr(com, 'start_time') and hasattr(com, 'trigger_time'):
             try:
                 from datetime import datetime as _dt
@@ -189,10 +202,44 @@ def parse_comtrade(cfg_path: str, dat_path: Optional[str] = None) -> Optional[Co
                     offset = (tt - st).total_seconds()
                     if offset >= 0:
                         trigger_time = offset
+                    # Absolute wall-clock timestamps, taken as-is from the CFG.
+                    # No timezone is attached or inferred here (naive datetime.isoformat()).
+                    start_time_iso = st.isoformat()
+                    trigger_time_iso = tt.isoformat()
                 elif isinstance(tt, (int, float)):
                     trigger_time = float(tt)
             except Exception:
                 warnings.append("Could not parse trigger time offset")
+
+        if start_time_iso is None or trigger_time_iso is None:
+            warnings.append("Absolute COMTRADE start/trigger timestamp not available - timing is relative only")
+
+        # Timezone / clock-quality metadata (COMTRADE 2013 CFG line 2: time_code,local_code).
+        # These are NEVER inferred from station name or any other heuristic - null + warning
+        # is the correct behavior when the CFG does not carry them.
+        time_code: Optional[str] = None
+        local_code: Optional[str] = None
+        clock_quality: Optional[str] = None
+        cfg_obj = getattr(com, "cfg", None)
+        if cfg_obj is not None:
+            # The bundled `comtrade` library only exposes these as private attributes
+            # (no public property), and always initializes them to 0 even when the
+            # CFG's COMTRADE-2013 line 2 was never actually present. We can't tell
+            # "explicitly UTC" apart from "field absent" from this library, so treat
+            # a present attribute as authoritative rather than guessing further.
+            raw_time_code = getattr(cfg_obj, "_time_code", None)
+            raw_local_code = getattr(cfg_obj, "_local_code", None)
+            raw_clock_quality = getattr(cfg_obj, "_leap_second", None)
+            if raw_time_code is not None:
+                time_code = str(raw_time_code)
+            if raw_local_code is not None:
+                local_code = str(raw_local_code)
+            if raw_clock_quality is not None:
+                clock_quality = str(raw_clock_quality)
+        if time_code is None and local_code is None:
+            warnings.append("COMTRADE time_code/local_code not available - timezone unknown, not inferred")
+        if clock_quality is None:
+            warnings.append("Clock quality/sync source not available in this COMTRADE file")
 
         # Get frequency
         frequency = 50.0  # Default for Indonesia
@@ -219,6 +266,12 @@ def parse_comtrade(cfg_path: str, dat_path: Optional[str] = None) -> Optional[Co
             time=time,
             cfg_path=str(cfg_path_obj),
             dat_path=str(dat_path) if dat_path else None,
+            start_time_iso=start_time_iso,
+            trigger_time_iso=trigger_time_iso,
+            trigger_offset_s=trigger_time,
+            time_code=time_code,
+            local_code=local_code,
+            clock_quality=clock_quality,
             warnings=warnings
         )
 

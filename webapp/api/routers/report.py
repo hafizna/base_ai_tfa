@@ -1166,8 +1166,16 @@ def _build_binary_time_diagram_section(styles: dict, payload: dict) -> list:
 def _build_electrical_section(styles: dict, elec: dict) -> list:
     if not elec:
         return []
+    timing_source = elec.get("timing_source")
     rows = [
-        ("Waktu inception", f"{elec['inception_time_ms']:.1f} ms" if elec.get("inception_time_ms") is not None else "—"),
+        (
+            "Waktu inception",
+            (
+                f"{elec['inception_time_ms']:.1f} ms ({timing_source})"
+                if elec.get("inception_time_ms") is not None and timing_source
+                else (f"{elec['inception_time_ms']:.1f} ms" if elec.get("inception_time_ms") is not None else "—")
+            ),
+        ),
         ("Durasi gangguan", f"{elec['fault_duration_ms']:.1f} ms" if elec.get("fault_duration_ms") is not None else "—"),
         ("Trip time", f"{elec['trip_time_ms']:.1f} ms ({elec.get('trip_time_source', '—')})" if elec.get("trip_time_ms") is not None else "—"),
         ("A/R dead time", f"{elec['ar_dead_time_ms']:.1f} ms" if elec.get("ar_dead_time_ms") is not None else "—"),

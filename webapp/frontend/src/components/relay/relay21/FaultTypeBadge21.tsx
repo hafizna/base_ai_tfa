@@ -126,6 +126,12 @@ export default function FaultTypeBadge21({ analysisId, dataRevision = 0 }: Props
             />
             <Metric label="Total Rekaman" value={formatMs(data.total_ms)} sub="ms" />
           </div>
+          {data.timing_source && (
+            <p style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: 6 }}>
+              Timing source: {data.timing_source}
+              {typeof data.timing_confidence === "number" ? ` (${Math.round(data.timing_confidence * 100)}%)` : ""}
+            </p>
+          )}
         </div>
       )}
 
