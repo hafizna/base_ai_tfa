@@ -389,3 +389,46 @@ def test_batch_upload_partial_success_mode(stage2):
     assert len(result.records_created) == 1
     assert len(result.errors) == 1
     assert len(service.list_records(incident.incident_id)) == 1
+
+
+def test_batch_upload_station_mismatch_aborts_without_override(stage2):
+    """Regression test: valid CFG/DAT pairs whose station name differs from
+    the incident's own station must be rejected with a clear
+    STATION_MISMATCH error (atomic rollback), not silently produce an empty
+    'completed' result."""
+    from webapp.api.incidents.batch_upload import UploadedFile, run_batch_upload
+
+    service = stage2
+    incident = service.create_incident(title="Station mismatch test", station_name="GOLDEN TEST")
+
+    cfg1, dat1 = synthetic_cfg_dat_bytes(rec_dev_id="RELAY1", station_name="DIFFERENT STATION")
+    files = [
+        UploadedFile("record1.cfg", "text/plain", cfg1),
+        UploadedFile("record1.dat", "application/octet-stream", dat1),
+    ]
+
+    result = run_batch_upload(incident.incident_id, files)
+    assert result.reconstruction_status == "aborted_atomic"
+    assert result.records_created == []
+    assert any("station mismatch" in e["reason"].lower() for e in result.errors)
+    assert service.list_records(incident.incident_id) == []
+
+
+def test_batch_upload_station_mismatch_override_attaches_record(stage2):
+    """override_warnings=True must let a station-mismatched record through,
+    mirroring the single-record attach endpoint's override_warnings."""
+    from webapp.api.incidents.batch_upload import UploadedFile, run_batch_upload
+
+    service = stage2
+    incident = service.create_incident(title="Station mismatch override test", station_name="GOLDEN TEST")
+
+    cfg1, dat1 = synthetic_cfg_dat_bytes(rec_dev_id="RELAY1", station_name="DIFFERENT STATION")
+    files = [
+        UploadedFile("record1.cfg", "text/plain", cfg1),
+        UploadedFile("record1.dat", "application/octet-stream", dat1),
+    ]
+
+    result = run_batch_upload(incident.incident_id, files, override_warnings=True)
+    assert result.reconstruction_status == "completed"
+    assert len(result.records_created) == 1
+    assert len(service.list_records(incident.incident_id)) == 1

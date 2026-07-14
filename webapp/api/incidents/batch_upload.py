@@ -157,6 +157,7 @@ def run_batch_upload(
     attachment_role: str = "UNKNOWN",
     bay_name: Optional[str] = None,
     protection_type: Optional[str] = None,
+    override_warnings: bool = False,
 ) -> BatchUploadResult:
     """Pair, parse, save, and attach every valid record in ``files`` to
     ``incident_id``. Sequential processing keeps at most one record's
@@ -202,6 +203,7 @@ def run_batch_upload(
                 bay_name=bay_name,
                 protection_type=protection_type,
                 source_filename=filenames[0] if pair.kind == "cff" else f"{filenames[0]}+{filenames[1]}",
+                override_warnings=override_warnings,
             )
             attached.append(BatchRecordResult(
                 analysis_id=analysis_id,

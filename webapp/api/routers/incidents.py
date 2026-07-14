@@ -294,12 +294,16 @@ async def upload_records(
     attachment_role: str = "UNKNOWN",
     bay_name: Optional[str] = None,
     protection_type: Optional[str] = None,
+    override_warnings: bool = False,
 ):
     """Batch-upload multiple COMTRADE records (.cfg+.dat pairs and/or .cff
     files) and attach each successfully parsed record to this incident.
 
     Sequential processing keeps memory bounded (one record's waveform at a
     time). Default mode is atomic — see ``run_batch_upload`` docstring.
+    ``override_warnings`` mirrors the single-record attach endpoint: pass
+    true to attach records despite a station-name mismatch against the
+    incident's own station metadata.
     """
     _require_multi_comtrade_enabled()
     try:
@@ -316,6 +320,7 @@ async def upload_records(
         attachment_role=attachment_role,
         bay_name=bay_name,
         protection_type=protection_type,
+        override_warnings=override_warnings,
     )
     return {
         "incident_id": result.incident_id,

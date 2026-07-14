@@ -1225,6 +1225,7 @@ export interface BatchUploadOptions {
   attachmentRole?: RecordAttachmentRole;
   bayName?: string | null;
   protectionType?: string | null;
+  overrideWarnings?: boolean;
 }
 
 export async function uploadIncidentRecords(incidentId: string, files: File[], options: BatchUploadOptions = {}) {
@@ -1236,6 +1237,7 @@ export async function uploadIncidentRecords(incidentId: string, files: File[], o
   if (options.attachmentRole) params.attachment_role = options.attachmentRole;
   if (options.bayName) params.bay_name = options.bayName;
   if (options.protectionType) params.protection_type = options.protectionType;
+  if (options.overrideWarnings) params.override_warnings = true;
 
   const { data } = await api.post<BatchUploadResponse>(`/api/incidents/${incidentId}/upload-records`, form, {
     params,

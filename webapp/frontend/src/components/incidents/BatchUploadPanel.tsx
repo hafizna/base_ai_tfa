@@ -16,6 +16,7 @@ export default function BatchUploadPanel({ incidentId, onUploaded }: Props) {
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<FilePairPreview | null>(null);
   const [partialSuccess, setPartialSuccess] = useState(false);
+  const [overrideWarnings, setOverrideWarnings] = useState(false);
   const [autoReconstruct, setAutoReconstruct] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<BatchUploadResponse | null>(null);
@@ -45,7 +46,7 @@ export default function BatchUploadPanel({ incidentId, onUploaded }: Props) {
     setUploading(true);
     setError(null);
     try {
-      const response = await uploadIncidentRecords(incidentId, files, { partialSuccess });
+      const response = await uploadIncidentRecords(incidentId, files, { partialSuccess, overrideWarnings });
       setResult(response);
       onUploaded(response, autoReconstruct);
       if (response.reconstruction_status !== "aborted_atomic") {
@@ -125,6 +126,10 @@ export default function BatchUploadPanel({ incidentId, onUploaded }: Props) {
           Partial-success mode (default: atomic — any invalid pair aborts the whole batch)
         </label>
         <label className={styles.checkboxLabel}>
+          <input type="checkbox" checked={overrideWarnings} onChange={(e) => setOverrideWarnings(e.target.checked)} />
+          Attach despite station-name mismatch with this incident
+        </label>
+        <label className={styles.checkboxLabel}>
           <input type="checkbox" checked={autoReconstruct} onChange={(e) => setAutoReconstruct(e.target.checked)} />
           Automatically reconstruct after upload
         </label>
@@ -170,6 +175,12 @@ export default function BatchUploadPanel({ incidentId, onUploaded }: Props) {
                 </li>
               ))}
             </ul>
+          )}
+          {result.errors.some((e) => e.reason.toLowerCase().includes("station mismatch")) && !overrideWarnings && (
+            <div className={styles.warning}>
+              One or more records report a different station name than this incident. Check "Attach despite
+              station-name mismatch" above and upload again if that mismatch is expected (e.g. remote-end record).
+            </div>
           )}
         </div>
       )}
