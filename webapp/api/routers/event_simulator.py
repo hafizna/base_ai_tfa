@@ -1,7 +1,8 @@
 """Deterministic notification simulator for mapped IEC 61850 events.
 
-The scenarios in this module intentionally mirror the relay mapping table in
-``TFA_Notif_Architecture_v1.0`` section 4.  The simulator is a lab surface for
+The line scenarios in this module intentionally mirror the relay mapping table
+in ``TFA_Notif_Architecture_v1.0`` section 4. Transformer/IBT scenarios are
+clearly marked generic IEC 61850 extensions. The simulator is a lab surface for
 showing how raw MMS/polling changes become clusters, notifications, grouped
 incidents, and JSON artifacts without connecting to a real IED.
 """
@@ -601,6 +602,170 @@ MICOM_P545_MAPPING = {
     ),
 }
 
+TRAFO_IBT_MAPPING = {
+    "TR_87T_TRIP": _doc_signal(
+        display_name="87T DIFFERENTIAL TRIP",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="PROT",
+        ln="PDIF1",
+        do_name="Op",
+        da="general[ST]",
+        function="87T Transformer Differential",
+        ln_category="TRIP",
+        cluster="GANGGUAN",
+        tier=1,
+        condition="stVal=true",
+    ),
+    "TR_REF_TRIP": _doc_signal(
+        display_name="64REF OPERATE",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="PROT",
+        ln="PDIF2",
+        do_name="Op",
+        da="general[ST]",
+        function="64REF Restricted Earth Fault",
+        ln_category="TRIP",
+        cluster="GANGGUAN",
+        tier=1,
+        condition="stVal=true",
+    ),
+    "TR_OCR_PICKUP": _doc_signal(
+        display_name="OCR 51 HV PICKUP",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="PROT",
+        ln="PTOC2",
+        do_name="Str",
+        da="general[ST]",
+        function="51 HV Overcurrent Pickup",
+        ln_category="ARTIFACT",
+        cluster=None,
+        tier=None,
+        condition="stVal=true",
+        notification_allowed=False,
+    ),
+    "TR_OCR_TRIP": _doc_signal(
+        display_name="OCR 51 HV TRIP",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="PROT",
+        ln="PTOC2",
+        do_name="Op",
+        da="general[ST]",
+        function="51 HV Backup Overcurrent",
+        ln_category="TRIP",
+        cluster="GANGGUAN",
+        tier=1,
+        condition="stVal=true",
+    ),
+    "TR_GFR_TRIP": _doc_signal(
+        display_name="GFR 51N HV TRIP",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="PROT",
+        ln="PTEF1",
+        do_name="Op",
+        da="general[ST]",
+        function="51N HV Backup Earth Fault",
+        ln_category="TRIP",
+        cluster="GANGGUAN",
+        tier=1,
+        condition="stVal=true",
+    ),
+    "TR_MASTER_TRIP": _doc_signal(
+        display_name="MASTER TRIP",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="PROT",
+        ln="PTRC1",
+        do_name="Tr",
+        da="general[ST]",
+        function="Master Trip Command",
+        ln_category="TRIP",
+        cluster="GANGGUAN",
+        tier=1,
+        condition="stVal=true",
+    ),
+    "TR_86_LOCKOUT": _doc_signal(
+        display_name="86T LOCKOUT",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="CTRL",
+        ln="GGIO86",
+        do_name="Ind1",
+        da="stVal[ST]",
+        function="Transformer Lockout Operated",
+        ln_category="TRIP",
+        cluster="GANGGUAN",
+        tier=1,
+        condition="stVal=true",
+    ),
+    "TR_HV_CB_POSITION": _doc_signal(
+        display_name="CB HV POSITION",
+        relay_model="BCU Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="CTRL",
+        ln="XCBR1",
+        do_name="Pos",
+        da="stVal[ST]",
+        function="HV Circuit Breaker Position",
+        ln_category="STATUS_CB",
+        cluster="STATUS CB",
+        tier=3,
+        condition="any change",
+    ),
+    "TR_LV_CB_POSITION": _doc_signal(
+        display_name="CB LV POSITION",
+        relay_model="BCU Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="CTRL",
+        ln="XCBR2",
+        do_name="Pos",
+        da="stVal[ST]",
+        function="LV Circuit Breaker Position",
+        ln_category="STATUS_CB",
+        cluster="STATUS CB",
+        tier=3,
+        condition="any change",
+    ),
+    "TR_DIFF_CURRENT": _doc_signal(
+        display_name="DIFFERENTIAL CURRENT",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="MEAS",
+        ln="MMXU1",
+        do_name="A",
+        da="instMag[MX]",
+        function="Differential current measurement",
+        ln_category="MEASUREMENT",
+        cluster=None,
+        tier=None,
+        condition="measurement only",
+        cdc="MV",
+        data_type="MX",
+        notification_allowed=False,
+    ),
+    "TR_RESIDUAL_CURRENT": _doc_signal(
+        display_name="RESIDUAL CURRENT HV",
+        relay_model="IED Proteksi Trafo / IBT (generic IEC 61850)",
+        doc_section="Extension Trafo/IBT",
+        ld="MEAS",
+        ln="MMXU2",
+        do_name="A.res",
+        da="instMag[MX]",
+        function="HV residual current measurement",
+        ln_category="MEASUREMENT",
+        cluster=None,
+        tier=None,
+        condition="measurement only",
+        cdc="MV",
+        data_type="MX",
+        notification_allowed=False,
+    ),
+}
+
 SCENARIOS: list[dict[str, Any]] = [
     {
         "id": "nr-ponorogo-87l-distance",
@@ -615,6 +780,7 @@ SCENARIOS: list[dict[str, Any]] = [
         "station_name": "GI PONOROGO 150 kV",
         "asset_name": "Ponorogo - Madiun Line 1",
         "asset_id": "GI-PONOROGO/LINE-MADIUN-1",
+        "asset_type": "line",
         "data_mapping": NR_PCR931S_MAPPING,
         "events": [
             _event("e001", 0, "NR_DIFF_TRIP", True, device_id="NR-PCR931S-PNG-MDN1", bay_name="Line Madiun 1"),
@@ -641,6 +807,7 @@ SCENARIOS: list[dict[str, Any]] = [
         "station_name": "GI PONOROGO 150 kV",
         "asset_name": "Ponorogo - Pacitan Line 2",
         "asset_id": "GI-PONOROGO/LINE-PACITAN-2",
+        "asset_type": "line",
         "data_mapping": ABB_RED670_MAPPING,
         "events": [
             _event("e101", 0, "ABB_ZONE_1", True, device_id="ABB-RED670-PNG-PCT2", bay_name="Line Pacitan 2"),
@@ -668,6 +835,7 @@ SCENARIOS: list[dict[str, Any]] = [
         "station_name": "GI KEDIRI 150 kV",
         "asset_name": "Kediri - Tulungagung Line 1",
         "asset_id": "GI-KEDIRI/LINE-TLG-1",
+        "asset_type": "line",
         "data_mapping": MICOM_P545_MAPPING,
         "events": [
             _event("e201", 0, "MICOM_AR_INITIATE", True, device_id="MICOM-P545-KDR-TLG1", bay_name="Line Tulungagung 1"),
@@ -677,6 +845,56 @@ SCENARIOS: list[dict[str, Any]] = [
             _event("e205", 490, "MICOM_CB_POS", "open", device_id="BCU-KDR-TLG1", bay_name="Line Tulungagung 1"),
             _event("e206", 620, "MICOM_FAULT_LOC", 18.6, device_id="MICOM-P545-KDR-TLG1", bay_name="Line Tulungagung 1", unit="km"),
             _event("e207", 7400, "MICOM_COM_FAILURE", True, device_id="MICOM-P545-KDR-TLG1", bay_name="Line Tulungagung 1"),
+        ],
+    },
+    {
+        "id": "trafo-ibt-87t-ref-internal",
+        "title": "Trafo/IBT: gangguan internal 87T + REF",
+        "subtitle": "87T dan 64REF menjadi Tier 1; lockout 86T tergabung; posisi CB menjadi Tier 3.",
+        "description": (
+            "Skenario ekstensi scope transmisi untuk gangguan internal trafo/IBT. "
+            "Operate 87T, 64REF, master trip, dan lockout 86T digabung menjadi satu "
+            "notifikasi GANGGUAN Tier 1. Posisi CB HV/LV dikirim sebagai STATUS CB "
+            "Tier 3, sedangkan arus diferensial hanya menjadi context."
+        ),
+        "station_name": "GITET CONTOH 500/150 kV",
+        "asset_name": "IBT 1 500/150 kV",
+        "asset_id": "GITET-CONTOH/IBT-1",
+        "asset_type": "transformer",
+        "data_mapping": TRAFO_IBT_MAPPING,
+        "events": [
+            _event("e301", 0, "TR_87T_TRIP", True, device_id="PROT-IBT1-A", bay_name="IBT 1"),
+            _event("e302", 6, "TR_REF_TRIP", True, device_id="PROT-IBT1-A", bay_name="IBT 1"),
+            _event("e303", 12, "TR_MASTER_TRIP", True, device_id="PROT-IBT1-A", bay_name="IBT 1"),
+            _event("e304", 18, "TR_86_LOCKOUT", True, device_id="LOCKOUT-IBT1", bay_name="IBT 1"),
+            _event("e305", 42, "TR_HV_CB_POSITION", "open", device_id="BCU-IBT1-HV", bay_name="IBT 1 HV"),
+            _event("e306", 48, "TR_LV_CB_POSITION", "open", device_id="BCU-IBT1-LV", bay_name="IBT 1 LV"),
+            _event("e307", 90, "TR_DIFF_CURRENT", 3.8, device_id="PROT-IBT1-A", bay_name="IBT 1", unit="p.u."),
+        ],
+    },
+    {
+        "id": "trafo-ibt-ocr-gfr-backup",
+        "title": "Trafo/IBT: OCR + GFR backup trip",
+        "subtitle": "Pickup OCR menjadi context; OCR/GFR operate dan master trip menjadi Tier 1.",
+        "description": (
+            "Skenario ekstensi scope transmisi untuk gangguan eksternal yang tidak "
+            "dibersihkan proteksi utama. Pickup OCR tidak membuat notifikasi sendiri. "
+            "Setelah elemen OCR/GFR backup operate, simulator mengirim satu notifikasi "
+            "GANGGUAN Tier 1 dan mengelompokkan master trip serta pembukaan CB HV/LV."
+        ),
+        "station_name": "GITET CONTOH 500/150 kV",
+        "asset_name": "IBT 2 500/150 kV",
+        "asset_id": "GITET-CONTOH/IBT-2",
+        "asset_type": "transformer",
+        "data_mapping": TRAFO_IBT_MAPPING,
+        "events": [
+            _event("e401", 0, "TR_OCR_PICKUP", True, device_id="PROT-IBT2-B", bay_name="IBT 2"),
+            _event("e402", 320, "TR_OCR_TRIP", True, device_id="PROT-IBT2-B", bay_name="IBT 2"),
+            _event("e403", 326, "TR_GFR_TRIP", True, device_id="PROT-IBT2-B", bay_name="IBT 2"),
+            _event("e404", 332, "TR_MASTER_TRIP", True, device_id="PROT-IBT2-B", bay_name="IBT 2"),
+            _event("e405", 365, "TR_HV_CB_POSITION", "open", device_id="BCU-IBT2-HV", bay_name="IBT 2 HV"),
+            _event("e406", 372, "TR_LV_CB_POSITION", "open", device_id="BCU-IBT2-LV", bay_name="IBT 2 LV"),
+            _event("e407", 410, "TR_RESIDUAL_CURRENT", 2.6, device_id="PROT-IBT2-B", bay_name="IBT 2", unit="p.u."),
         ],
     },
 ]
@@ -834,6 +1052,7 @@ def _new_incident(scenario: dict[str, Any], event: dict[str, Any]) -> dict[str, 
         "station_name": scenario["station_name"],
         "asset_name": scenario["asset_name"],
         "asset_id": scenario["asset_id"],
+        "asset_type": scenario.get("asset_type", "line"),
         "start_ms": start_ms,
         "last_event_ms": start_ms,
         "status": "open",
@@ -929,8 +1148,25 @@ def _refresh_incident_text(incident: dict[str, Any]) -> None:
     has_tor = "TOR" in labels_upper
     has_psch = "21 SEND" in labels_upper or "21 RECEIVE" in labels_upper or "85 SEND" in labels_upper
     has_reclose = bool(incident["reclose_sequence"])
+    is_transformer = incident.get("asset_type") == "transformer"
+    has_87t = "87T" in labels_upper or "TRANSFORMER DIFFERENTIAL" in labels_upper
+    has_ref = "REF" in labels_upper
+    has_ocr = "OCR" in labels_upper or "50/51" in labels_upper
+    has_gfr = "GFR" in labels_upper or "51N" in labels_upper
 
-    if has_tor:
+    if is_transformer and has_87t and has_ref:
+        title = "Gangguan Internal Trafo: 87T + REF"
+        summary = "87T, 64REF, master trip, dan lockout tergabung dalam incident trafo/IBT yang sama."
+    elif is_transformer and has_87t:
+        title = "Gangguan Internal Trafo: 87T"
+        summary = "Proteksi differential trafo beroperasi dan memicu rangkaian trip trafo/IBT."
+    elif is_transformer and (has_ocr or has_gfr):
+        title = "Gangguan Backup Trafo: OCR/GFR"
+        summary = "OCR/GFR backup beroperasi setelah pickup dan memicu master trip trafo/IBT."
+    elif is_transformer and relays:
+        title = "Gangguan Proteksi Trafo"
+        summary = ", ".join(relays[:3])
+    elif has_tor:
         title = "Gangguan Line: Trip on Reclose"
         summary = "TOR/SOTF vendor DDB dipetakan sebagai GANGGUAN Tier 1 sesuai tabel relay."
     elif has_diff and has_distance:
@@ -1197,7 +1433,10 @@ def process_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
         incident["status"] = "closed"
 
     artifacts = {
-        "source_document": "TFA_Notif_Architecture_v1.0, Sec 3-4 and Sec 9 backlog",
+        "source_document": (
+            "TFA_Notif_Architecture_v1.0, Sec 3-4 and Sec 9 backlog; "
+            "Trafo/IBT scenarios are explicitly marked as generic IEC 61850 extensions"
+        ),
         "decision_tree": DOC_DECISION_TREE,
         "raw_mms_events": events,
         "data_mapping": scenario["data_mapping"],
@@ -1217,7 +1456,16 @@ def process_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     return {
         "scenario": {
             key: scenario[key]
-            for key in ("id", "title", "subtitle", "description", "station_name", "asset_name", "asset_id")
+            for key in (
+                "id",
+                "title",
+                "subtitle",
+                "description",
+                "station_name",
+                "asset_name",
+                "asset_id",
+                "asset_type",
+            )
         },
         "incidents": incidents,
         "notifications": notifications,
@@ -1235,6 +1483,7 @@ async def list_scenarios():
             "subtitle": scenario["subtitle"],
             "station_name": scenario["station_name"],
             "asset_name": scenario["asset_name"],
+            "asset_type": scenario.get("asset_type", "line"),
             "event_count": len(scenario["events"]),
         }
         for scenario in SCENARIOS

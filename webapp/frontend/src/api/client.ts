@@ -525,6 +525,7 @@ export interface EventSimulatorScenarioSummary {
   subtitle: string;
   station_name: string;
   asset_name: string;
+  asset_type: "line" | "transformer";
   event_count: number;
 }
 
@@ -549,6 +550,7 @@ export interface EventSimulatorIncident {
   station_name: string;
   asset_name: string;
   asset_id: string;
+  asset_type: "line" | "transformer";
   start_ms: number;
   last_event_ms: number;
   status: string;
@@ -586,6 +588,7 @@ export interface EventSimulatorRun {
     station_name: string;
     asset_name: string;
     asset_id: string;
+    asset_type: "line" | "transformer";
   };
   incidents: EventSimulatorIncident[];
   notifications: EventSimulatorNotification[];
