@@ -265,7 +265,17 @@ export async function computeLocusBatch(
     // One request does the work of six; allow it more time than the 30s default.
     { timeout: 90000 },
   );
-  return data as { points_by_loop: Record<string, { t: number; r: number; x: number }[]> };
+  return data as {
+    points_by_loop: Record<string, { t: number; r: number; x: number }[]>;
+    diagnostics_by_loop?: Record<string, {
+      windows_evaluated: number;
+      windows_kept: number;
+      retention_pct: number;
+      ct_saturation_suspected: boolean;
+      ct_saturation_thd_ratio: number;
+      dc_offset_corrected: boolean;
+    }>;
+  };
 }
 
 export async function fetchFaultClassification21(analysisId: string) {

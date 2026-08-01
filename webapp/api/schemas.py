@@ -157,11 +157,24 @@ class LocusPoint(BaseModel):
     x: float
 
 
+class LocusDiagnostics(BaseModel):
+    """Data-quality signals for one loop's computed locus — surfaced instead
+    of silently smoothed over, so a credible/defensible locus discloses how
+    much of the record its trajectory actually rests on."""
+    windows_evaluated: int = 0
+    windows_kept: int = 0
+    retention_pct: float = 0.0
+    ct_saturation_suspected: bool = False
+    ct_saturation_thd_ratio: float = 0.0
+    dc_offset_corrected: bool = False
+
+
 class LocusResponse(BaseModel):
     loop: str
     points: List[LocusPoint]
     zones: List[ZoneConfig]
     fault_inception_idx: Optional[int]
+    diagnostics: LocusDiagnostics = LocusDiagnostics()
 
 
 class LocusBatchRequest(AnalysisRequestBase):
@@ -177,6 +190,7 @@ class LocusBatchRequest(AnalysisRequestBase):
 
 class LocusBatchResponse(BaseModel):
     points_by_loop: dict[str, List[LocusPoint]]
+    diagnostics_by_loop: dict[str, LocusDiagnostics] = {}
 
 
 class LocusEvent(BaseModel):
