@@ -85,14 +85,25 @@ def _data_quality(payload: dict, event_window: Optional[EventWindow]) -> dict[st
     channels = payload.get("analog_channels", [])
     has_voltage = any(c.get("measurement") == "voltage" for c in channels)
     has_current = any(c.get("measurement") == "current" for c in channels)
-    has_digital = len(payload.get("status_channels", [])) > 0
+    status_channels = payload.get("status_channels", [])
+    has_digital = len(status_channels) > 0
+    # Distinct from has_digital_channels: this record MAY have digital
+    # channels defined in the CFG but none of them ever asserted during the
+    # capture window (e.g. a distance/OCR/GFR/CB-trip element never
+    # picked up). A fault can still be visible on the analog waveform alone
+    # (e.g. through-fault current, or the operating element/CB is on a
+    # different device not wired into this CFG) - this flag exists so that
+    # case is distinguishable from "protection operated" instead of being
+    # silently read as equivalent.
+    protection_operated = has_digital and any(any(ch.get("samples") or []) for ch in status_channels)
     return {
         "has_voltage_channels": has_voltage,
         "has_current_channels": has_current,
         "has_digital_channels": has_digital,
+        "protection_operated": protection_operated,
         "current_only": has_current and not has_voltage,
         "analog_channel_count": len(channels),
-        "status_channel_count": len(payload.get("status_channels", [])),
+        "status_channel_count": len(status_channels),
         "parser_warnings": list(payload.get("warnings") or []),
         "timing_warnings": list(event_window.warnings) if event_window else [],
     }
@@ -124,6 +135,23 @@ def _missing_evidence(payload: dict, data_quality: dict, event_window: Optional[
         missing.append({
             "type": "CLEARING_EVIDENCE",
             "description": "Fault clearing time could not be determined from available evidence.",
+        })
+    if (
+        data_quality["has_digital_channels"]
+        and not data_quality["protection_operated"]
+        and event_window is not None
+        and event_window.inception_time_ms is not None
+    ):
+        missing.append({
+            "type": "NO_PROTECTION_OPERATION",
+            "description": (
+                "A fault was detected from the analog waveform, but no digital/status channel in this "
+                "recording (distance/OCR/GFR trip, CB trip, auto-reclose, etc.) ever asserted during the "
+                "capture window. This may mean the capture window was too short to reach a trip decision, "
+                "the operating protection element is on a different device not wired into this CFG, or the "
+                "fault self-cleared before any element picked up - not that no fault occurred."
+            ),
+            "requires_review": True,
         })
     missing.append({
         "type": "REMOTE_END_RECORD",

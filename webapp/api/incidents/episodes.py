@@ -168,6 +168,29 @@ def group_episodes(
             })
         if not any(_record_time_iso(r) for r in group):
             missing_evidence.append({"type": "NO_ABSOLUTE_TIME", "description": "No member record has an absolute timestamp for this episode."})
+        # Surface Stage 0's NO_PROTECTION_OPERATION flag (see record_analysis.py)
+        # at episode level: a fault was seen on the waveform but no trip/reclose
+        # element ever asserted in ANY member record. Don't let this silently
+        # disappear into per-record missing_evidence that only the single-record
+        # view would show.
+        no_protection_records = [
+            r.incident_record_id for r in group
+            if any(
+                (item.get("type") == "NO_PROTECTION_OPERATION")
+                for item in ((r.canonical_snapshot or {}).get("missing_evidence") or [])
+            )
+        ]
+        if no_protection_records:
+            missing_evidence.append({
+                "type": "NO_PROTECTION_OPERATION",
+                "description": (
+                    "A fault was detected from the analog waveform in "
+                    f"{'this record' if len(no_protection_records) == 1 else f'{len(no_protection_records)} member records'} "
+                    "but no trip/reclose element ever asserted - the cause hypothesis below is derived from raw "
+                    "waveform signature alone, not confirmed by any protection operation."
+                ),
+                "requires_review": True,
+            })
 
         confidence = min((r.canonical_snapshot or {}).get("event_window", {}).get("confidence", 0.0) or 0.0 for r in group) if group else 0.0
 
