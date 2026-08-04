@@ -233,8 +233,20 @@ def attach_record(
     warnings = _attachment_warnings(incident, analysis, override_warnings)
     blocking = [w for w in warnings if w.get("requires_review") and w["type"] == "STATION_MISMATCH" and not override_warnings]
     if blocking:
+        # Name the exact station strings being compared — a station-name
+        # mismatch is not always a wrong-incident mistake (e.g. "Mojosongo"
+        # vs the COMTRADE header's "GI MOJOSONGO" is the same substation,
+        # just written differently) but it can also be a genuinely different
+        # bay/line whose record should NOT be force-attached here (e.g. an
+        # external DFR that captured two different lines in the same
+        # incident window). The operator must be able to tell those apart
+        # before deciding to override — a generic "mismatch" message can't.
+        mismatch = blocking[0]
         raise IncidentServiceError(
-            "Station mismatch between incident and record. Pass override_warnings=true to attach anyway.",
+            f"Station mismatch: this incident is set to '{mismatch.get('incident_station')}', but the "
+            f"record's COMTRADE header reports '{mismatch.get('record_station')}'. If this is the same "
+            "substation written differently, pass override_warnings=true to attach anyway. If it is a "
+            "genuinely different bay/line, attach it to a separate incident instead.",
             status_code=409,
         )
 

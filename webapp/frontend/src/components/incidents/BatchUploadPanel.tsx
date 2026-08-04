@@ -178,8 +178,11 @@ export default function BatchUploadPanel({ incidentId, onUploaded }: Props) {
           )}
           {result.errors.some((e) => e.reason.toLowerCase().includes("station mismatch")) && !overrideWarnings && (
             <div className={styles.warning}>
-              One or more records report a different station name than this incident. Check "Attach despite
-              station-name mismatch" above and upload again if that mismatch is expected (e.g. remote-end record).
+              One or more records report a station name that differs from this incident (see the exact names in
+              the error message above). Only check "Attach despite station-name mismatch" and re-upload if this is
+              the same substation written differently (e.g. "Mojosongo" vs "GI MOJOSONGO"). If the record is
+              actually from a different bay/line — e.g. an external DFR that captured two lines in the same
+              window — attach it to a separate incident instead of overriding.
             </div>
           )}
         </div>
