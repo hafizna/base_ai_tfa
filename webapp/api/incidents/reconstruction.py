@@ -212,7 +212,183 @@ def _incident_hypotheses(episodes: list[FaultEpisode], relationships: list[Recor
             "evidence_for": [e for e in evidence_for if e],
             "evidence_against": [e for e in evidence_against if e],
         })
+    hypotheses.extend(_pattern_based_cause_signals(episodes))
     return hypotheses
+
+
+# --- Pattern-based mechanism signals -----------------------------------------
+#
+# These are NOT a replacement for the per-record LightGBM cause_ranking (see
+# _physical_cause_evidence) and never produce a "confirmed" cause. LightGBM
+# reads one record's waveform in isolation and cannot see a multi-episode
+# pattern; these rules read the opposite — the SHAPE of the incident across
+# episodes (phase count trending up, an identical fault recurring, a failed
+# reclose) — using textbook protection-engineering associations that a human
+# reviewer would draw by eye from the episode table. Deliberately coarse
+# (thresholds, not a learned model) and always phrased as "consistent with",
+# carrying its own evidence_for/evidence_against, so it is exactly as
+# auditable as every other reconstruction conclusion and never silently
+# overrides or averages into the per-record cause_ranking.
+#
+# Mechanism vocabulary matches core/ml_predict cause labels (PETIR = lightning,
+# BENDA_ASING = foreign object / vegetation, KONDUKTOR = conductor fault) so a
+# reader can directly compare a pattern signal against the per-record
+# cause_ranking candidates shown in physical_cause_evidence.
+
+_ESCALATION_MAX_GAP_S = 30.0     # phase count trending up must happen quickly to read as "one worsening event"
+_RECURRING_MAX_GAP_S = 3600.0    # matches REPEATED_FAULT_MAX_GAP_S in relationships.py
+_TRANSIENT_MAX_DURATION_MS = 100.0
+
+
+def _phase_count(episode: FaultEpisode) -> int:
+    return len(set(episode.faulted_phases or []))
+
+
+def _pattern_based_cause_signals(episodes: list[FaultEpisode]) -> list[dict[str, Any]]:
+    if not episodes:
+        return []
+
+    signals: list[dict[str, Any]] = []
+
+    # --- ESCALATING_PHASE_INVOLVEMENT: consecutive episodes where the
+    # faulted-phase COUNT strictly increases within a short window (e.g. a
+    # phase-to-phase fault followed shortly by a three-phase fault at the
+    # same location). A single lightning strike is a near-instantaneous
+    # transient — it does not typically re-manifest moments later as a
+    # LARGER fault at the same spot. A worsening contact (a falling branch,
+    # a foreign object settling further onto the conductors, vegetation
+    # burning through) escalating over seconds fits this shape much better.
+    for i in range(1, len(episodes)):
+        prev, cur = episodes[i - 1], episodes[i]
+        prev_n, cur_n = _phase_count(prev), _phase_count(cur)
+        if prev_n == 0 or cur_n <= prev_n:
+            continue
+        prev_t = _parse_iso(prev.end_iso or prev.start_iso)
+        cur_t = _parse_iso(cur.start_iso)
+        if prev_t is None or cur_t is None:
+            continue
+        gap_s = (cur_t - prev_t).total_seconds()
+        if gap_s < 0 or gap_s > _ESCALATION_MAX_GAP_S:
+            continue
+        signals.append({
+            "hypothesis": "ESCALATING_PHASE_INVOLVEMENT",
+            "mechanism_signal": "CONSISTENT_WITH_PHYSICAL_CONTACT",
+            "confidence": 0.5,
+            "episode_indices": [prev.episode_index, cur.episode_index],
+            "evidence_for": [
+                f"Faulted phases went from {sorted(set(prev.faulted_phases))} ({prev_n}-phase) to "
+                f"{sorted(set(cur.faulted_phases))} ({cur_n}-phase) within {round(gap_s, 1)}s.",
+            ],
+            "evidence_against": [],
+            "description": (
+                "Fault severity escalated (more phases involved) within a short window. This pattern is "
+                "more commonly associated with a worsening physical contact — e.g. vegetation or a foreign "
+                "object — than with a single lightning transient, which does not usually re-escalate "
+                "moments after clearing. Not a confirmed cause; corroborate with field inspection or "
+                "lightning-detection network data."
+            ),
+        })
+
+    # --- RECURRING_SAME_SIGNATURE: 2+ episodes with the identical faulted-phase
+    # set and fault_type, separated by a clear interval, each with a
+    # successful reclose (so the line kept re-energizing into the same
+    # fault). Consistent with an intermittent contact (e.g. a branch
+    # swinging into and out of clearance) rather than one-off transients,
+    # though repeated independent lightning strikes are also possible and
+    # cannot be excluded from this evidence alone.
+    signature_groups: dict[tuple, list[FaultEpisode]] = {}
+    for ep in episodes:
+        if not ep.faulted_phases or ep.reclose_outcome != "successful":
+            continue
+        key = (tuple(sorted(set(ep.faulted_phases))), ep.fault_type)
+        signature_groups.setdefault(key, []).append(ep)
+    for (phases, fault_type), group in signature_groups.items():
+        if len(group) < 2:
+            continue
+        times = sorted(t for t in (_parse_iso(e.start_iso) for e in group) if t)
+        if len(times) < 2 or (times[-1] - times[0]).total_seconds() > _RECURRING_MAX_GAP_S:
+            continue
+        signals.append({
+            "hypothesis": "RECURRING_SAME_SIGNATURE",
+            "mechanism_signal": "CONSISTENT_WITH_INTERMITTENT_CONTACT_OR_REPEATED_STRIKES",
+            "confidence": 0.4,
+            "episode_indices": [e.episode_index for e in group],
+            "evidence_for": [
+                f"{len(group)} episodes share the same faulted phases {list(phases)} and fault type "
+                f"({fault_type}), each followed by a successful reclose, over "
+                f"{round((times[-1] - times[0]).total_seconds(), 1)}s.",
+            ],
+            "evidence_against": [
+                "Repeated independent lightning strikes on the same phases cannot be ruled out from "
+                "COMTRADE evidence alone.",
+            ],
+            "description": (
+                "The same fault signature recurred multiple times with successful reclose each time. "
+                "Consistent with an intermittent physical contact (e.g. vegetation swinging in and out of "
+                "clearance), though repeated independent transient strikes remain possible. Not a confirmed "
+                "cause."
+            ),
+        })
+
+    # --- FAILED_RECLOSE_PERMANENT: any episode whose reclose attempt failed
+    # indicates the fault was still present when the breaker re-energized —
+    # i.e. a permanent condition, not a transient that had already cleared.
+    # A permanent fault is inconsistent with lightning (which does not
+    # persist) and consistent with a sustained physical obstruction (a
+    # fallen tree/branch still in contact, permanent conductor damage).
+    failed = [e for e in episodes if e.reclose_outcome == "failed"]
+    if failed:
+        signals.append({
+            "hypothesis": "FAILED_RECLOSE_INDICATES_PERMANENT_FAULT",
+            "mechanism_signal": "CONSISTENT_WITH_SUSTAINED_PHYSICAL_OBSTRUCTION",
+            "confidence": 0.6,
+            "episode_indices": [e.episode_index for e in failed],
+            "evidence_for": [
+                f"Episode {e.episode_index + 1} reclose failed — the fault was still present when the "
+                "breaker re-energized, indicating a permanent (not transient) condition."
+                for e in failed
+            ],
+            "evidence_against": [],
+            "description": (
+                "A failed reclose means the fault persisted through re-energization. This is inconsistent "
+                "with a transient cause like lightning and consistent with a sustained physical obstruction "
+                "(e.g. a fallen tree/branch still in contact with the conductor, or permanent damage). Not a "
+                "confirmed cause."
+            ),
+        })
+
+    # --- SINGLE_TRANSIENT_NO_RECURRENCE: the counter-signal. Exactly one
+    # episode, very short duration, successful reclose, and (implicitly, by
+    # not appearing above) no escalation or recurrence. This is the classic
+    # transient-fault shape and is the pattern most consistent with a single
+    # lightning strike or switching transient — included so the absence of
+    # the other three signals is stated explicitly rather than left as
+    # silence the reader has to infer.
+    if (
+        len(episodes) == 1
+        and episodes[0].duration_ms is not None
+        and episodes[0].duration_ms <= _TRANSIENT_MAX_DURATION_MS
+        and episodes[0].reclose_outcome == "successful"
+    ):
+        signals.append({
+            "hypothesis": "SINGLE_TRANSIENT_NO_RECURRENCE",
+            "mechanism_signal": "CONSISTENT_WITH_TRANSIENT_STRIKE_OR_SWITCHING",
+            "confidence": 0.4,
+            "episode_indices": [episodes[0].episode_index],
+            "evidence_for": [
+                f"A single {episodes[0].duration_ms:.0f} ms fault episode cleared on the first reclose "
+                "attempt, with no recurrence or escalation seen in the attached records.",
+            ],
+            "evidence_against": [],
+            "description": (
+                "A short, one-off fault that cleared on the first reclose is the classic transient-fault "
+                "shape most consistent with a single lightning strike or switching transient. Not a "
+                "confirmed cause, and does not rule out a physical cause that happened not to recur within "
+                "the attached records."
+            ),
+        })
+
+    return signals
 
 
 def run_reconstruction(
@@ -267,6 +443,7 @@ def run_reconstruction(
         same_bay.status,
         physical_cause.get("consistency", "INSUFFICIENT"),
         hypotheses,
+        physical_cause.get("records", []),
     )
 
     prior = incident_storage.get_latest_reconstruction(incident.incident_id)

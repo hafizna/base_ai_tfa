@@ -116,6 +116,110 @@
   background: #d1d5db;
 }
 
+/* Relationship arrow between consecutive episode segments — the visual
+   answer to "what happened between this record and the next one": did the
+   line reclose and hold, reclose and re-fault, or is this an unrelated new
+   event. Rendered inside the gap block so it sits directly between the two
+   segments it connects, at any zoom level (compressed or chronological). */
+.relationshipArrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.relationshipArrow svg {
+  width: 22px;
+  height: 10px;
+}
+
+.relArrow_RECLOSE_SEQUENCE,
+.relArrow_CONTINUATION {
+  color: #15803d;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.relArrow_POSSIBLE_EVOLVING_FAULT {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.relArrow_REPEATED_FAULT {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.relArrow_NEW_FAULT_EPISODE,
+.relArrow_UNRELATED {
+  color: #6b7280;
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.relArrow_UNCERTAIN {
+  color: #9ca3af;
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  border-style: dashed;
+}
+
+/* Reclose-outcome badge on each segment — the at-a-glance answer to "did
+   this episode's breaker reclose hold, fail, or was there no reclose to
+   begin with". */
+.recloseBadge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+}
+
+.recloseBadge_successful {
+  color: #15803d;
+  background: #f0fdf4;
+}
+
+.recloseBadge_failed {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+/* Episode needs a human look before trusting its cause label — e.g. a fault
+   was seen on the waveform but no protection element ever asserted
+   (NO_PROTECTION_OPERATION, see record_analysis.py), so the segment gets a
+   visibly different treatment instead of looking identical to a clean,
+   fully-confirmed episode. */
+.segmentNeedsReview {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #fde68a inset;
+}
+
+.reviewBadge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: 1px 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+}
+
 .segment {
   flex-shrink: 0;
   border: 1px solid #e5e7eb;

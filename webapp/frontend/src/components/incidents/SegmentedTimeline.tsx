@@ -25,6 +25,43 @@ function markerLabel(eventType: string): string {
   return eventType.replace(/_/g, " ");
 }
 
+// Short label + arrow for the relationship between two consecutive episode
+// segments — engineered to answer "what happened between these two
+// records" at a glance, without opening the relationship inspector below.
+const RELATIONSHIP_ARROW_LABEL: Record<string, string> = {
+  DUPLICATE_TRIGGER: "duplicate",
+  OVERLAPPING_CAPTURE: "overlap",
+  CONTINUATION: "continues",
+  RECLOSE_SEQUENCE: "reclose seq.",
+  NEW_FAULT_EPISODE: "new fault",
+  REPEATED_FAULT: "repeated",
+  POSSIBLE_EVOLVING_FAULT: "may be evolving",
+  UNRELATED: "unrelated",
+  UNCERTAIN: "uncertain",
+};
+
+function RelationshipArrow({ type }: { type: string }) {
+  const label = RELATIONSHIP_ARROW_LABEL[type] ?? type.replace(/_/g, " ").toLowerCase();
+  return (
+    <span className={`${styles.relationshipArrow} ${styles[`relArrow_${type}`] ?? ""}`} title={type}>
+      <svg viewBox="0 0 22 10" aria-hidden="true">
+        <line x1="0" y1="5" x2="17" y2="5" stroke="currentColor" strokeWidth="1.5" />
+        <polygon points="17,1.5 22,5 17,8.5" fill="currentColor" />
+      </svg>
+      {label}
+    </span>
+  );
+}
+
+function RecloseBadge({ outcome }: { outcome: "successful" | "failed" | null }) {
+  if (!outcome) return null;
+  return (
+    <span className={`${styles.recloseBadge} ${styles[`recloseBadge_${outcome}`] ?? ""}`}>
+      {outcome === "successful" ? "✓ reclose OK" : "✗ reclose failed"}
+    </span>
+  );
+}
+
 export default function SegmentedTimeline({ records, timeline, episodes, relationships }: Props) {
   const navigate = useNavigate();
   const [scaleMode, setScaleMode] = useState<"compressed" | "chronological">("compressed");
@@ -132,16 +169,27 @@ export default function SegmentedTimeline({ records, timeline, episodes, relatio
             Math.max(MIN_SEGMENT_WIDTH, recordDurationMs ? recordDurationMs * 1.5 : MIN_SEGMENT_WIDTH),
           );
 
+          // Only shown when this episode is the FIRST record of a new
+          // episode (relationship_to_previous is set on the episode, not
+          // per-record) — a merged duplicate/reclose-sequence group has no
+          // separate arrow for its internal members, matching how episodes
+          // themselves are already deduplicated.
+          const isFirstOfEpisode = episode ? episode.member_record_ids[0] === record.incident_record_id : true;
+          const relationshipType = isFirstOfEpisode ? episode?.relationship_to_previous : null;
+
+          const needsReview = !!episode?.missing_evidence?.some((m) => m.type === "NO_PROTECTION_OPERATION");
+
           return (
             <div key={record.incident_record_id} className={styles.segmentGroup}>
               {gapBefore && (
                 <div className={styles.gapBlock} style={{ width: gapWidth }} title={`Gap: ${formatMs(gapBefore.details.gap_ms as number)}`}>
+                  {relationshipType && <RelationshipArrow type={relationshipType} />}
                   <span className={styles.gapLabel}>{formatMs(gapBefore.details.gap_ms as number)}</span>
                   <span className={styles.gapTick} />
                 </div>
               )}
               <div
-                className={`${styles.segment} ${isOverlap ? styles.segmentOverlap : ""} ${isDuplicateGroup ? styles.segmentDuplicate : ""}`}
+                className={`${styles.segment} ${isOverlap ? styles.segmentOverlap : ""} ${isDuplicateGroup ? styles.segmentDuplicate : ""} ${needsReview ? styles.segmentNeedsReview : ""}`}
                 style={{ width: segmentWidth }}
               >
                 <button
@@ -158,6 +206,12 @@ export default function SegmentedTimeline({ records, timeline, episodes, relatio
                     Episode {episode.episode_index + 1}
                     {isDuplicateGroup && <span className={styles.dupTag}>duplicate group</span>}
                   </div>
+                )}
+                {episode && <RecloseBadge outcome={episode.reclose_outcome} />}
+                {needsReview && (
+                  <span className={styles.reviewBadge} title="A fault was seen on the waveform but no protection element ever asserted — review manually before trusting the cause label.">
+                    ⚠ review needed
+                  </span>
                 )}
                 <div className={styles.markerRow}>
                   {events.map((event) => (
