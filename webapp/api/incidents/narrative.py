@@ -63,12 +63,64 @@ def _episode_sentence(episode: FaultEpisode, index: int) -> str:
     return f"{prefix} was {fault_desc}{duration_txt}.{reclose_txt}{relation_txt}{member_txt}"
 
 
+_MECHANISM_LABELS = {
+    "CONSISTENT_WITH_PHYSICAL_CONTACT": "a worsening physical contact (e.g. vegetation or a foreign object)",
+    "CONSISTENT_WITH_INTERMITTENT_CONTACT_OR_REPEATED_STRIKES": "an intermittent physical contact (or repeated independent strikes)",
+    "CONSISTENT_WITH_SUSTAINED_PHYSICAL_OBSTRUCTION": "a sustained physical obstruction",
+    "CONSISTENT_WITH_TRANSIENT_STRIKE_OR_SWITCHING": "a single transient strike or switching event",
+}
+
+# Pattern hypotheses whose mechanism_signal points toward a persistent
+# physical cause — used only to phrase the contradiction sentence against
+# the per-record top hypothesis; the underlying evidence_for/evidence_against
+# on each hypothesis remains the source of truth.
+_PHYSICAL_CAUSE_PATTERN_TYPES = {
+    "ESCALATING_PHASE_INVOLVEMENT",
+    "RECURRING_SAME_SIGNATURE",
+    "FAILED_RECLOSE_INDICATES_PERMANENT_FAULT",
+}
+
+# Per-record cause labels (core/ml_predict vocabulary) that the above pattern
+# types would NOT expect to see as the dominant per-record hypothesis if the
+# pattern signal is right — used only to decide whether to surface the
+# contradiction sentence, never to override or silently relabel the model's
+# own output.
+_TRANSIENT_CAUSE_LABELS = {"PETIR"}
+
+
+def _pattern_vs_record_contradiction(incident_hypotheses: list[dict], record_causes: list[dict]) -> Optional[str]:
+    """If a pattern-based signal points toward a persistent physical cause
+    but every record's own top hypothesis is a classically transient cause
+    (e.g. PETIR/lightning), say so explicitly instead of leaving the reader
+    to notice the tension between the episode table and the cause table
+    themselves. Silent when there's nothing to compare (no records, no
+    pattern signals) or when they already agree."""
+    physical_signals = [h for h in incident_hypotheses if h.get("hypothesis") in _PHYSICAL_CAUSE_PATTERN_TYPES]
+    if not physical_signals or not record_causes:
+        return None
+
+    top_causes = [r.get("top_hypothesis") for r in record_causes if r.get("top_hypothesis")]
+    if not top_causes or not all(c in _TRANSIENT_CAUSE_LABELS for c in top_causes):
+        return None
+
+    signal_names = ", ".join(sorted({h["hypothesis"].replace("_", " ").lower() for h in physical_signals}))
+    causes_txt = "/".join(sorted(set(top_causes)))
+    return (
+        f"Note: every record's own top cause hypothesis is {causes_txt} (a classically transient cause), "
+        f"but the multi-episode pattern ({signal_names}) leans toward a persistent physical cause. LightGBM "
+        "reads one record's waveform in isolation and cannot see this cross-episode pattern — the two views "
+        "are not necessarily in conflict, but this combination is worth a manual review rather than accepting "
+        "the per-record label at face value."
+    )
+
+
 def build_narrative(
     episodes: list[FaultEpisode],
     incident_duration_ms: Optional[float],
     same_bay_status: str,
     consistency: str,
     incident_hypotheses: list[dict],
+    record_causes: Optional[list[dict]] = None,
 ) -> str:
     """Compose the deterministic narrative. Pure function of its inputs so
     it is trivially testable and auditable — no hidden state, no model call."""
@@ -123,6 +175,10 @@ def build_narrative(
     }.get(consistency, "")
     if consistency_txt:
         lines.append(consistency_txt)
+
+    contradiction_txt = _pattern_vs_record_contradiction(incident_hypotheses, record_causes or [])
+    if contradiction_txt:
+        lines.append(contradiction_txt)
 
     lines.append(
         "The physical initiating cause remains unconfirmed from local COMTRADE evidence alone; "
