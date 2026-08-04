@@ -194,11 +194,23 @@ def parse_comtrade(cfg_path: str, dat_path: Optional[str] = None) -> Optional[Co
         trigger_time = 0.0
         start_time_iso: Optional[str] = None
         trigger_time_iso: Optional[str] = None
-        if hasattr(com, 'start_time') and hasattr(com, 'trigger_time'):
+        # NOTE: the `comtrade` library exposes these as `start_timestamp` /
+        # `trigger_timestamp` properties (NOT `start_time` / `trigger_time` —
+        # those attributes don't exist on Comtrade objects at all, so the old
+        # `hasattr(com, 'start_time')` guard was always False and this block
+        # silently never ran, for every file, regardless of vendor). The
+        # properties default to datetime(1900, 1, 1) when the CFG's
+        # COMTRADE-2013 timestamp line was empty/unparseable — treat that
+        # sentinel as "no data" rather than a real 1900 timestamp.
+        _EPOCH_SENTINEL_YEAR = 1900
+        if hasattr(com, 'start_timestamp') and hasattr(com, 'trigger_timestamp'):
             try:
                 from datetime import datetime as _dt
-                st, tt = com.start_time, com.trigger_time
-                if isinstance(st, _dt) and isinstance(tt, _dt):
+                st, tt = com.start_timestamp, com.trigger_timestamp
+                if (
+                    isinstance(st, _dt) and isinstance(tt, _dt)
+                    and st.year != _EPOCH_SENTINEL_YEAR and tt.year != _EPOCH_SENTINEL_YEAR
+                ):
                     offset = (tt - st).total_seconds()
                     if offset >= 0:
                         trigger_time = offset
