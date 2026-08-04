@@ -48,6 +48,12 @@ def _prefer_waveform_fault_phases(status_phases: Optional[List[str]], waveform_p
 
 
 def _extract_line_tag(channel_name: str) -> Optional[str]:
+    """Extract a line/circuit/bay tag from a channel name (e.g. "IR BRINGIN 2"
+    -> "2"). Shared with webapp/api/routers/relay_21.py, which imports this
+    directly — an external DFR CFG recording two lines in one file (common:
+    "IR BRINGIN 1"/"IR BRINGIN 2" side by side) needs the SAME tag extraction
+    used to pick the active line here, or the two call sites can disagree
+    about which line a channel belongs to."""
     s = (channel_name or "").upper()
     m = re.search(r"(?:LINE|BAY|JEPARA|SIRKIT|CCT|CIRCUIT)\s*#?\s*([0-9A-Z]+)\b", s)
     if m:

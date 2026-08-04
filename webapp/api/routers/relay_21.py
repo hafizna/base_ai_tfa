@@ -21,6 +21,7 @@ from ..storage import load_analysis
 from ..ml_predict import run_ml_prediction, extract_ml_features, _digital_sequence_features
 from ..fault_detection import detect_fault_presence, _is_operate_status
 from core.event_analysis import build_event_window
+from core.fault_detector import _extract_line_tag
 
 router = APIRouter(prefix="/api/analyze/21", tags=["relay-21"])
 
@@ -49,15 +50,62 @@ LOOP_CHANNELS = {
 }
 
 
-def _find_channel(channels, candidates: list[str]) -> Optional[np.ndarray]:
-    """Return samples for the first matching canonical name."""
+def _detect_active_line_tag(channels: list) -> Optional[str]:
+    """Pick the line/circuit tag with the largest peak current in this
+    record — same tag-extraction and scoring rule as
+    core.fault_detector._detect_active_line_tag_from_currents, reimplemented
+    here against the dict-shaped payload channels (that one takes parsed
+    AnalogChannel objects).
+
+    Why this matters: an external DFR CFG can record TWO lines side by side
+    in one file (e.g. "IR BRINGIN 1" AND "IR BRINGIN 2" both present, one
+    healthy, one faulted). Every channel finder below used to return the
+    FIRST name/phase match regardless of which line it belonged to — for a
+    real Mojosongo Bay Bringin #2 incident this meant the whole electrical
+    summary (I peak, V sag, locus, report) silently described the healthy
+    line while the actual fault (current at >5x CT nominal) was on the
+    other one. Channels with no extractable tag (single-line CFGs, the
+    overwhelming majority of records) are unaffected — this returns None
+    and every finder below falls back to its original first-match
+    behaviour."""
+    scores: dict[str, float] = {}
+    for ch in channels:
+        if ch.get("measurement") != "current":
+            continue
+        canonical = (ch.get("canonical_name") or "").upper()
+        if canonical not in ("IA", "IB", "IC"):
+            continue
+        samples = ch.get("samples") or []
+        if not samples:
+            continue
+        tag = _extract_line_tag(ch.get("name") or "")
+        if not tag:
+            continue
+        peak = float(np.max(np.abs(np.asarray(samples, dtype=float))))
+        scores[tag] = scores.get(tag, 0.0) + peak
+    if not scores:
+        return None
+    return max(scores.items(), key=lambda item: item[1])[0]
+
+
+def _find_channel(channels, candidates: list[str], preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
+    """Return samples for the first matching canonical name, preferring a
+    channel tagged with ``preferred_tag`` (see _detect_active_line_tag) when
+    more than one channel matches the same name/canonical_name."""
     wanted = {c.upper() for c in candidates}
+    matches = []
     for ch in channels:
         canonical = (ch.get("canonical_name") or "").upper()
         name = (ch.get("name") or "").upper()
         if canonical in wanted or name in wanted:
-            return np.array(ch["samples"], dtype=float)
-    return None
+            matches.append(ch)
+    if not matches:
+        return None
+    if preferred_tag:
+        tagged = [ch for ch in matches if _extract_line_tag(ch.get("name") or "") == preferred_tag]
+        if tagged:
+            return np.array(tagged[0]["samples"], dtype=float)
+    return np.array(matches[0]["samples"], dtype=float)
 
 
 def _secondary_impedance_scale(channels: list) -> float:
@@ -93,7 +141,7 @@ def _voltage_to_volts_scale(channels: list) -> float:
     return 1.0
 
 
-def _find_phase_voltage(channels, phase: str) -> Optional[np.ndarray]:
+def _find_phase_voltage(channels, phase: str, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
     phase = phase.upper()
     aliases = {phase}
     if phase == "A":
@@ -103,6 +151,7 @@ def _find_phase_voltage(channels, phase: str) -> Optional[np.ndarray]:
     elif phase == "C":
         aliases.update({"L3", "3"})
 
+    matches = []
     for ch in channels:
         if ch.get("measurement") != "voltage":
             continue
@@ -110,11 +159,17 @@ def _find_phase_voltage(channels, phase: str) -> Optional[np.ndarray]:
         canonical = (ch.get("canonical_name") or "").upper()
         name = (ch.get("name") or "").upper()
         if ch_phase in aliases or any(canonical.endswith(alias) or name.endswith(alias) for alias in aliases):
-            return np.array(ch["samples"], dtype=float)
-    return None
+            matches.append(ch)
+    if not matches:
+        return None
+    if preferred_tag:
+        tagged = [ch for ch in matches if _extract_line_tag(ch.get("name") or "") == preferred_tag]
+        if tagged:
+            return np.array(tagged[0]["samples"], dtype=float)
+    return np.array(matches[0]["samples"], dtype=float)
 
 
-def _find_phase_current(channels, phase: str) -> Optional[np.ndarray]:
+def _find_phase_current(channels, phase: str, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
     phase = phase.upper()
     aliases = {phase}
     if phase == "A":
@@ -124,6 +179,7 @@ def _find_phase_current(channels, phase: str) -> Optional[np.ndarray]:
     elif phase == "C":
         aliases.update({"L3", "3"})
 
+    matches = []
     for ch in channels:
         if ch.get("measurement") != "current":
             continue
@@ -131,23 +187,29 @@ def _find_phase_current(channels, phase: str) -> Optional[np.ndarray]:
         canonical = (ch.get("canonical_name") or "").upper()
         name = (ch.get("name") or "").upper()
         if ch_phase in aliases or any(canonical.endswith(alias) or name.endswith(alias) for alias in aliases):
-            return np.array(ch["samples"], dtype=float)
-    return None
+            matches.append(ch)
+    if not matches:
+        return None
+    if preferred_tag:
+        tagged = [ch for ch in matches if _extract_line_tag(ch.get("name") or "") == preferred_tag]
+        if tagged:
+            return np.array(tagged[0]["samples"], dtype=float)
+    return np.array(matches[0]["samples"], dtype=float)
 
 
-def _find_voltage_for_loop(channels, mapping: dict) -> Optional[np.ndarray]:
-    direct = _find_channel(channels, mapping["v"])
+def _find_voltage_for_loop(channels, mapping: dict, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
+    direct = _find_channel(channels, mapping["v"], preferred_tag)
     if direct is not None:
         return direct.astype(float)
 
     phase = mapping.get("phase")
     if phase:
-        return _find_phase_voltage(channels, phase)
+        return _find_phase_voltage(channels, phase, preferred_tag)
 
     phases = mapping.get("phases")
     if phases:
-        left = _find_phase_voltage(channels, phases[0])
-        right = _find_phase_voltage(channels, phases[1])
+        left = _find_phase_voltage(channels, phases[0], preferred_tag)
+        right = _find_phase_voltage(channels, phases[1], preferred_tag)
         if left is not None and right is not None:
             return left - right
 
@@ -317,15 +379,21 @@ def _compute_locus(
     else:
         secondary_scale = _secondary_impedance_scale(channels)
 
-    v = _find_voltage_for_loop(channels, mapping)
+    # See _detect_active_line_tag docstring: an external DFR CFG can record
+    # two lines side by side (e.g. "IR BRINGIN 1" / "IR BRINGIN 2"). Compute
+    # once per record and thread through every channel lookup below so the
+    # locus is always built from the line that actually faulted.
+    active_tag = _detect_active_line_tag(channels)
+
+    v = _find_voltage_for_loop(channels, mapping, active_tag)
     if v is None:
         raise HTTPException(status_code=422, detail=f"Could not find voltage channel for loop {loop}")
 
     i_channels = []
     for candidate in mapping["i"]:
-        current = _find_channel(channels, [candidate])
+        current = _find_channel(channels, [candidate], active_tag)
         if current is None and candidate.startswith("I") and len(candidate) >= 2:
-            current = _find_phase_current(channels, candidate[-1])
+            current = _find_phase_current(channels, candidate[-1], active_tag)
         i_channels.append(current)
     i_channels = [c for c in i_channels if c is not None]
     if not i_channels:
@@ -354,11 +422,11 @@ def _compute_locus(
         k0_complex = k0 * np.exp(1j * np.radians(k0_angle_deg))
         i_n = None
         if loop in ("ZA", "ZB", "ZC") and k0 != 0.0:
-            i_n = _find_channel(channels, ["IN", "I0", "3I0", "IRESIDUAL", "IEN", "IE", "IR"])
+            i_n = _find_channel(channels, ["IN", "I0", "3I0", "IRESIDUAL", "IEN", "IE", "IR"], active_tag)
             if i_n is None:
-                ia = _find_phase_current(channels, "A")
-                ib = _find_phase_current(channels, "B")
-                ic = _find_phase_current(channels, "C")
+                ia = _find_phase_current(channels, "A", active_tag)
+                ib = _find_phase_current(channels, "B", active_tag)
+                ic = _find_phase_current(channels, "C", active_tag)
                 if ia is not None and ib is not None and ic is not None:
                     i_n = ia + ib + ic
         r_list, x_list, t_list, thd_list = [], [], [], []
@@ -478,11 +546,18 @@ def _extract_features_from_payload(payload: dict) -> dict:
     sr = 1.0 / (time[1] - time[0])
     cycle_n = max(4, int(sr / freq))
 
+    # See _detect_active_line_tag: an external DFR CFG can record two lines
+    # side by side. Restrict the candidate search to the line with the
+    # actual fault current before picking the highest-peak phase within it —
+    # otherwise a healthy line's IA could still edge out a faulted line's IB
+    # by name-match order alone.
+    active_tag = _detect_active_line_tag(channels)
+
     # Pick the phase with the highest peak current — fault may be on B or C only
-    candidates = [_find_channel(channels, [n]) for n in ["IA", "IL1", "I1", "IB", "IL2", "IC", "IL3"]]
+    candidates = [_find_channel(channels, [n], active_tag) for n in ["IA", "IL1", "I1", "IB", "IL2", "IC", "IL3"]]
     candidates = [c for c in candidates if c is not None]
     i = max(candidates, key=lambda arr: float(np.max(np.abs(arr)))) if candidates else None
-    v = _find_channel(channels, ["VA", "VAN", "UA", "VB", "VBN", "VC", "VCN"])
+    v = _find_channel(channels, ["VA", "VAN", "UA", "VB", "VBN", "VC", "VCN"], active_tag)
     if i is None:
         return empty
 
@@ -549,12 +624,20 @@ def _compute_electrical_params(payload: dict) -> dict:
     time = np.array(payload.get("time", []))
     freq = float(payload.get("frequency", 50.0))
 
-    ia = _find_phase_current(channels, "A")
-    ib = _find_phase_current(channels, "B")
-    ic = _find_phase_current(channels, "C")
-    va = _find_phase_voltage(channels, "A")
-    vb = _find_phase_voltage(channels, "B")
-    vc = _find_phase_voltage(channels, "C")
+    # See _detect_active_line_tag docstring. Without this, an external DFR
+    # recording two lines in one CFG (e.g. "IR BRINGIN 1" healthy, "IR
+    # BRINGIN 2" faulted) silently reports I peak / V sag / the whole
+    # electrical summary and PDF report for whichever line's channels
+    # happen to appear first in the CFG — regardless of which line actually
+    # faulted.
+    active_tag = _detect_active_line_tag(channels)
+
+    ia = _find_phase_current(channels, "A", active_tag)
+    ib = _find_phase_current(channels, "B", active_tag)
+    ic = _find_phase_current(channels, "C", active_tag)
+    va = _find_phase_voltage(channels, "A", active_tag)
+    vb = _find_phase_voltage(channels, "B", active_tag)
+    vc = _find_phase_voltage(channels, "C", active_tag)
 
     result: dict = {}
     if len(time) < 4:
@@ -596,7 +679,32 @@ def _compute_electrical_params(payload: dict) -> dict:
     if va is not None and pre_end > 1:
         v_pre_rms = float(np.sqrt(np.mean(va[:pre_end] ** 2)))
         v_fault_rms = float(np.sqrt(np.mean(va[fault_slice] ** 2))) if len(va) > inception_idx else v_pre_rms
-        if v_pre_rms > 0:
+        # v_sag_pct = (1 - v_fault/v_pre) * 100 divides by v_pre_rms, so a
+        # near-zero prefault window (not just exactly zero) still blows the
+        # ratio up to an absurd magnitude (e.g. -143255%). This is a REAL
+        # recorded condition here, not sensor noise: a line captured
+        # mid-energization (breaker closing onto the line moments before the
+        # record's prefault window) legitimately has ~0V before it ramps to
+        # nominal — verified against a real Qualitrol external-DFR record
+        # where VA read ~7% of nominal for the first ~40ms then settled at
+        # the nominal ~86.4kV a few ms after inception. 7% is itself already
+        # far below any plausible pre-fault system voltage (even a deep
+        # upstream sag rarely exceeds ~50-60% dip), so use 20% of nominal
+        # phase voltage as the "this isn't a real pre-fault baseline"
+        # threshold rather than trying to guess a tighter one.
+        va_channel = next((ch for ch in channels if ch is not None and ch.get("measurement") == "voltage"
+                            and _extract_line_tag(ch.get("name") or "") == active_tag), None)
+        vt_primary = float((va_channel or {}).get("ct_primary") or 0.0)
+        nominal_phase_v = (vt_primary / np.sqrt(3)) / 1000.0 if vt_primary > 0 else None  # kV, matches va's unit
+        pre_energization = nominal_phase_v is not None and v_pre_rms < nominal_phase_v * 0.2
+        if pre_energization:
+            result["v_sag_pct"] = None
+            result["v_sag_note"] = (
+                "Prefault voltage window reads near-zero relative to nominal — this record likely captures "
+                "the line being energized (breaker closing) rather than a steady pre-fault condition. "
+                "Voltage-sag percentage is not meaningful here."
+            )
+        elif v_pre_rms > 0:
             result["v_sag_pct"] = round((1.0 - v_fault_rms / v_pre_rms) * 100, 1)
 
     a_op = np.exp(1j * 2 * np.pi / 3)
