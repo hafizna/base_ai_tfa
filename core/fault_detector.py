@@ -89,6 +89,23 @@ def _pick_current_channel(record, canonical_name: str, preferred_tag: Optional[s
     return candidates[0]
 
 
+def _pick_voltage_channel(record, canonical_name: str, preferred_tag: Optional[str] = None):
+    """Same lookup as _pick_current_channel, for voltage. Used to cross-check
+    a waveform-inferred reclose against an actual CB-open dead-time (V AND I
+    both near zero), not current alone — see _detect_reclose_from_waveforms."""
+    candidates = [
+        ch for ch in record.analog_channels
+        if ch.canonical_name == canonical_name and ch.measurement == "voltage"
+    ]
+    if not candidates:
+        return None
+    if preferred_tag:
+        tagged = [c for c in candidates if _extract_line_tag(getattr(c, "name", "")) == preferred_tag]
+        if tagged:
+            return tagged[0]
+    return candidates[0]
+
+
 def _detect_active_line_tag_from_currents(record) -> Optional[str]:
     """Pick line/circuit tag with largest overall current activity in the record."""
     scores = {}
@@ -575,8 +592,18 @@ def _detect_from_waveforms(record) -> Optional[FaultEvent]:
 
     duration_ms = (clearing_time - inception_time) * 1000 if clearing_time else 0.0
 
-    # Detect reclose events
-    reclose_events = _detect_reclose_from_waveforms(ia, ib, ic, record.time, clearing_idx) if clearing_idx else []
+    # Detect reclose events. Pass voltage channels (same active line tag as
+    # the currents) when available so a "current came back" reading can be
+    # cross-checked against an actual CB-open dead-time window (V AND I both
+    # near zero) rather than trusting current alone — see
+    # _detect_reclose_from_waveforms docstring.
+    va = _pick_voltage_channel(record, 'VA', active_line_tag)
+    vb = _pick_voltage_channel(record, 'VB', active_line_tag)
+    vc = _pick_voltage_channel(record, 'VC', active_line_tag)
+    reclose_events = (
+        _detect_reclose_from_waveforms(ia, ib, ic, record.time, clearing_idx, va, vb, vc)
+        if clearing_idx else []
+    )
 
     return FaultEvent(
         inception_idx=inception_idx,
@@ -742,7 +769,73 @@ def _detect_reclose_from_status(record, inception_idx):
     return reclose_events
 
 
-def _detect_reclose_from_waveforms(ia, ib, ic, time, clearing_idx):
+def _detect_cb_open_window(va, vb, vc, ia, ib, ic, time, search_start_idx, dt):
+    """Look for a window (>= 3 cycles, i.e. not a single noisy sample) where
+    BOTH voltage AND current on all three phases sit near zero relative to
+    system nominal — the direct physical signature of the breaker actually
+    being open, as opposed to inferring a reclose from current shape alone.
+
+    Thresholds are relative to nominal (not the pre-fault level): 10% of
+    nominal phase voltage (from ct_primary/sqrt(3)) and 10% of the pre-fault
+    load current, each measured over a 1-cycle RMS window. Requires BOTH V
+    and I low together — current alone can look "low" briefly during a
+    zero-crossing-adjacent clearing edge, and voltage alone can look low on
+    a channel that is simply unpowered/unwired; requiring both cuts that
+    ambiguity down.
+
+    Returns (start_time_s, end_time_s, duration_ms) for the first qualifying
+    window found after search_start_idx, or None if none is found. va/vb/vc
+    may be None (voltage not available) — this then returns None rather than
+    silently degrading, so callers must treat "no verified window" and
+    "voltage unavailable" as the same "not confirmed" case.
+    """
+    if va is None or vb is None or vc is None:
+        return None
+    if ia is None or ib is None or ic is None:
+        return None
+
+    cycle_n = max(4, int(round(0.02 / dt)))  # ~1 cycle at 50 Hz
+    min_run_cycles = 3
+    min_run_samples = cycle_n * min_run_cycles
+
+    def nominal_v(ch):
+        primary = float(getattr(ch, "ct_primary", 0.0) or 0.0)
+        return (primary / np.sqrt(3)) if primary > 0 else None
+
+    nominal = [nominal_v(va), nominal_v(vb), nominal_v(vc)]
+    if any(n is None for n in nominal):
+        return None
+    v_thresholds = [n * 0.10 for n in nominal]
+
+    # Pre-fault load current as the current-side reference (before
+    # search_start_idx, i.e. before clearing) — falls back to a small
+    # absolute floor if the pre-fault window itself was near-zero.
+    pre_len = min(search_start_idx, cycle_n * 2) if search_start_idx > 0 else 0
+    i_pre_rms = [
+        float(np.sqrt(np.mean(arr.samples[:pre_len] ** 2))) if pre_len > cycle_n else 0.0
+        for arr in (ia, ib, ic)
+    ]
+    i_thresholds = [max(0.05, r * 0.10) for r in i_pre_rms]
+
+    n = len(va.samples)
+    run_start = None
+    for i in range(search_start_idx, n - cycle_n, cycle_n // 2 or 1):
+        v_rms = [float(np.sqrt(np.mean(ch.samples[i:i + cycle_n] ** 2))) for ch in (va, vb, vc)]
+        i_rms = [float(np.sqrt(np.mean(ch.samples[i:i + cycle_n] ** 2))) for ch in (ia, ib, ic)]
+        both_low = all(v_rms[k] < v_thresholds[k] for k in range(3)) and all(i_rms[k] < i_thresholds[k] for k in range(3))
+        if both_low:
+            if run_start is None:
+                run_start = i
+        else:
+            if run_start is not None and (i - run_start) >= min_run_samples:
+                return (time[run_start], time[i], (time[i] - time[run_start]) * 1000.0)
+            run_start = None
+    if run_start is not None and (n - run_start) >= min_run_samples:
+        return (time[run_start], time[n - 1], (time[n - 1] - time[run_start]) * 1000.0)
+    return None
+
+
+def _detect_reclose_from_waveforms(ia, ib, ic, time, clearing_idx, va=None, vb=None, vc=None):
     """
     Detect reclose events from current waveforms.
 
@@ -750,11 +843,23 @@ def _detect_reclose_from_waveforms(ia, ib, ic, time, clearing_idx):
     1. Current returning (breaker reclose)
     2. If current returns and stays stable → successful reclose
     3. If current returns and another fault spike → failed reclose
+
+    Every event additionally carries ``cb_open_verified`` and
+    ``dead_time_ms``: True/a real duration only when a genuine V-AND-I-both-
+    near-zero window (see _detect_cb_open_window) was found between clearing
+    and the current returning — i.e. actual physical evidence the breaker
+    was open, not just an inference from "current went away then came
+    back" (which a self-clearing arcing fault, a CT/relay blind spot, or
+    plain noise can also produce). ``confidence`` is lower when unverified:
+    this reading should not be trusted as strongly as a status-channel-based
+    reclose read (see _detect_reclose_from_status).
     """
     reclose_events = []
 
     if clearing_idx is None or clearing_idx >= len(ia.samples) - 100:
         return reclose_events
+
+    dt = float(time[1] - time[0]) if len(time) > 1 else 1.0 / 1200.0
 
     # Calculate post-clearing baseline
     post_clear_window = slice(clearing_idx, min(clearing_idx + 50, len(ia.samples)))
@@ -772,6 +877,10 @@ def _detect_reclose_from_waveforms(ia, ib, ic, time, clearing_idx):
         if (rms_a > baseline_rms_a * 2 or rms_b > baseline_rms_b * 2 or rms_c > baseline_rms_c * 2):
             reclose_time = time[i]
 
+            cb_open_window = _detect_cb_open_window(va, vb, vc, ia, ib, ic, time, clearing_idx, dt)
+            cb_open_verified = cb_open_window is not None
+            dead_time_ms = cb_open_window[2] if cb_open_window else None
+
             # Check if fault re-occurs (current spikes again)
             if i + 50 < len(ia.samples):
                 future_max_a = np.max(np.abs(ia.samples[i:i+50]))
@@ -781,9 +890,21 @@ def _detect_reclose_from_waveforms(ia, ib, ic, time, clearing_idx):
                 # If future current is very high → failed reclose
                 success = not (future_max_a > rms_a * 5 or future_max_b > rms_b * 5 or future_max_c > rms_c * 5)
             else:
-                success = True  # Assume successful if recording ends soon after
+                # Recording ends before we can see whether the fault
+                # recurred. Without a verified CB-open dead-time either,
+                # there is no positive evidence of ANY reclose (successful
+                # or otherwise) — only that current came back, which a
+                # self-clearing fault also produces. Report success as
+                # unknown (None) rather than assuming True.
+                success = True if cb_open_verified else None
 
-            reclose_events.append({'time': reclose_time, 'success': success})
+            reclose_events.append({
+                'time': reclose_time,
+                'success': success,
+                'cb_open_verified': cb_open_verified,
+                'dead_time_ms': dead_time_ms,
+                'confidence': 0.75 if cb_open_verified else 0.35,
+            })
             break  # Only detect first reclose
 
     return reclose_events
