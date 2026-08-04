@@ -388,6 +388,64 @@ def _pattern_based_cause_signals(episodes: list[FaultEpisode]) -> list[dict[str,
             ),
         })
 
+    # --- REPEATED_ESCALATING_SIGNATURE_AMBIGUOUS: whenever
+    # ESCALATING_PHASE_INVOLVEMENT fired above (phase count went up within a
+    # short window), state the two competing readings side by side with
+    # their actual evidence weight instead of leaving the reader to weigh
+    # "escalating fault" against "could just be lightning" themselves.
+    # RECURRING_SAME_SIGNATURE firing too (the larger-phase fault repeating
+    # identically) strengthens the physical-contact reading and is folded in
+    # when present, but is NOT required — requiring it excluded cases like
+    # an episode whose reclose was never verified (see PR #14's
+    # cb_open_verified fix), where "repeated" can't be claimed even though
+    # escalation is still clearly visible. Neither reading is preferred here
+    # — this is deliberately NOT a tie-breaker, just an explicit statement
+    # of what would make each one right.
+    escalating = [s for s in signals if s["hypothesis"] == "ESCALATING_PHASE_INVOLVEMENT"]
+    recurring = [s for s in signals if s["hypothesis"] == "RECURRING_SAME_SIGNATURE"]
+    if escalating:
+        gap_texts = [s["evidence_for"][0] for s in escalating]
+        recur_texts = [s["evidence_for"][0] for s in recurring]
+        involved_indices = sorted(set(
+            idx for s in escalating + recurring for idx in s["episode_indices"]
+        ))
+        recurrence_clause = (
+            "the resulting larger-phase fault then recurring with an identical signature"
+            if recurring else
+            "with no confirmed recurrence of an identical signature in the attached records"
+        )
+        physical_favor_recurrence = (
+            "the repeated fault's phase set and fault_type being IDENTICAL across episodes (a fixed "
+            "contact point reproduces the same signature; independent strikes on the same phases "
+            "repeatedly is a coincidence each time), and "
+            if recurring else ""
+        )
+        signals.append({
+            "hypothesis": "REPEATED_ESCALATING_SIGNATURE_AMBIGUOUS",
+            "mechanism_signal": "LIGHTNING_VS_PHYSICAL_CONTACT_UNRESOLVED",
+            "confidence": None,  # deliberately unscored — this signal states a disagreement, not a reading
+            "episode_indices": involved_indices,
+            "evidence_for": gap_texts + recur_texts,
+            "evidence_against": [],
+            "description": (
+                f"This sequence (phase count escalating, {recurrence_clause}) "
+                "can be read two ways, and COMTRADE evidence alone cannot decide between them:\n"
+                "(1) PHYSICAL CONTACT — a single worsening contact (e.g. a falling/burning branch, a "
+                "foreign object) that first touched fewer phases, then settled onto more, and continues "
+                f"to make contact each time the line re-energizes. Favored by: {physical_favor_recurrence}"
+                "inter-episode gaps that are short enough to plausibly be one continuously unresolved "
+                "contact rather than unrelated weather events.\n"
+                "(2) SEPARATE LIGHTNING STRIKES — multiple strokes/strikes in the same storm cell, which "
+                "commonly occur seconds apart at the same location and are not physically required to "
+                "escalate or repeat identically. Favored by: no field/lightning-network evidence "
+                "contradicts it, and a successful reclose after the escalated episode (where confirmed) is "
+                "also consistent with that episode being an independently transient strike rather than a "
+                "persistent obstruction.\n"
+                "Resolving this needs external evidence this record set does not contain: lightning-"
+                "detection network data for the incident time/location, or a field inspection report."
+            ),
+        })
+
     return signals
 
 

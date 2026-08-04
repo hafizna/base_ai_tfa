@@ -79,6 +79,14 @@
   color: #86198f;
 }
 
+.hypothesisDescription {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #581c67;
+  white-space: pre-wrap;
+}
+
 .evidenceCols {
   display: grid;
   grid-template-columns: 1fr 1fr;
