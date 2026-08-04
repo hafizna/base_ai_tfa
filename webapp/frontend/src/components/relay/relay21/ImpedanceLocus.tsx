@@ -38,6 +38,18 @@ interface LocusPoint {
   x: number;
 }
 
+/** Data-quality signals for one loop's computed locus — see LocusDiagnostics
+ * in webapp/api/schemas.py for the scientific rationale (DC-offset rejection
+ * method, CT saturation THD threshold, retention accounting). */
+interface LocusDiagnostics {
+  windowsEvaluated: number;
+  windowsKept: number;
+  retentionPct: number;
+  ctSaturationSuspected: boolean;
+  ctSaturationThdRatio: number;
+  dcOffsetCorrected: boolean;
+}
+
 interface ImportedZone {
   label: string;
   shapeType: "circle" | "poly" | "mho" | "xrio";
@@ -54,6 +66,15 @@ interface ImportedZone {
   reverseR?: number;
   directionalClip?: boolean;
   lineAngleDeg?: number;  // line impedance angle for tilted zone rendering
+  tripTimeS?: number;     // zone trip time delay (s), from RIO TRIPTIME/TIME1/TIMEM
+  /**
+   * Which fault-resistance field `R`/`RF` was actually read from, when the
+   * source format splits it by loop (e.g. ABB RFPP vs RFPE, Siemens
+   * R1PPZ/R1PEZ). Zone placement into phPh[]/phGnd[] already enforces this
+   * at the array level — this field exists so a mismatch between the two is
+   * detectable (e.g. in tests or a debug inspector) instead of silent.
+   */
+  sourceLoop?: "PP" | "PE";
 }
 
 interface ImportedRelayData {
@@ -479,6 +500,40 @@ function clipShapeByRioLines(shapeText: string) {
   return deduped;
 }
 
+/**
+ * Siemens SIPROTEC 5 .rio MHOSHAPE block: a mho circle given in polar form
+ * (ANGLE = characteristic/line angle, REACH = circle diameter along that
+ * angle, OFFSET = backward shift of the near edge along the same angle, as
+ * a fraction of REACH — 0 for a plain mho through the origin). The circle
+ * passes through (OFFSET·REACH·cos∠, OFFSET·REACH·sin∠) — negated, i.e.
+ * behind the origin — and (REACH·cos∠, REACH·sin∠) ahead, so:
+ *   center = midpoint of those two points, radius = half their distance.
+ */
+function parseMhoShapeBlock(shapeText: string) {
+  const angleMatch = shapeText.match(/\bANGLE\s+([-0-9.]+)/i);
+  const reachMatch = shapeText.match(/\bREACH\s+([-0-9.]+)/i);
+  if (!angleMatch || !reachMatch) return null;
+
+  const angleDeg = Number.parseFloat(angleMatch[1]);
+  const reach = Number.parseFloat(reachMatch[1]);
+  if (!Number.isFinite(angleDeg) || !Number.isFinite(reach) || reach <= 0) return null;
+
+  const offsetMatch = shapeText.match(/\bOFFSET\s+([-0-9.]+)/i);
+  const offsetFrac = offsetMatch ? Number.parseFloat(offsetMatch[1]) : 0;
+
+  const ang = (angleDeg * Math.PI) / 180;
+  const farR = reach * Math.cos(ang);
+  const farX = reach * Math.sin(ang);
+  const nearR = -offsetFrac * reach * Math.cos(ang);
+  const nearX = -offsetFrac * reach * Math.sin(ang);
+
+  return {
+    centerR: (farR + nearR) / 2,
+    centerX: (farX + nearX) / 2,
+    radius: Math.hypot(farR - nearR, farX - nearX) / 2,
+  };
+}
+
 function parseSifangRIO(text: string): ImportedRelayData | null {
   if (!/BEGIN\s+TESTOBJECT/i.test(text)) return null;
 
@@ -496,17 +551,37 @@ function parseSifangRIO(text: string): ImportedRelayData | null {
     const block = zoneMatch[1];
     const indexMatch = block.match(/^\s*INDEX\s+(\d+)/m);
     const loopMatch = block.match(/^\s*FAULTLOOP\s+(\w+)/m);
-    const shapeMatch = block.match(/BEGIN\s+SHAPE([\s\S]*?)END\s+SHAPE/i);
-    if (!indexMatch || !loopMatch || !shapeMatch) continue;
+    if (!indexMatch || !loopMatch) continue;
 
     const label = `Z${indexMatch[1]}`;
     const faultloop = loopMatch[1].toUpperCase();
-    const shapeText = shapeMatch[1];
+    const triptimeMatch = block.match(/^\s*TRIPTIME\s+([-0-9.]+)/m);
+    const tripTimeS = triptimeMatch ? Number.parseFloat(triptimeMatch[1]) : undefined;
 
-    const poly = clipShapeByRioLines(shapeText);
-    if (!poly || poly.length < 3) continue;
+    let zone: ImportedZone | null = null;
 
-    const zone: ImportedZone = { label, shapeType: "poly", poly };
+    const shapeMatch = block.match(/BEGIN\s+SHAPE([\s\S]*?)END\s+SHAPE/i);
+    if (shapeMatch) {
+      const poly = clipShapeByRioLines(shapeMatch[1]);
+      if (poly && poly.length >= 3) {
+        zone = { label, shapeType: "poly", poly };
+      }
+    } else {
+      const mhoMatch = block.match(/BEGIN\s+MHOSHAPE([\s\S]*?)END\s+MHOSHAPE/i);
+      if (mhoMatch) {
+        const circle = parseMhoShapeBlock(mhoMatch[1]);
+        if (circle) {
+          zone = { label, shapeType: "mho", centerR: circle.centerR, centerX: circle.centerX, radius: circle.radius };
+        }
+      }
+    }
+
+    if (!zone) continue;
+    zone.sourceLoop = faultloop === "LL" ? "PP" : "PE";
+    if (tripTimeS != null && Number.isFinite(tripTimeS)) {
+      zone.tripTimeS = tripTimeS;
+    }
+
     if (faultloop === "LN") {
       if (!phGnd.find((z) => z.label === label)) phGnd.push(zone);
     } else if (faultloop === "LL") {
@@ -516,14 +591,28 @@ function parseSifangRIO(text: string): ImportedRelayData | null {
 
   if (phGnd.length === 0 && phPh.length === 0) return null;
 
-  // KM mag, angle = residual compensation (K0) in Sifang/Alstom .rio format
+  // KM mag, angle = residual compensation (K0) in Sifang/Alstom .rio format.
+  // RERL_XEXL re,xe = combined-field variant used by Siemens SIPROTEC 5 .rio
+  // (same RE/XE earth-compensation quantities as the RE/RL + XE/XL pair,
+  // just written as one comma-joined field instead of two separate labels).
   const kmMatch = text.match(/\bKM\s+([-0-9.]+)\s*,\s*([-0-9.]+)/i);
+  const rerlXexlMatch = text.match(/\bRERL_XEXL\s+([-0-9.]+)\s*,\s*([-0-9.]+)/i);
   let earthComp: ImportedRelayData["earthComp"];
   if (kmMatch) {
     const k0 = Number.parseFloat(kmMatch[1]);
     const angleDeg = Number.parseFloat(kmMatch[2]);
     if (Number.isFinite(k0) && Number.isFinite(angleDeg) && k0 > 0) {
       earthComp = { k0, angleDeg, source: `RIO KM=${k0.toFixed(4)}, ∠=${angleDeg.toFixed(1)}°` };
+    }
+  } else if (rerlXexlMatch) {
+    const re = Number.parseFloat(rerlXexlMatch[1]);
+    const xe = Number.parseFloat(rerlXexlMatch[2]);
+    if (Number.isFinite(re) && Number.isFinite(xe)) {
+      earthComp = {
+        k0: Math.hypot(re, xe),
+        angleDeg: (Math.atan2(xe, re) * 180) / Math.PI,
+        source: `RIO RERL_XEXL=${re.toFixed(3)},${xe.toFixed(3)}`,
+      };
     }
   }
 
@@ -911,6 +1000,7 @@ function parseXRIO(text: string): ImportedRelayData | null {
         reachMode: "x" as const,
         directionalClip: true,
         lineAngleDeg: angle,
+        sourceLoop: family === "phase" ? "PP" as const : "PE" as const,
       }];
     });
   }
@@ -1559,6 +1649,7 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
   const [groundZones, setGroundZones] = useState<Zone[]>([]);
   const [phaseZones, setPhaseZones] = useState<Zone[]>([]);
   const [pointsByLoop, setPointsByLoop] = useState<Partial<Record<LoopName, LocusPoint[]>>>({});
+  const [diagnosticsByLoop, setDiagnosticsByLoop] = useState<Partial<Record<LoopName, LocusDiagnostics>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [relayStatus, setRelayStatus] = useState("Belum ada file relay dimuat; zona proteksi tidak digambar.");
@@ -1609,16 +1700,29 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
       // and re-serialized the full COMTRADE record — large NR/PCS files piled up
       // past the 30s client timeout. Zones stay client-side (display only).
       const allLoops = [...GROUND_LOOPS, ...PHASE_LOOPS];
-      const { points_by_loop } = await computeLocusBatch(
+      const { points_by_loop, diagnostics_by_loop } = await computeLocusBatch(
         analysisId, allLoops, 0, 0, false,
         nextCtRatio ?? undefined, nextVtRatio ?? undefined,
       );
 
       const nextPoints: Partial<Record<LoopName, LocusPoint[]>> = {};
+      const nextDiagnostics: Partial<Record<LoopName, LocusDiagnostics>> = {};
       allLoops.forEach((loop) => {
         nextPoints[loop] = points_by_loop[loop] ?? [];
+        const d = diagnostics_by_loop?.[loop];
+        if (d) {
+          nextDiagnostics[loop] = {
+            windowsEvaluated: d.windows_evaluated,
+            windowsKept: d.windows_kept,
+            retentionPct: d.retention_pct,
+            ctSaturationSuspected: d.ct_saturation_suspected,
+            ctSaturationThdRatio: d.ct_saturation_thd_ratio,
+            dcOffsetCorrected: d.dc_offset_corrected,
+          };
+        }
       });
       setPointsByLoop(nextPoints);
+      setDiagnosticsByLoop(nextDiagnostics);
       setLocusRatios({ ct: nextCtRatio, vt: nextVtRatio });
 
       const totalPoints = Object.values(nextPoints).reduce((sum, points) => sum + (points?.length ?? 0), 0);
@@ -2438,6 +2542,30 @@ export default function ImpedanceLocus({ analysisId, dataRevision = 0 }: { analy
           {error}
         </div>
       )}
+
+      {(() => {
+        const flagged = (Object.entries(diagnosticsByLoop) as [LoopName, LocusDiagnostics][])
+          .filter(([loop, d]) => (pointsByLoop[loop]?.length ?? 0) > 0 && (d.ctSaturationSuspected || d.retentionPct < 50));
+        if (flagged.length === 0) return null;
+        return (
+          <div className={styles.warning} style={{ marginBottom: 12, whiteSpace: "normal", lineHeight: 1.45 }}>
+            {flagged.map(([loop, d]) => {
+              const parts: string[] = [];
+              if (d.ctSaturationSuspected) {
+                parts.push(`kemungkinan CT saturation terdeteksi (indikator harmonik ${(d.ctSaturationThdRatio * 100).toFixed(1)}%) — trajectory berpotensi menyimpang dari nilai sebenarnya`);
+              }
+              if (d.retentionPct < 50) {
+                parts.push(`hanya ${d.retentionPct.toFixed(0)}% window analisis yang valid (${d.windowsKept}/${d.windowsEvaluated}) — sebagian besar titik locus di-drop sebagai outlier`);
+              }
+              return (
+                <div key={loop}>
+                  <strong>{loop}:</strong> {parts.join("; ")}.
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <div className={styles.locusTimebar}>
         <div className={styles.locusTimeControls}>

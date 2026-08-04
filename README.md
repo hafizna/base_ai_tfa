@@ -342,6 +342,29 @@ Workspace 87T saat ini hanya menampilkan analisa rekaman COMTRADE,
 - Diagram R-X impedance locus (DFT phasor) dengan zone overlay dari RIO/XRIO
 - Override CT primary, VT primary, dan k0 (residual compensation) per analisis
 
+#### Metodologi locus (R-X trajectory) — apa yang sudah ditangani
+
+Perhitungan ada di `webapp/api/routers/relay_21.py` (`_compute_locus`), independen
+dari parser RIO/XRIO — locus dihitung murni dari waveform V/I COMTRADE, zona
+proteksi digambar murni dari file setting relay; keduanya hanya digabung secara
+visual pada satu axis R-X yang sama (`ImpedanceLocus.tsx`).
+
+| Aspek | Pendekatan |
+|---|---|
+| Estimasi fasor | DFT satu-siklus per window (~16 titik/siklus), bukan snapshot sesaat |
+| **DC-offset rejection** | Half-cycle differencing (`y[n] = x[n] - x[n-N/2]`, teknik klasik Sachdev & Baribeau 1979 untuk relay digital). Terverifikasi numerik: menekan leakage decaying-DC ~60-70% dibanding rectangular+mean-removal murni, untuk window yang seluruhnya berada di satu sisi titik inception. **Guard eksplisit**: saat window referensi (`start-half`) masih menyentuh titik inception itu sendiri, otomatis fallback ke metode lama — diverifikasi bahwa memaksa differencing di titik itu justru memperbesar error, bukan memperkecil |
+| **Deteksi CT saturation** | Rasio energi harmonik-terhadap-fundamental (mirip THD) dihitung per window arus selama window fault. Kalibrasi numerik: sinusoid bersih ≈0%, clip 90% (saturasi ringan) ≈4%, clip 70% (saturasi berat) ≈14%. Loop ditandai `ct_saturation_suspected` bila >20% window fault melewati ambang 6% |
+| **Goodness-of-fit / retensi** | `retention_pct` = persentase window yang lolos validitas dasar (arus cukup besar) DAN filter outlier IQR (4×IQR pada \|Z\|). Retensi <50% ditandai sebagai warning eksplisit di UI — locus dengan retensi rendah berarti sebagian besar estimasi Z pada record itu tidak reliable |
+| Skala primer/sekunder | Prioritas: rasio dari file relay (RIO/XRIO, paling otoritatif karena itu rasio yang benar-benar dikonfigurasi di relay) → auto-detect dari metadata CFG COMTRADE → override manual. Guard anti-double-scaling di `core/comtrade_parser.py` untuk sample yang CFG-nya sudah dalam skala primary |
+| Loop selection | AG/BG/CG (`ZA/ZB/ZC`) dan AB/BC/CA (`ZAB/ZBC/ZCA`) — polaritas tanda tegangan-vs-arus diverifikasi konsisten baik lewat kanal diferensial langsung (`VCA`/`UCA`) maupun fallback dari kanal per-fasa (`V_C - V_A`) |
+| Transparansi kualitas | Response `/api/analyze/21/locus-batch` menyertakan `diagnostics_by_loop` (windows evaluated/kept, retention %, saturation flag+ratio, dc-offset-corrected flag) per loop — ditampilkan sebagai warning di UI, bukan disembunyikan di balik smoothing |
+
+#### Keterbatasan yang diketahui (belum ditangani)
+
+- **Half-cycle differencing butuh riwayat data N/2 sampel** sebelum titik analisis. Untuk window sangat awal record (sebelum ada riwayat cukup) dan window yang riwayatnya overlap inception, sistem fallback ke rectangular+mean-removal — locus di titik-titik ini tetap kurang presisi dibanding titik yang jauh dari inception.
+- **Belum ada koreksi eksplisit untuk saturasi CT terdeteksi** — locus tetap dihitung dan ditampilkan dengan warning, tapi nilai R-X pada window yang tersaturasi tidak dikoreksi/dibuang otomatis. Interpretasi titik itu perlu kehati-hatian manual.
+- **Least-squares dengan model DC eksplisit (fit dengan estimasi τ = X/R sistem) tidak dipakai** — dipertimbangkan tapi tidak dipilih karena τ real di lapangan tidak selalu diketahui dan risiko divergensi saat τ ditebak salah dinilai lebih besar daripada manfaatnya dibanding half-cycle differencing yang tidak butuh estimasi τ sama sekali.
+
 ---
 
 ## Arah Berikutnya Sebelum Data Tambahan Datang

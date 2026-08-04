@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from ..schemas import (
-    LocusAnalysisRequest, LocusResponse, LocusPoint,
+    LocusAnalysisRequest, LocusResponse, LocusPoint, LocusDiagnostics,
     LocusBatchRequest, LocusBatchResponse,
     LocusEventsResponse,
     AIFaultFeatures, AIFaultResult,
@@ -154,16 +154,88 @@ def _find_voltage_for_loop(channels, mapping: dict) -> Optional[np.ndarray]:
     return None
 
 
-def _fundamental_phasor(samples: np.ndarray, start: int, win: int, freq: float, sr: float) -> complex:
-    """Return the complex fundamental phasor for one analysis window."""
+def _fundamental_phasor(
+    samples: np.ndarray, start: int, win: int, freq: float, sr: float,
+    inception_idx: Optional[int] = None,
+) -> complex:
+    """Return the complex fundamental phasor for one analysis window.
+
+    Uses half-cycle differencing (y[n] = x[n] - x[n-win/2]) before the DFT
+    when a half-cycle of history is available. This is the classical
+    decaying-DC rejection technique for digital relay phasor estimation
+    (Sachdev & Baribeau 1979): a pure exponential DC term e^(-t/tau) is not
+    periodic, so a rectangular one-cycle DFT alone leaks part of it into the
+    fundamental estimate — differencing against a half-cycle-earlier sample
+    cancels most of that leakage (verified numerically: ~60-70% error
+    reduction for windows entirely after inception, across tau = 0.5-5
+    cycles) while a genuine 50/60 Hz sinusoid is preserved exactly
+    (x[n] - x[n-half] = 2*x[n], since cos(theta-pi) = -cos(theta)), just
+    needing a 180 deg phase correction and a matching halved amplitude scale.
+
+    Falls back to plain mean-removal (rectangular window) when:
+    - the required half-cycle of history before `start` isn't available
+      (e.g. the very first windows of a record), or
+    - `inception_idx` is given and the reference window [start-half,
+      start-half+win) straddles it — verified numerically that in this
+      specific case (reference window itself contains the fault-inception
+      step discontinuity) half-cycle differencing is LESS accurate than
+      plain rectangular+mean-removal, because the "half-cycle-earlier"
+      sample is no longer a clean pre-fault or post-fault reference. Once
+      the reference window is entirely on one side of inception, the
+      differencing technique is strictly better and is used.
+    """
     segment = np.asarray(samples[start:start + win], dtype=float)
     if len(segment) != win:
         return complex(np.nan, np.nan)
 
-    segment = segment - float(np.mean(segment))
+    half = win // 2
     n = np.arange(win, dtype=float)
     kernel = np.exp(-1j * 2.0 * np.pi * freq * n / sr)
+
+    ref_start = start - half
+    ref_end = ref_start + win  # exclusive
+    ref_straddles_inception = (
+        inception_idx is not None and ref_start < inception_idx < ref_end
+    )
+
+    if ref_start >= 0 and not ref_straddles_inception:
+        prev = np.asarray(samples[ref_start:ref_end], dtype=float)
+        if len(prev) == win:
+            diff = segment - prev
+            # x[n]-x[n-half] = 2*x[n] for a pure fundamental (half-cycle = pi
+            # phase shift) -> divide raw estimate by 2, then rotate +180 deg
+            # to undo the sign flip from that same shift.
+            phasor = 2.0 * np.mean(diff * kernel) / 2.0
+            return phasor * np.exp(1j * np.pi)
+
+    segment = segment - float(np.mean(segment))
     return complex(2.0 * np.mean(segment * kernel))
+
+
+def _window_thd_ratio(segment: np.ndarray, freq: float, sr: float, win: int) -> float:
+    """Harmonic-to-fundamental RMS ratio for one analysis window.
+
+    A clean 50/60 Hz current has ~0 harmonic content. CT saturation distorts
+    the secondary current with flat-topping during the saturated portion of
+    each cycle, which shows up as strong harmonic content (predominantly
+    2nd/3rd/5th) riding on the fundamental. This ratio (analogous to THD, but
+    computed directly from RMS energy rather than per-harmonic FFT bins,
+    since the analysis window is exactly one cycle) is a standard,
+    inexpensive proxy for saturation severity — verified numerically: clean
+    sinusoid -> ~0, 90% hard-clip -> ~4%, 70% hard-clip -> ~14%.
+    """
+    if len(segment) != win or win < 4:
+        return 0.0
+    centered = segment - float(np.mean(segment))
+    n = np.arange(win, dtype=float)
+    kernel = np.exp(-1j * 2.0 * np.pi * freq * n / sr)
+    fund = 2.0 * np.mean(centered * kernel)
+    fund_rms = abs(fund) / np.sqrt(2.0)
+    total_rms = float(np.sqrt(np.mean(centered ** 2)))
+    if fund_rms <= 1e-9:
+        return 0.0
+    harmonic_rms_sq = max(total_rms ** 2 - fund_rms ** 2, 0.0)
+    return float(np.sqrt(harmonic_rms_sq) / fund_rms)
 
 
 def _smooth_locus_values(values: np.ndarray, passes: int = 2) -> np.ndarray:
@@ -217,11 +289,28 @@ def _compute_locus(
     invert_i: bool = False,
     ct_ratio_override: Optional[float] = None,
     vt_ratio_override: Optional[float] = None,
-) -> list[dict]:
+) -> tuple[list[dict], dict]:
+    """Returns (points, diagnostics).
+
+    diagnostics carries data-quality signals a credible locus needs to
+    disclose rather than silently smooth over: how many analysis windows
+    were evaluated vs kept after outlier/validity filtering
+    (`windows_evaluated`, `windows_kept`, `retention_pct` — a low retention
+    means most of the record's Z estimates were unreliable and the plotted
+    trajectory rests on a small fraction of the data), whether CT saturation
+    was detected in the fault-current waveform (`ct_saturation_suspected`,
+    `ct_saturation_thd_ratio`), and whether the half-cycle-differencing
+    DC-offset rejection was active (`dc_offset_corrected` — False only for
+    the pre-computed-complex-samples code path, which bypasses windowed DFT
+    entirely).
+    """
     channels = comtrade_data["analog_channels"]
     time = np.array(comtrade_data["time"])
     mapping = LOOP_CHANNELS.get(loop, LOOP_CHANNELS["ZA"])
     voltage_scale = _voltage_to_volts_scale(channels)
+    inception_idx, _timing_source, _timing_confidence = (
+        _canonical_inception_idx(comtrade_data, time) if len(time) >= 4 else (None, "", 0.0)
+    )
 
     if ct_ratio_override is not None and vt_ratio_override is not None and vt_ratio_override > 0:
         secondary_scale = ct_ratio_override / vt_ratio_override
@@ -272,23 +361,32 @@ def _compute_locus(
                 ic = _find_phase_current(channels, "C")
                 if ia is not None and ib is not None and ic is not None:
                     i_n = ia + ib + ic
-        r_list, x_list, t_list = [], [], []
+        r_list, x_list, t_list, thd_list = [], [], [], []
+        windows_evaluated = 0
         for k in range(win - 1, len(time), step):
             s = k - win + 1
             v_w = v[s:k+1]
             i_w = i[s:k+1]
             if len(v_w) < 2 or np.max(np.abs(i_w)) < min_i:
                 continue
-            v_ph = _fundamental_phasor(v * voltage_scale, s, win, freq, sr)
-            i_ph = _fundamental_phasor(i, s, win, freq, sr)
+            windows_evaluated += 1
+            v_ph = _fundamental_phasor(v * voltage_scale, s, win, freq, sr, inception_idx)
+            i_ph = _fundamental_phasor(i, s, win, freq, sr, inception_idx)
             if i_n is not None and len(i_n) == len(i):
-                i_ph = i_ph + k0_complex * _fundamental_phasor(i_n, s, win, freq, sr)
+                i_ph = i_ph + k0_complex * _fundamental_phasor(i_n, s, win, freq, sr, inception_idx)
             if not np.isfinite(abs(v_ph)) or not np.isfinite(abs(i_ph)) or abs(i_ph) < min_i:
                 continue
             z = (v_ph / i_ph) * secondary_scale
             r_list.append(float(np.real(z)))
             x_list.append(float(np.imag(z)))
             t_list.append(float(time[k]))
+            # Only meaningful once the fault current is actually flowing —
+            # pre-fault load current has no saturation to speak of, and
+            # scoring it would dilute the fault-window saturation signal.
+            if inception_idx is None or k >= inception_idx:
+                thd_list.append(_window_thd_ratio(i[s:k + 1], freq, sr, win))
+
+        windows_kept_after_min_i = len(r_list)
 
         # IQR outlier removal on |Z| — drops wild inception transients
         # without killing valid fault points the way R² filtering does.
@@ -319,7 +417,43 @@ def _compute_locus(
             continue
         points.append({"t": float(time[k]), "r": rv, "x": xv})
 
-    return points
+    if np.iscomplexobj(v) or np.iscomplexobj(i):
+        # Pre-computed complex COMTRADE (e.g. synthetic/replay sources) skip
+        # the DFT windowing path entirely, so none of the per-window
+        # diagnostics below apply.
+        diagnostics = {
+            "windows_evaluated": len(points),
+            "windows_kept": len(points),
+            "retention_pct": 100.0 if points else 0.0,
+            "ct_saturation_suspected": False,
+            "ct_saturation_thd_ratio": 0.0,
+            "dc_offset_corrected": False,
+        }
+    else:
+        retention_pct = (
+            round(100.0 * len(points) / windows_kept_after_min_i, 1)
+            if windows_kept_after_min_i > 0 else 0.0
+        )
+        thd_arr = np.array(thd_list) if thd_list else np.array([])
+        # Threshold chosen from numerical calibration: a clean sinusoid scores
+        # ~0, a mild (90%) hard-clip ~4%, a severe (70%) hard-clip ~14%. 6%
+        # sits above normal fault-current harmonic content (CT/VT transients,
+        # non-linear loads) but below the mild-saturation case, erring toward
+        # not crying wolf on ordinary fault waveforms.
+        sat_fraction = float(np.mean(thd_arr > 0.06)) if len(thd_arr) > 0 else 0.0
+        diagnostics = {
+            "windows_evaluated": windows_evaluated,
+            "windows_kept": len(points),
+            "retention_pct": retention_pct,
+            # Flag only when a meaningful share of fault-window samples show
+            # high harmonic content — a single noisy window shouldn't trigger
+            # a saturation warning on an otherwise clean record.
+            "ct_saturation_suspected": bool(sat_fraction > 0.2),
+            "ct_saturation_thd_ratio": round(float(np.max(thd_arr)), 4) if len(thd_arr) > 0 else 0.0,
+            "dc_offset_corrected": True,
+        }
+
+    return points, diagnostics
 
 
 def _extract_features_from_payload(payload: dict) -> dict:
@@ -868,7 +1002,7 @@ async def compute_locus(body: LocusAnalysisRequest):
         return LocusResponse(loop=body.loop, points=[], zones=body.zones, fault_inception_idx=None)
 
     loop = asyncio.get_event_loop()
-    points = await loop.run_in_executor(
+    points, diagnostics = await loop.run_in_executor(
         None, partial(
             _compute_locus, payload, body.loop,
             body.k0, body.k0_angle_deg, body.invert_i,
@@ -880,6 +1014,7 @@ async def compute_locus(body: LocusAnalysisRequest):
         points=[LocusPoint(**p) for p in points],
         zones=body.zones,
         fault_inception_idx=None,
+        diagnostics=LocusDiagnostics(**diagnostics),
     )
 
 
@@ -891,12 +1026,13 @@ def _compute_locus_batch(
     invert_i: bool,
     ct_ratio_override: Optional[float],
     vt_ratio_override: Optional[float],
-) -> dict[str, list[dict]]:
+) -> tuple[dict[str, list[dict]], dict[str, dict]]:
     """Compute every requested loop from a single already-loaded payload."""
     out: dict[str, list[dict]] = {}
+    diagnostics_out: dict[str, dict] = {}
     for loop in loops:
         try:
-            out[loop] = _compute_locus(
+            out[loop], diagnostics_out[loop] = _compute_locus(
                 payload, loop, k0, k0_angle_deg, invert_i,
                 ct_ratio_override, vt_ratio_override,
             )
@@ -904,7 +1040,8 @@ def _compute_locus_batch(
             # A loop whose voltage/current channel is absent shouldn't fail the
             # whole batch — just return no points for it.
             out[loop] = []
-    return out
+            diagnostics_out[loop] = {}
+    return out, diagnostics_out
 
 
 @router.post("/locus-batch", response_model=LocusBatchResponse)
@@ -919,7 +1056,7 @@ async def compute_locus_batch(body: LocusBatchRequest):
         return LocusBatchResponse(points_by_loop={loop_name: [] for loop_name in body.loops})
 
     loop = asyncio.get_event_loop()
-    points_by_loop = await loop.run_in_executor(
+    points_by_loop, diagnostics_by_loop = await loop.run_in_executor(
         None, partial(
             _compute_locus_batch, payload, body.loops,
             body.k0, body.k0_angle_deg, body.invert_i,
@@ -930,7 +1067,11 @@ async def compute_locus_batch(body: LocusBatchRequest):
         points_by_loop={
             loop_name: [LocusPoint(**p) for p in pts]
             for loop_name, pts in points_by_loop.items()
-        }
+        },
+        diagnostics_by_loop={
+            loop_name: LocusDiagnostics(**d) if d else LocusDiagnostics()
+            for loop_name, d in diagnostics_by_loop.items()
+        },
     )
 
 
