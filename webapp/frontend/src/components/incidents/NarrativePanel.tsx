@@ -32,8 +32,14 @@ export default function NarrativePanel({ reconstruction }: Props) {
               <div key={i} className={styles.hypothesisCard}>
                 <div className={styles.hypothesisHeader}>
                   <strong>{h.hypothesis.replace(/_/g, " ")}</strong>
-                  <span>{Math.round(h.confidence * 100)}% confidence</span>
+                  {/* null confidence marks a signal that deliberately states two
+                      competing readings instead of scoring one — see
+                      REPEATED_ESCALATING_SIGNATURE_AMBIGUOUS in reconstruction.py.
+                      Showing a manufactured percentage there would misrepresent
+                      it as a scored reading. */}
+                  <span>{h.confidence == null ? "unresolved — see below" : `${Math.round(h.confidence * 100)}% confidence`}</span>
                 </div>
+                {h.description && <p className={styles.hypothesisDescription}>{h.description}</p>}
                 <div className={styles.evidenceCols}>
                   <div>
                     <span className={styles.evidenceLabel}>Evidence for</span>

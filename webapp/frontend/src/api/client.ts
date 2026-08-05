@@ -1118,9 +1118,15 @@ export interface PhysicalCauseEvidenceOut {
 
 export interface IncidentHypothesis {
   hypothesis: string;
-  confidence: number;
+  // null for signals that deliberately state a disagreement between two
+  // readings rather than scoring one (e.g. REPEATED_ESCALATING_SIGNATURE_AMBIGUOUS)
+  // — see reconstruction.py::_pattern_based_cause_signals.
+  confidence: number | null;
   evidence_for: string[];
   evidence_against: string[];
+  mechanism_signal?: string;
+  episode_indices?: number[];
+  description?: string;
 }
 
 export interface ReconstructionOut {
