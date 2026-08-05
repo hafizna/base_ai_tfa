@@ -425,3 +425,18 @@ async def get_episodes(incident_id: str):
     except IncidentServiceError as exc:
         _handle(exc)
     return [e.to_dict() for e in episodes]
+
+
+@router.get("/{incident_id}/episodes/{episode_id}/joined-waveform")
+async def get_joined_waveform(incident_id: str, episode_id: str):
+    """Actual analog waveform samples for an episode's member records,
+    placed on one shared incident-relative time axis with the real
+    (measured, never fabricated) gap between records preserved. See
+    webapp/api/incidents/joined_waveform.py for the trust/gap-precision
+    rules."""
+    _require_multi_comtrade_enabled()
+    try:
+        result = incident_service.get_joined_waveform(incident_id, episode_id)
+    except IncidentServiceError as exc:
+        _handle(exc)
+    return result

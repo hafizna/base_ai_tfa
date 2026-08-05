@@ -73,12 +73,77 @@ def _record_ml_result(record: IncidentRecord) -> dict[str, Any]:
         return {}
 
 
-def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
+# Relationship types where the right record captures the AFTERMATH of the
+# left record's event (a reclose attempt/outcome, or a continued capture of
+# the same still-in-progress sequence) rather than a new, independently
+# faulted waveform. A record reached only via one of these relationships is
+# not treated as separate cause evidence — see _evidence_roles.
+_AFTERMATH_RELATIONSHIP_TYPES = {"RECLOSE_SEQUENCE", "CONTINUATION", "DUPLICATE_TRIGGER", "OVERLAPPING_CAPTURE"}
+
+
+def _evidence_roles(
+    records: list[IncidentRecord], relationships: list[RecordRelationship], record_order: list[str]
+) -> dict[str, str]:
+    """Classify each record as ``"inception"`` (captures an independently
+    faulted waveform — its cause hypothesis is real evidence) or
+    ``"aftermath"`` (only captures the reclose/continuation/duplicate of a
+    preceding record's event — its cause hypothesis reflects whatever the
+    classifier saw in ITS OWN waveform, e.g. reclose inrush or CT transient,
+    not a second independent cause, and must not be pitted against the
+    inception record's reading).
+
+    Chosen per adjacent-pair relationship (the same pairs already classified
+    by ``relationships.classify_pair``), walking records in the same
+    chronological order episode grouping uses. A record with no known
+    ordering position, or the first record overall, is always "inception" —
+    only an explicit aftermath-type relationship to its immediate
+    predecessor demotes it.
+    """
+    order_index = {rid: i for i, rid in enumerate(record_order)}
+    ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, 10**9))
+    rel_by_pair = {(r.left_record_id, r.right_record_id): r for r in relationships}
+
+    roles: dict[str, str] = {}
+    for i, record in enumerate(ordered):
+        if i == 0:
+            roles[record.incident_record_id] = "inception"
+            continue
+        prev = ordered[i - 1]
+        rel = rel_by_pair.get((prev.incident_record_id, record.incident_record_id))
+        if rel is not None and rel.relationship_type in _AFTERMATH_RELATIONSHIP_TYPES:
+            roles[record.incident_record_id] = "aftermath"
+        else:
+            roles[record.incident_record_id] = "inception"
+    return roles
+
+
+def _physical_cause_evidence(
+    records: list[IncidentRecord],
+    relationships: list[RecordRelationship],
+    record_order: list[str],
+) -> dict[str, Any]:
     """Per-record top cause hypothesis plus a qualitative consistency label.
     Deliberately does NOT average or otherwise combine per-record
     probabilities into one incident-level probability (spec section 11) —
     duplicate records aren't independent evidence, and different episodes
-    may have different mechanisms entirely.
+    may have different mechanisms entirely. ``incident_root_cause`` stays
+    ``"UNCONFIRMED"`` unconditionally — this function still never claims a
+    confirmed root cause, it only decides which per-record readings count as
+    evidence when judging whether they *agree*.
+
+    Consistency is judged only across records with evidence_role
+    "inception" (see ``_evidence_roles``): a record whose ONLY relationship
+    to its predecessor is RECLOSE_SEQUENCE/CONTINUATION/DUPLICATE_TRIGGER/
+    OVERLAPPING_CAPTURE captures the aftermath of that predecessor's fault,
+    not an independently faulted waveform — running the classifier on it is
+    still useful (its own reading is preserved and shown, e.g. to catch a
+    refault-on-reclose), but a different top_hypothesis there must not, on
+    its own, downgrade consistency to MIXED. Real precedent: a trip record
+    (LAYANG, 89%) and its close/reclose record (PETIR, 79%, because reclose
+    inrush has a different waveform shape than the original fault) previously
+    reported MIXED/"signatures disagree" even though there was only ever one
+    physical fault event — the close record's classifier run was never
+    independent evidence about what caused the fault in the first place.
 
     Each record entry carries the exact audit trail used at reconstruction
     time (model_version, feature_version, calibration method, timing
@@ -86,8 +151,10 @@ def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
     stored ``Reconstruction`` snapshot remains the source of truth even if
     the live model or a record's analysis session later changes.
     """
+    roles = _evidence_roles(records, relationships, record_order)
+
     record_entries = []
-    top_causes = []
+    inception_causes = []
     for record in records:
         result = _record_ml_result(record)
         ranking = result.get("cause_ranking") or []
@@ -95,6 +162,7 @@ def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
         cause = top.get("cause") if isinstance(top, dict) else None
         confidence = top.get("confidence") if isinstance(top, dict) else None
         meta = result.get("meta") or {}
+        role = roles.get(record.incident_record_id, "inception")
         record_entries.append({
             "analysis_id": record.analysis_id,
             "incident_record_id": record.incident_record_id,
@@ -109,19 +177,26 @@ def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
             "raw_probabilities": result.get("raw_probabilities"),
             "calibrated_probabilities": result.get("calibrated_probabilities"),
             "applied_caps": result.get("applied_caps") or [],
+            "evidence_role": role,
         })
-        if cause:
-            top_causes.append(cause)
+        if cause and role == "inception":
+            inception_causes.append(cause)
 
     if not record_entries:
         consistency = "INSUFFICIENT"
-    elif not top_causes:
+    elif not inception_causes:
+        # Every record was classified as "aftermath" (shouldn't normally
+        # happen — the first record in chronological order is always
+        # "inception" — but degrade honestly rather than divide by zero).
         consistency = "INSUFFICIENT"
     else:
-        distinct = set(top_causes)
+        # CONSISTENT/MOSTLY_CONSISTENT/MIXED is judged purely among inception
+        # records — an aftermath record's own reading never counts toward or
+        # against agreement, regardless of how many aftermath records exist.
+        distinct = set(inception_causes)
         if len(distinct) == 1:
-            consistency = "CONSISTENT" if len(top_causes) == len(record_entries) else "MOSTLY_CONSISTENT"
-        elif len(distinct) <= max(1, len(top_causes) // 2):
+            consistency = "CONSISTENT"
+        elif len(distinct) <= max(1, len(inception_causes) // 2):
             consistency = "MOSTLY_CONSISTENT"
         else:
             consistency = "MIXED"
@@ -486,7 +561,7 @@ def run_reconstruction(
     # physical_cause_evidence report exactly the same per-record ML call
     # result (same model_version/probabilities) rather than invoking
     # LightGBM a second time per episode.
-    physical_cause = _physical_cause_evidence(records)
+    physical_cause = _physical_cause_evidence(records, relationships, alignment.record_order)
     cause_lookup = {e["incident_record_id"]: e for e in physical_cause["records"]}
 
     episodes = group_episodes(incident.incident_id, records, relationships, alignment.record_order, new_id, record_cause_lookup=cause_lookup)

@@ -148,6 +148,13 @@ def group_episodes(
                     "model_version": cause_entry.get("model_version"),
                     "timing_source": cause_entry.get("timing_source"),
                     "scope": "RECORD_LOCAL_SIGNATURE",
+                    # "inception" (independently faulted waveform, real cause
+                    # evidence) vs "aftermath" (this record only captures a
+                    # reclose/continuation/duplicate of a preceding record's
+                    # event — its own classifier reading is preserved here
+                    # but must not be read as a second, disagreeing cause).
+                    # See reconstruction.py::_evidence_roles.
+                    "evidence_role": cause_entry.get("evidence_role", "inception"),
                 })
             else:
                 hyps = (r.canonical_snapshot or {}).get("cause_hypotheses") or []

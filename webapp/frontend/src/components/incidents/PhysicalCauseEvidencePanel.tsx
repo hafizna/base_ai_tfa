@@ -32,7 +32,9 @@ export default function PhysicalCauseEvidencePanel({ physicalCauseEvidence, epis
       <p className={styles.disclaimer}>
         Each row is an independent per-record LightGBM prediction — these are never averaged into a single
         incident-level probability. Duplicate captures, different episodes, and different mechanisms are not
-        combined.
+        combined. A record marked <strong>aftermath</strong> only captures a reclose/continuation/duplicate of a
+        preceding record's fault — its reading is shown for audit, but it does not count as independent cause
+        evidence and is excluded from the consistency badge above.
       </p>
 
       {physicalCauseEvidence.records.length === 0 ? (
@@ -43,6 +45,7 @@ export default function PhysicalCauseEvidencePanel({ physicalCauseEvidence, epis
             <thead>
               <tr>
                 <th>Record</th>
+                <th>Role</th>
                 <th>Episode</th>
                 <th>Top hypothesis</th>
                 <th>Confidence</th>
@@ -58,6 +61,11 @@ export default function PhysicalCauseEvidencePanel({ physicalCauseEvidence, epis
                 return (
                   <tr key={r.incident_record_id}>
                     <td>{recordLabel(r.incident_record_id)}</td>
+                    <td>
+                      <span className={r.evidence_role === "aftermath" ? styles.roleAftermath : styles.roleInception}>
+                        {r.evidence_role}
+                      </span>
+                    </td>
                     <td>{episodeIndex != null ? `Episode ${episodeIndex + 1}` : "-"}</td>
                     <td>{r.top_hypothesis ?? "-"}</td>
                     <td>{r.confidence != null ? `${Math.round(r.confidence * 100)}%` : "-"}</td>

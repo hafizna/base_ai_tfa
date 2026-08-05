@@ -94,3 +94,23 @@
   font-family: monospace;
   font-size: 0.75rem;
 }
+
+.roleInception,
+.roleAftermath {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.roleInception {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.roleAftermath {
+  background: #f3f4f6;
+  color: #6b7280;
+}

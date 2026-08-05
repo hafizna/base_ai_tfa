@@ -36,6 +36,7 @@ from .models import (
     RecordRelationship,
 )
 from .reconstruction import run_reconstruction as _run_reconstruction
+from .joined_waveform import build_joined_waveform as _build_joined_waveform
 
 
 class IncidentServiceError(Exception):
@@ -675,6 +676,22 @@ def get_relationships(incident_id: str) -> list[RecordRelationship]:
 def get_episodes(incident_id: str) -> list[FaultEpisode]:
     get_incident(incident_id)
     return incident_storage.list_episodes(incident_id)
+
+
+def get_joined_waveform(incident_id: str, episode_id: str) -> dict[str, Any]:
+    """Build the joined, incident-relative waveform view for one episode's
+    member records — see joined_waveform.build_joined_waveform for the
+    trust/gap-precision rules. Read/derive-only: never persisted, always
+    recomputed from the current episode + relationship state."""
+    get_incident(incident_id)
+    episodes = {e.episode_id: e for e in incident_storage.list_episodes(incident_id)}
+    episode = episodes.get(episode_id)
+    if episode is None:
+        raise IncidentServiceError(f"Episode '{episode_id}' not found on incident '{incident_id}'.", status_code=404)
+
+    records_by_id = {r.incident_record_id: r for r in incident_storage.list_incident_records(incident_id)}
+    relationships = incident_storage.list_relationships(incident_id)
+    return _build_joined_waveform(episode, records_by_id, relationships)
 
 
 def override_relationship(
