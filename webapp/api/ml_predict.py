@@ -39,6 +39,7 @@ from models.rules import apply_rules  # noqa: E402
 from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
 from .fault_detection import detect_fault_presence, _is_operate_status  # noqa: E402
 from core.event_analysis import build_event_window  # noqa: E402
+from core.fault_detector import _extract_line_tag  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
 _CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calibrator.pkl"
@@ -257,11 +258,60 @@ def _ev(text: str, severity: str = "info", weight: Optional[float] = None, kind:
     }
 
 
-def _find_ch(channels: list, candidates: list[str]) -> Optional[np.ndarray]:
+def _detect_active_line_tag(channels: list) -> Optional[str]:
+    """Pick the line/circuit tag with the largest peak current in this
+    record. Same tag-extraction and scoring rule as
+    webapp.api.routers.relay_21._detect_active_line_tag (and
+    core.fault_detector._detect_active_line_tag_from_currents) —
+    reimplemented here so ml feature extraction doesn't disagree with the
+    locus/electrical-summary about which line a multi-line DFR CFG's fault
+    actually happened on.
+
+    Why this matters: an external DFR CFG can record TWO lines side by side
+    in one file (e.g. "IR BRINGIN 1" AND "IR BRINGIN 2", one healthy, one
+    faulted). Without this, _find_ch below returns the FIRST name/canonical
+    match regardless of which line it belongs to — for a real Mojosongo Bay
+    Bringin #2 incident this silently fed the classifier current/voltage
+    from the healthy line (peak ~90 A) while the actual fault (peak >1700 A)
+    was on the other line, producing a physically inconsistent verdict (e.g.
+    a 3-phase-to-ground label from a locus that barely moves on two of the
+    three phase-to-ground loops). Channels with no extractable tag
+    (single-line CFGs, the overwhelming majority of records) are unaffected
+    — this returns None and _find_ch falls back to its original
+    first-match behaviour.
+    """
+    scores: dict[str, float] = {}
     for ch in channels:
-        if ch.get("canonical_name") in candidates or ch.get("name", "").upper() in candidates:
-            return np.array(ch["samples"], dtype=float)
-    return None
+        if ch.get("measurement") != "current":
+            continue
+        canonical = (ch.get("canonical_name") or "").upper()
+        if canonical not in ("IA", "IB", "IC"):
+            continue
+        samples = ch.get("samples") or []
+        if not samples:
+            continue
+        tag = _extract_line_tag(ch.get("name") or "")
+        if not tag:
+            continue
+        peak = float(np.max(np.abs(np.asarray(samples, dtype=float))))
+        scores[tag] = scores.get(tag, 0.0) + peak
+    if not scores:
+        return None
+    return max(scores.items(), key=lambda item: item[1])[0]
+
+
+def _find_ch(channels: list, candidates: list[str], preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
+    matches = [
+        ch for ch in channels
+        if ch.get("canonical_name") in candidates or ch.get("name", "").upper() in candidates
+    ]
+    if not matches:
+        return None
+    if preferred_tag:
+        tagged = [ch for ch in matches if _extract_line_tag(ch.get("name") or "") == preferred_tag]
+        if tagged:
+            return np.array(tagged[0]["samples"], dtype=float)
+    return np.array(matches[0]["samples"], dtype=float)
 
 
 def _rms_window(arr: np.ndarray, start: int, n: int) -> float:
@@ -663,14 +713,20 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
     sr = 1.0 / (time[1] - time[0])
     cycle_n = max(4, int(sr / freq))
 
+    # Multi-line DFR CFGs (e.g. external Qualitrol recording two bays side by
+    # side) can have two sets of IA/IB/IC/VA/VB/VC — pick the ones on the
+    # line that's actually faulted, not whichever appears first in the file.
+    # See _detect_active_line_tag for why this matters.
+    preferred_tag = _detect_active_line_tag(channels)
+
     # Current channels
-    ia = _find_ch(channels, ["IA", "IL1", "I1"])
-    ib = _find_ch(channels, ["IB", "IL2", "I2"])
-    ic = _find_ch(channels, ["IC", "IL3", "I3"])
+    ia = _find_ch(channels, ["IA", "IL1", "I1"], preferred_tag)
+    ib = _find_ch(channels, ["IB", "IL2", "I2"], preferred_tag)
+    ic = _find_ch(channels, ["IC", "IL3", "I3"], preferred_tag)
     # Voltage channels
-    va = _find_ch(channels, ["VA", "VAN", "UA"])
-    vb = _find_ch(channels, ["VB", "VBN", "UB"])
-    vc = _find_ch(channels, ["VC", "VCN", "UC"])
+    va = _find_ch(channels, ["VA", "VAN", "UA"], preferred_tag)
+    vb = _find_ch(channels, ["VB", "VBN", "UB"], preferred_tag)
+    vc = _find_ch(channels, ["VC", "VCN", "UC"], preferred_tag)
 
     phase_currents = [(ia, "A"), (ib, "B"), (ic, "C")]
     scored_currents = []
