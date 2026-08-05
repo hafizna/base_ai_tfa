@@ -137,3 +137,12 @@
   font-weight: 600;
   cursor: help;
 }
+
+.rowSkipped {
+  background: #f9fafb;
+}
+
+.skipCell {
+  color: #9ca3af;
+  font-style: italic;
+}

@@ -58,16 +58,37 @@ def _parse_iso(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+# run_ml_prediction's 17-feature extractor (webapp.api.ml_predict.extract_ml_features)
+# is built exclusively around single-line three-phase IA/IB/IC/VA/VB/VC
+# channels and the 7-class line-fault taxonomy (PETIR/LAYANG/POHON/HEWAN/
+# BENDA_ASING/KONDUKTOR/PERALATAN) — it has no branch for transformer HV/LV/
+# diff/restraint channels or any other protection family's channel layout.
+# The single-record 87T workspace already knows this and deliberately shows
+# NO AI verdict for transformer records (README: "Workspace 87T saat ini
+# hanya menampilkan analisa rekaman COMTRADE, tanpa verdict AI") — a
+# same-bay incident is explicitly allowed to mix protection families (a
+# distance relay AND a transformer differential relay both tripping for one
+# event is normal same-bay evidence, see same_bay.py's MIXED_PROTECTION_FAMILY),
+# so this same restraint has to be applied per-record here too, or a 87T
+# record silently gets a meaningless line-fault cause reading.
+_LINE_FAULT_CLASSIFIER_PROTECTION_TYPES = {"21", "87L"}
+
+
 def _record_ml_result(record: IncidentRecord) -> dict[str, Any]:
     """Best-effort full ``run_ml_prediction`` result for one record, computed
     fresh (never averaged with other records — see module docstring).
     Returns ``{}`` rather than raising if the stored analysis has expired or
     the model import fails; reconstruction must not fail because one
-    record's ML call did."""
+    record's ML call did. Also returns ``{}`` — with a distinguishable
+    ``skip_reason`` — when the record's protection type isn't one the line-
+    fault classifier is built for (see _LINE_FAULT_CLASSIFIER_PROTECTION_TYPES)."""
+    relay_type = (record.protection_type or "21").upper()
+    if relay_type not in _LINE_FAULT_CLASSIFIER_PROTECTION_TYPES:
+        return {"skip_reason": "unsupported_protection_type", "protection_type": relay_type}
+
     payload = load_analysis(record.analysis_id)
     if payload is None:
         return {}
-    relay_type = (record.protection_type or "21").upper()
     try:
         return ml_predict.run_ml_prediction(payload, relay_type)
     except Exception:
@@ -180,6 +201,11 @@ def _physical_cause_evidence(
             "applied_caps": result.get("applied_caps") or [],
             "evidence_role": role,
             "fault_type": result.get("fault_type"),
+            # Set only when this record's protection type isn't one the line
+            # -fault classifier is built for (e.g. "87T") — distinguishes
+            # "no reading because unsupported" from "no reading because the
+            # model/session failed" for the UI. See _record_ml_result.
+            "skip_reason": result.get("skip_reason"),
         })
         if cause and role == "inception":
             inception_causes.append(cause)

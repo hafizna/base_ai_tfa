@@ -157,6 +157,7 @@ def group_episodes(
                     "evidence_role": cause_entry.get("evidence_role", "inception"),
                     "fault_type": cause_entry.get("fault_type"),
                     "requires_review": cause_entry.get("requires_review", False),
+                    "skip_reason": cause_entry.get("skip_reason"),
                 })
             else:
                 hyps = (r.canonical_snapshot or {}).get("cause_hypotheses") or []

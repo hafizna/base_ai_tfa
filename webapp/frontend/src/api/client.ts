@@ -1071,6 +1071,7 @@ export interface RecordLocalCauseHypothesis {
   evidence_role: CauseEvidenceRole;
   fault_type?: "transient" | "permanent" | null;
   requires_review?: boolean;
+  skip_reason?: string | null;
 }
 
 export interface FaultEpisodeOut {
@@ -1129,6 +1130,13 @@ export interface PhysicalCauseRecordEntry {
   // confidence; this flag exists so the UI can surface it without parsing
   // applied_caps.
   requires_review?: boolean;
+  // Set (instead of a null top_hypothesis meaning "model/session failed")
+  // when this record's protection_type isn't one the line-fault classifier
+  // is built for — e.g. "unsupported_protection_type" for an 87T
+  // transformer-differential record. No AI cause classifier for
+  // transformer events exists anywhere in this app yet (see README), so
+  // this is a deliberate, disclosed absence of evidence, not an error.
+  skip_reason?: string | null;
 }
 
 export interface PhysicalCauseEvidenceOut {

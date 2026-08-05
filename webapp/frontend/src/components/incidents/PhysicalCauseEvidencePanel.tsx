@@ -60,6 +60,22 @@ export default function PhysicalCauseEvidencePanel({ physicalCauseEvidence, epis
             <tbody>
               {physicalCauseEvidence.records.map((r) => {
                 const episodeIndex = episodeByRecordId.get(r.incident_record_id);
+                if (r.skip_reason) {
+                  return (
+                    <tr key={r.incident_record_id} className={styles.rowSkipped}>
+                      <td>{recordLabel(r.incident_record_id)}</td>
+                      <td>
+                        <span className={styles.roleAftermath}>{r.evidence_role}</span>
+                      </td>
+                      <td>{episodeIndex != null ? `Episode ${episodeIndex + 1}` : "-"}</td>
+                      <td colSpan={6} className={styles.skipCell}>
+                        No AI cause reading — {r.skip_reason === "unsupported_protection_type"
+                          ? "this record's protection type has no line-fault classifier support (e.g. transformer differential)."
+                          : r.skip_reason}
+                      </td>
+                    </tr>
+                  );
+                }
                 return (
                   <tr key={r.incident_record_id} className={r.requires_review ? styles.rowReview : undefined}>
                     <td>{recordLabel(r.incident_record_id)}</td>
