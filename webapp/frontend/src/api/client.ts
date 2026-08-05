@@ -1069,6 +1069,8 @@ export interface RecordLocalCauseHypothesis {
   timing_source?: string | null;
   scope: "RECORD_LOCAL_SIGNATURE";
   evidence_role: CauseEvidenceRole;
+  fault_type?: "transient" | "permanent" | null;
+  requires_review?: boolean;
 }
 
 export interface FaultEpisodeOut {
@@ -1116,6 +1118,17 @@ export interface PhysicalCauseRecordEntry {
   calibrated_probabilities: Record<string, number> | null;
   applied_caps: Array<{ name: string; before: number; after: number; reason: string }>;
   evidence_role: CauseEvidenceRole;
+  // "transient" causes (PETIR/LAYANG/HEWAN/BENDA_ASING) are expected to
+  // self-clear on reclose; "permanent" causes (KONDUKTOR/PERALATAN) are
+  // expected to persist through reclose. Only set for "inception"-role
+  // records — see reconstruction.py::_apply_reclose_outcome_cross_validation.
+  fault_type?: "transient" | "permanent" | null;
+  // True when this record's own aftermath record's reclose outcome
+  // physically CONTRADICTS its fault_type (e.g. a transient cause but a
+  // failed reclose) — the reclose_outcome_conflict cap already lowered
+  // confidence; this flag exists so the UI can surface it without parsing
+  // applied_caps.
+  requires_review?: boolean;
 }
 
 export interface PhysicalCauseEvidenceOut {

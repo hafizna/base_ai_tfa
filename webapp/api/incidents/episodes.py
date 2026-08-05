@@ -155,6 +155,8 @@ def group_episodes(
                     # but must not be read as a second, disagreeing cause).
                     # See reconstruction.py::_evidence_roles.
                     "evidence_role": cause_entry.get("evidence_role", "inception"),
+                    "fault_type": cause_entry.get("fault_type"),
+                    "requires_review": cause_entry.get("requires_review", False),
                 })
             else:
                 hyps = (r.canonical_snapshot or {}).get("cause_hypotheses") or []
