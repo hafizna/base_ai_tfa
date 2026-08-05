@@ -1068,6 +1068,10 @@ export interface RecordLocalCauseHypothesis {
   model_version?: string | null;
   timing_source?: string | null;
   scope: "RECORD_LOCAL_SIGNATURE";
+  evidence_role: CauseEvidenceRole;
+  fault_type?: "transient" | "permanent" | null;
+  requires_review?: boolean;
+  skip_reason?: string | null;
 }
 
 export interface FaultEpisodeOut {
@@ -1093,6 +1097,13 @@ export interface FaultEpisodeOut {
   provenance: Record<string, unknown>;
 }
 
+// "inception" = this record captures an independently faulted waveform, its
+// cause reading is real evidence. "aftermath" = this record's only relation
+// to its predecessor is a reclose/continuation/duplicate capture — its
+// classifier reading is preserved for audit but is not independent cause
+// evidence and should not be read as disagreeing with the inception record.
+export type CauseEvidenceRole = "inception" | "aftermath";
+
 export interface PhysicalCauseRecordEntry {
   analysis_id: string;
   incident_record_id: string;
@@ -1107,6 +1118,25 @@ export interface PhysicalCauseRecordEntry {
   raw_probabilities: Record<string, number> | null;
   calibrated_probabilities: Record<string, number> | null;
   applied_caps: Array<{ name: string; before: number; after: number; reason: string }>;
+  evidence_role: CauseEvidenceRole;
+  // "transient" causes (PETIR/LAYANG/HEWAN/BENDA_ASING) are expected to
+  // self-clear on reclose; "permanent" causes (KONDUKTOR/PERALATAN) are
+  // expected to persist through reclose. Only set for "inception"-role
+  // records — see reconstruction.py::_apply_reclose_outcome_cross_validation.
+  fault_type?: "transient" | "permanent" | null;
+  // True when this record's own aftermath record's reclose outcome
+  // physically CONTRADICTS its fault_type (e.g. a transient cause but a
+  // failed reclose) — the reclose_outcome_conflict cap already lowered
+  // confidence; this flag exists so the UI can surface it without parsing
+  // applied_caps.
+  requires_review?: boolean;
+  // Set (instead of a null top_hypothesis meaning "model/session failed")
+  // when this record's protection_type isn't one the line-fault classifier
+  // is built for — e.g. "unsupported_protection_type" for an 87T
+  // transformer-differential record. No AI cause classifier for
+  // transformer events exists anywhere in this app yet (see README), so
+  // this is a deliberate, disclosed absence of evidence, not an error.
+  skip_reason?: string | null;
 }
 
 export interface PhysicalCauseEvidenceOut {
@@ -1197,6 +1227,42 @@ export async function fetchIncidentRelationships(incidentId: string) {
 
 export async function fetchIncidentEpisodes(incidentId: string) {
   const { data } = await api.get<FaultEpisodeOut[]>(`/api/incidents/${incidentId}/episodes`);
+  return data;
+}
+
+export interface JoinedWaveformChannel {
+  t: number[];
+  values: number[];
+}
+
+export interface JoinedWaveformSegment {
+  incident_record_id: string;
+  source_filename: string | null;
+  t_offset_s: number;
+  // Gap BEFORE this segment; null for the first segment in the episode.
+  gap_precision: "measured" | "assumed_back_to_back" | null;
+  gap_seconds: number | null;
+  channels: Record<string, JoinedWaveformChannel>;
+}
+
+export interface JoinedWaveformGapRange {
+  start_s: number;
+  end_s: number;
+  precision: "measured" | "assumed_back_to_back";
+  long_gap: boolean;
+}
+
+export interface JoinedWaveformOut {
+  episode_id: string;
+  can_join: boolean;
+  reason: string | null;
+  segments: JoinedWaveformSegment[];
+  gap_ranges: JoinedWaveformGapRange[];
+  warnings: Array<{ type: string; description?: string; [key: string]: unknown }>;
+}
+
+export async function fetchJoinedWaveform(incidentId: string, episodeId: string) {
+  const { data } = await api.get<JoinedWaveformOut>(`/api/incidents/${incidentId}/episodes/${episodeId}/joined-waveform`);
   return data;
 }
 

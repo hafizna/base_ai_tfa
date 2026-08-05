@@ -95,6 +95,28 @@
   font-size: 0.82rem;
 }
 
+.waveformToggle {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.waveformToggle:hover {
+  background: #dbeafe;
+}
+
+.waveformPanel {
+  margin-top: 10px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+}
+
 .factBlock {
   border-top: 1px solid #f3f4f6;
   padding-top: 10px;

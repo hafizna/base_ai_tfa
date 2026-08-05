@@ -1,7 +1,11 @@
+import { useState } from "react";
+
 import type { FaultEpisodeOut, IncidentRecordOut } from "../../api/client";
+import JoinedWaveformView from "./JoinedWaveformView";
 import styles from "./EpisodeCards.module.css";
 
 interface Props {
+  incidentId: string;
   episodes: FaultEpisodeOut[];
   records: IncidentRecordOut[];
 }
@@ -20,8 +24,9 @@ function formatDuration(ms: number | null) {
   return `${ms.toFixed(0)} ms`;
 }
 
-export default function EpisodeCards({ episodes, records }: Props) {
+export default function EpisodeCards({ incidentId, episodes, records }: Props) {
   const recordsById = new Map(records.map((r) => [r.incident_record_id, r]));
+  const [expandedWaveform, setExpandedWaveform] = useState<string | null>(null);
 
   if (episodes.length === 0) {
     return <div className={styles.empty}>No episodes reconstructed yet. Trigger a reconstruction to build episodes.</div>;
@@ -63,6 +68,22 @@ export default function EpisodeCards({ episodes, records }: Props) {
                 );
               })}
             </ul>
+            {episode.member_record_ids.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className={styles.waveformToggle}
+                  onClick={() => setExpandedWaveform(expandedWaveform === episode.episode_id ? null : episode.episode_id)}
+                >
+                  {expandedWaveform === episode.episode_id ? "Hide joined waveform" : "View joined waveform"}
+                </button>
+                {expandedWaveform === episode.episode_id && (
+                  <div className={styles.waveformPanel}>
+                    <JoinedWaveformView incidentId={incidentId} episodeId={episode.episode_id} />
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div className={styles.factBlock}>

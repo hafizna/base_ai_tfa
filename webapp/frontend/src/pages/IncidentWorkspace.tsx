@@ -484,7 +484,7 @@ export default function IncidentWorkspace() {
 
               <div className={styles.subsection}>
                 <h3>Episodes</h3>
-                <EpisodeCards episodes={episodes} records={incident.records} />
+                <EpisodeCards incidentId={incidentId ?? ""} episodes={episodes} records={incident.records} />
               </div>
 
               <div className={styles.subsection}>

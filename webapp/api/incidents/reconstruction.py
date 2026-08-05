@@ -29,6 +29,7 @@ from ..storage import load_analysis
 from . import storage as incident_storage
 from .alignment import assess_alignment
 from .episodes import group_episodes
+from .episodes import _reclose_outcome as _record_reclose_outcome
 from .models import (
     RECONSTRUCTION_ENGINE_VERSION,
     RECONSTRUCTION_SCHEMA_VERSION,
@@ -57,28 +58,114 @@ def _parse_iso(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+# run_ml_prediction's 17-feature extractor (webapp.api.ml_predict.extract_ml_features)
+# is built exclusively around single-line three-phase IA/IB/IC/VA/VB/VC
+# channels and the 7-class line-fault taxonomy (PETIR/LAYANG/POHON/HEWAN/
+# BENDA_ASING/KONDUKTOR/PERALATAN) — it has no branch for transformer HV/LV/
+# diff/restraint channels or any other protection family's channel layout.
+# The single-record 87T workspace already knows this and deliberately shows
+# NO AI verdict for transformer records (README: "Workspace 87T saat ini
+# hanya menampilkan analisa rekaman COMTRADE, tanpa verdict AI") — a
+# same-bay incident is explicitly allowed to mix protection families (a
+# distance relay AND a transformer differential relay both tripping for one
+# event is normal same-bay evidence, see same_bay.py's MIXED_PROTECTION_FAMILY),
+# so this same restraint has to be applied per-record here too, or a 87T
+# record silently gets a meaningless line-fault cause reading.
+_LINE_FAULT_CLASSIFIER_PROTECTION_TYPES = {"21", "87L"}
+
+
 def _record_ml_result(record: IncidentRecord) -> dict[str, Any]:
     """Best-effort full ``run_ml_prediction`` result for one record, computed
     fresh (never averaged with other records — see module docstring).
     Returns ``{}`` rather than raising if the stored analysis has expired or
     the model import fails; reconstruction must not fail because one
-    record's ML call did."""
+    record's ML call did. Also returns ``{}`` — with a distinguishable
+    ``skip_reason`` — when the record's protection type isn't one the line-
+    fault classifier is built for (see _LINE_FAULT_CLASSIFIER_PROTECTION_TYPES)."""
+    relay_type = (record.protection_type or "21").upper()
+    if relay_type not in _LINE_FAULT_CLASSIFIER_PROTECTION_TYPES:
+        return {"skip_reason": "unsupported_protection_type", "protection_type": relay_type}
+
     payload = load_analysis(record.analysis_id)
     if payload is None:
         return {}
-    relay_type = (record.protection_type or "21").upper()
     try:
         return ml_predict.run_ml_prediction(payload, relay_type)
     except Exception:
         return {}
 
 
-def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
+# Relationship types where the right record captures the AFTERMATH of the
+# left record's event (a reclose attempt/outcome, or a continued capture of
+# the same still-in-progress sequence) rather than a new, independently
+# faulted waveform. A record reached only via one of these relationships is
+# not treated as separate cause evidence — see _evidence_roles.
+_AFTERMATH_RELATIONSHIP_TYPES = {"RECLOSE_SEQUENCE", "CONTINUATION", "DUPLICATE_TRIGGER", "OVERLAPPING_CAPTURE"}
+
+
+def _evidence_roles(
+    records: list[IncidentRecord], relationships: list[RecordRelationship], record_order: list[str]
+) -> dict[str, str]:
+    """Classify each record as ``"inception"`` (captures an independently
+    faulted waveform — its cause hypothesis is real evidence) or
+    ``"aftermath"`` (only captures the reclose/continuation/duplicate of a
+    preceding record's event — its cause hypothesis reflects whatever the
+    classifier saw in ITS OWN waveform, e.g. reclose inrush or CT transient,
+    not a second independent cause, and must not be pitted against the
+    inception record's reading).
+
+    Chosen per adjacent-pair relationship (the same pairs already classified
+    by ``relationships.classify_pair``), walking records in the same
+    chronological order episode grouping uses. A record with no known
+    ordering position, or the first record overall, is always "inception" —
+    only an explicit aftermath-type relationship to its immediate
+    predecessor demotes it.
+    """
+    order_index = {rid: i for i, rid in enumerate(record_order)}
+    ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, 10**9))
+    rel_by_pair = {(r.left_record_id, r.right_record_id): r for r in relationships}
+
+    roles: dict[str, str] = {}
+    for i, record in enumerate(ordered):
+        if i == 0:
+            roles[record.incident_record_id] = "inception"
+            continue
+        prev = ordered[i - 1]
+        rel = rel_by_pair.get((prev.incident_record_id, record.incident_record_id))
+        if rel is not None and rel.relationship_type in _AFTERMATH_RELATIONSHIP_TYPES:
+            roles[record.incident_record_id] = "aftermath"
+        else:
+            roles[record.incident_record_id] = "inception"
+    return roles
+
+
+def _physical_cause_evidence(
+    records: list[IncidentRecord],
+    relationships: list[RecordRelationship],
+    record_order: list[str],
+) -> dict[str, Any]:
     """Per-record top cause hypothesis plus a qualitative consistency label.
     Deliberately does NOT average or otherwise combine per-record
     probabilities into one incident-level probability (spec section 11) —
     duplicate records aren't independent evidence, and different episodes
-    may have different mechanisms entirely.
+    may have different mechanisms entirely. ``incident_root_cause`` stays
+    ``"UNCONFIRMED"`` unconditionally — this function still never claims a
+    confirmed root cause, it only decides which per-record readings count as
+    evidence when judging whether they *agree*.
+
+    Consistency is judged only across records with evidence_role
+    "inception" (see ``_evidence_roles``): a record whose ONLY relationship
+    to its predecessor is RECLOSE_SEQUENCE/CONTINUATION/DUPLICATE_TRIGGER/
+    OVERLAPPING_CAPTURE captures the aftermath of that predecessor's fault,
+    not an independently faulted waveform — running the classifier on it is
+    still useful (its own reading is preserved and shown, e.g. to catch a
+    refault-on-reclose), but a different top_hypothesis there must not, on
+    its own, downgrade consistency to MIXED. Real precedent: a trip record
+    (LAYANG, 89%) and its close/reclose record (PETIR, 79%, because reclose
+    inrush has a different waveform shape than the original fault) previously
+    reported MIXED/"signatures disagree" even though there was only ever one
+    physical fault event — the close record's classifier run was never
+    independent evidence about what caused the fault in the first place.
 
     Each record entry carries the exact audit trail used at reconstruction
     time (model_version, feature_version, calibration method, timing
@@ -86,8 +173,10 @@ def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
     stored ``Reconstruction`` snapshot remains the source of truth even if
     the live model or a record's analysis session later changes.
     """
+    roles = _evidence_roles(records, relationships, record_order)
+
     record_entries = []
-    top_causes = []
+    inception_causes = []
     for record in records:
         result = _record_ml_result(record)
         ranking = result.get("cause_ranking") or []
@@ -95,6 +184,7 @@ def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
         cause = top.get("cause") if isinstance(top, dict) else None
         confidence = top.get("confidence") if isinstance(top, dict) else None
         meta = result.get("meta") or {}
+        role = roles.get(record.incident_record_id, "inception")
         record_entries.append({
             "analysis_id": record.analysis_id,
             "incident_record_id": record.incident_record_id,
@@ -109,19 +199,32 @@ def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
             "raw_probabilities": result.get("raw_probabilities"),
             "calibrated_probabilities": result.get("calibrated_probabilities"),
             "applied_caps": result.get("applied_caps") or [],
+            "evidence_role": role,
+            "fault_type": result.get("fault_type"),
+            # Set only when this record's protection type isn't one the line
+            # -fault classifier is built for (e.g. "87T") — distinguishes
+            # "no reading because unsupported" from "no reading because the
+            # model/session failed" for the UI. See _record_ml_result.
+            "skip_reason": result.get("skip_reason"),
         })
-        if cause:
-            top_causes.append(cause)
+        if cause and role == "inception":
+            inception_causes.append(cause)
 
     if not record_entries:
         consistency = "INSUFFICIENT"
-    elif not top_causes:
+    elif not inception_causes:
+        # Every record was classified as "aftermath" (shouldn't normally
+        # happen — the first record in chronological order is always
+        # "inception" — but degrade honestly rather than divide by zero).
         consistency = "INSUFFICIENT"
     else:
-        distinct = set(top_causes)
+        # CONSISTENT/MOSTLY_CONSISTENT/MIXED is judged purely among inception
+        # records — an aftermath record's own reading never counts toward or
+        # against agreement, regardless of how many aftermath records exist.
+        distinct = set(inception_causes)
         if len(distinct) == 1:
-            consistency = "CONSISTENT" if len(top_causes) == len(record_entries) else "MOSTLY_CONSISTENT"
-        elif len(distinct) <= max(1, len(top_causes) // 2):
+            consistency = "CONSISTENT"
+        elif len(distinct) <= max(1, len(inception_causes) // 2):
             consistency = "MOSTLY_CONSISTENT"
         else:
             consistency = "MIXED"
@@ -132,6 +235,119 @@ def _physical_cause_evidence(records: list[IncidentRecord]) -> dict[str, Any]:
         "consistency": consistency,
         "incident_root_cause": "UNCONFIRMED",
     }
+
+
+# A physical fault mechanism predicts a specific reclose outcome: a genuinely
+# transient cause (lightning, kite contact, animal, foreign object — the
+# object/arc is gone after the trip) should self-clear, so a successful
+# reclose is the EXPECTED outcome, not independent confirmation of nothing.
+# A permanent cause (conductor/tower damage, stuck equipment) should NOT
+# self-clear, so a failed reclose is the expected outcome. This mirrors how
+# a protection engineer reads the two files together: the reclose result is
+# evidence for or against the inception record's cause hypothesis, even
+# though it was never re-run through the classifier as competing evidence.
+_TRANSIENT_EXPECTS_SUCCESS = True   # cause fault_type == "transient"
+_PERMANENT_EXPECTS_FAILURE = True   # cause fault_type == "permanent"
+
+# Confidence adjustment magnitude — deliberately small and symmetric (this is
+# corroboration/contradiction from ONE downstream reclose outcome, not a
+# second independent classifier vote) and never exceeds the same 92% hard
+# ceiling ml_predict.py already enforces.
+_RECLOSE_MATCH_BONUS = 0.05
+_RECLOSE_MISMATCH_PENALTY = 0.10
+_CONFIDENCE_CEILING = 0.92
+
+
+def _apply_reclose_outcome_cross_validation(
+    physical_cause: dict[str, Any],
+    records: list[IncidentRecord],
+    relationships: list[RecordRelationship],
+    record_order: list[str],
+) -> dict[str, Any]:
+    """Adjust each inception record's cause confidence based on whether the
+    reclose outcome captured by its aftermath record(s) is physically
+    consistent with the cause's fault_type (transient vs permanent) —
+    recorded as an ``applied_caps`` entry named
+    ``reclose_outcome_consistency`` / ``reclose_outcome_conflict`` on that
+    record, exactly like ml_predict.py's existing caps, so the adjustment is
+    auditable rather than silent.
+
+    Must run BEFORE group_episodes (which consumes physical_cause's
+    per-record confidence via cause_lookup) so episodes and the incident-
+    level physical_cause_evidence agree on one final, already-adjusted
+    confidence — never two numbers for the same record.
+
+    Only touches "inception"-role records (the ones carrying real cause
+    evidence — see _evidence_roles) and only when at least one of ITS OWN
+    aftermath records (same grouping the RECLOSE_SEQUENCE/CONTINUATION/etc.
+    relationship already establishes) has a reclose outcome to compare
+    against. Never changes incident_root_cause (still UNCONFIRMED) or
+    invents a new cause — purely reweights confidence in the SAME
+    already-computed cause_ranking.
+    """
+    roles = _evidence_roles(records, relationships, record_order)
+    order_index = {rid: i for i, rid in enumerate(record_order)}
+    ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, 10**9))
+
+    # Map each inception record -> the reclose outcome captured by the
+    # nearest following aftermath record(s) attached to it (same walk
+    # _evidence_roles used to assign roles in the first place).
+    reclose_outcome_by_inception: dict[str, str] = {}
+    current_inception_id: Optional[str] = None
+    for record in ordered:
+        role = roles.get(record.incident_record_id, "inception")
+        if role == "inception":
+            current_inception_id = record.incident_record_id
+            continue
+        if current_inception_id is None:
+            continue
+        outcome = _record_reclose_outcome(record)
+        if outcome is not None:
+            # Last aftermath record's outcome wins if there are several
+            # (e.g. a failed then successful second attempt).
+            reclose_outcome_by_inception[current_inception_id] = outcome
+
+    for entry in physical_cause["records"]:
+        if entry.get("evidence_role") != "inception":
+            continue
+        fault_type = entry.get("fault_type")
+        cause = entry.get("top_hypothesis")
+        confidence = entry.get("confidence")
+        if fault_type not in ("transient", "permanent") or cause is None or confidence is None:
+            continue
+
+        reclose_outcome = reclose_outcome_by_inception.get(entry["incident_record_id"])
+        if reclose_outcome not in ("successful", "failed"):
+            continue  # no reclose evidence to cross-validate against
+
+        expected_success = fault_type == "transient"
+        matches = (reclose_outcome == "successful") == expected_success
+
+        cap_name = "reclose_outcome_consistency" if matches else "reclose_outcome_conflict"
+        delta = _RECLOSE_MATCH_BONUS if matches else -_RECLOSE_MISMATCH_PENALTY
+        new_confidence = round(min(_CONFIDENCE_CEILING, max(0.0, confidence + delta)), 3)
+        if new_confidence == confidence:
+            continue
+
+        reason = (
+            f"Episode reclose outcome '{reclose_outcome}' is "
+            f"{'consistent with' if matches else 'inconsistent with'} a "
+            f"{fault_type} cause ({cause}) — "
+            f"{'transient causes are expected to self-clear (reclose succeeds)' if fault_type == 'transient' else 'permanent causes are expected to persist through reclose (reclose fails)'}."
+        )
+        entry.setdefault("applied_caps", []).append({
+            "name": cap_name, "before": confidence, "after": new_confidence, "reason": reason,
+        })
+        entry["confidence"] = new_confidence
+        for candidate in entry.get("cause_ranking") or []:
+            if candidate.get("cause") == cause:
+                candidate["confidence"] = new_confidence
+                break
+
+        if not matches:
+            entry["requires_review"] = True
+
+    return physical_cause
 
 
 def _observed_incident_facts(records: list[IncidentRecord], episodes: list[FaultEpisode]) -> dict[str, Any]:
@@ -486,7 +702,15 @@ def run_reconstruction(
     # physical_cause_evidence report exactly the same per-record ML call
     # result (same model_version/probabilities) rather than invoking
     # LightGBM a second time per episode.
-    physical_cause = _physical_cause_evidence(records)
+    physical_cause = _physical_cause_evidence(records, relationships, alignment.record_order)
+
+    # Cross-validate each inception record's cause against the reclose
+    # outcome its own aftermath record(s) captured — MUST run before
+    # group_episodes (below) reads cause_lookup, so episodes and the
+    # incident-level physical_cause_evidence agree on one final,
+    # already-adjusted confidence rather than reporting two numbers for the
+    # same record.
+    physical_cause = _apply_reclose_outcome_cross_validation(physical_cause, records, relationships, alignment.record_order)
     cause_lookup = {e["incident_record_id"]: e for e in physical_cause["records"]}
 
     episodes = group_episodes(incident.incident_id, records, relationships, alignment.record_order, new_id, record_cause_lookup=cause_lookup)
