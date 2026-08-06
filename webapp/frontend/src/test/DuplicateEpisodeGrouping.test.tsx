@@ -59,7 +59,7 @@ describe("Duplicate captures are grouped into a single episode", () => {
       },
     ];
 
-    render(<EpisodeCards episodes={episodes} records={records} />);
+    render(<EpisodeCards incidentId="test-incident" episodes={episodes} records={records} />);
 
     // Exactly one episode card, and it lists both duplicate-capture records
     // as members rather than splitting them into separate episodes.
