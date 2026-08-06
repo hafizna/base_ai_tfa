@@ -1,0 +1,48 @@
+.wrap {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #dcfce7;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.caption {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 4px 0 12px;
+  line-height: 1.5;
+}
+
+.toggleRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #334155;
+  cursor: pointer;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.rfNote {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  margin: 10px 0 0;
+  font-style: italic;
+}

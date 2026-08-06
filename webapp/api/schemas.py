@@ -427,6 +427,21 @@ class DoubleEndedComputeRequest(BaseModel):
     # running this calculation, not via a local override here.
 
 
+class DoubleEndedSingleEndedResult(BaseModel):
+    """One terminal's OWN single-ended distance reading — shown alongside
+    the two-ended answer as a contrast, per the source PPTX's own stated
+    motivation (single-ended error grows with fault resistance Rf, which
+    the two-ended Kirchhoff solve eliminates but a single-ended reading
+    cannot separate from line impedance)."""
+    terminal: str                                # "A" | "B"
+    distance_km: float
+    distance_pct: float
+    fault_current_a: float
+    r_measured_ohm: float
+    x_measured_ohm: float
+    warnings: List[str] = []
+
+
 class DoubleEndedComputeResponse(BaseModel):
     loop: str
     distance_km: float
@@ -438,3 +453,10 @@ class DoubleEndedComputeResponse(BaseModel):
     active_tag_a: Optional[str]
     active_tag_b: Optional[str]
     warnings: List[str] = []
+    single_ended_a: Optional[DoubleEndedSingleEndedResult] = None
+    single_ended_b: Optional[DoubleEndedSingleEndedResult] = None
+    # Per-window two-ended distance samples across the fault's own detected
+    # duration (window-voting) — each a real Kirchhoff solution, not a
+    # fabricated confidence score. See _compute_distance_histogram's
+    # docstring in relay_21_de.py for the full rationale.
+    distance_histogram_km: List[float] = []

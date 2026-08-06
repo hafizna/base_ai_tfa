@@ -11,6 +11,7 @@ import {
 } from "../api/client";
 import type { ComtradeData } from "../context/AnalysisContext";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
+import FaultLocatorHistogram from "../components/relay/relay21de/FaultLocatorHistogram";
 import Plot from "../components/plot/PlotlyChart";
 import styles from "./DoubleEndedFL.module.css";
 
@@ -598,6 +599,15 @@ export default function DoubleEndedFL() {
             <ul className={styles.warningList}>
               {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
             </ul>
+          )}
+          {result.distance_histogram_km.length > 0 && (
+            <FaultLocatorHistogram
+              histogram={result.distance_histogram_km}
+              lineLenKm={parseFloat(lineLenKm)}
+              twoEnded={{ distanceKm: result.distance_km, faultCurrentA: result.fault_current_a, loop: result.loop }}
+              singleEndedA={result.single_ended_a}
+              singleEndedB={result.single_ended_b}
+            />
           )}
         </div>
       )}

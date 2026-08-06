@@ -312,6 +312,16 @@ export interface DoubleEndedComputeRequest {
   invertPhaseSequenceB?: boolean;
 }
 
+export interface DoubleEndedSingleEndedResult {
+  terminal: "A" | "B";
+  distance_km: number;
+  distance_pct: number;
+  fault_current_a: number;
+  r_measured_ohm: number;
+  x_measured_ohm: number;
+  warnings: string[];
+}
+
 export interface DoubleEndedComputeResult {
   loop: string;
   distance_km: number;
@@ -323,6 +333,9 @@ export interface DoubleEndedComputeResult {
   active_tag_a: string | null;
   active_tag_b: string | null;
   warnings: string[];
+  single_ended_a: DoubleEndedSingleEndedResult | null;
+  single_ended_b: DoubleEndedSingleEndedResult | null;
+  distance_histogram_km: number[];
 }
 
 export async function computeDoubleEndedFL(req: DoubleEndedComputeRequest) {
