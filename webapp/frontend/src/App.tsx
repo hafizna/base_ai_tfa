@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AnalysisProvider } from "./context/AnalysisContext";
+import DoubleEndedFL from "./pages/DoubleEndedFL";
 import EventSimulator from "./pages/EventSimulator";
 import IncidentList from "./pages/IncidentList";
 import IncidentWorkspace from "./pages/IncidentWorkspace";
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/upload" element={<Upload />} />
           <Route path="/workspace/:relayType/:analysisId" element={<Workspace />} />
           <Route path="/tws/:analysisId" element={<TwsViewer />} />
+          <Route path="/de-fl" element={<DoubleEndedFL />} />
           <Route path="/incidents" element={<IncidentList />} />
           <Route path="/incidents/:incidentId" element={<IncidentWorkspace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

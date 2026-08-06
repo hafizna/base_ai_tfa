@@ -278,6 +278,70 @@ export async function computeLocusBatch(
   };
 }
 
+// --- Double Ended FL (two-terminal Kirchhoff fault location) ---
+
+export interface DoubleEndedAlignEstimate {
+  inception_time_a_s: number | null;
+  inception_time_b_s: number | null;
+  timing_source_a: string;
+  timing_source_b: string;
+  estimated_shift_ms: number | null;
+  estimate_available: boolean;
+  estimate_reason: string;
+}
+
+export async function fetchDoubleEndedAlignEstimate(analysisIdA: string, analysisIdB: string) {
+  const { data } = await api.post<DoubleEndedAlignEstimate>("/api/analyze/21de/align-estimate", {
+    analysis_id_a: analysisIdA,
+    analysis_id_b: analysisIdB,
+  });
+  return data;
+}
+
+export interface DoubleEndedComputeRequest {
+  analysisIdA: string;
+  analysisIdB: string;
+  loop: string;
+  lineLenKm: number;
+  r1OhmPerKm: number;
+  x1OhmPerKm: number;
+  manualShiftMs: number;
+  invertIA?: boolean;
+  invertIB?: boolean;
+  invertPhaseSequenceA?: boolean;
+  invertPhaseSequenceB?: boolean;
+}
+
+export interface DoubleEndedComputeResult {
+  loop: string;
+  distance_km: number;
+  distance_pct: number;
+  fault_current_a: number;
+  m_residual_imag: number;
+  inception_time_a_s: number;
+  inception_time_b_s: number;
+  active_tag_a: string | null;
+  active_tag_b: string | null;
+  warnings: string[];
+}
+
+export async function computeDoubleEndedFL(req: DoubleEndedComputeRequest) {
+  const { data } = await api.post<DoubleEndedComputeResult>("/api/analyze/21de/compute", {
+    analysis_id_a: req.analysisIdA,
+    analysis_id_b: req.analysisIdB,
+    loop: req.loop,
+    line_len_km: req.lineLenKm,
+    r1_ohm_per_km: req.r1OhmPerKm,
+    x1_ohm_per_km: req.x1OhmPerKm,
+    manual_shift_ms: req.manualShiftMs,
+    invert_i_a: req.invertIA ?? false,
+    invert_i_b: req.invertIB ?? false,
+    invert_phase_sequence_a: req.invertPhaseSequenceA ?? false,
+    invert_phase_sequence_b: req.invertPhaseSequenceB ?? false,
+  });
+  return data;
+}
+
 export async function fetchFaultClassification21(analysisId: string) {
   const { data } = await api.get(`/api/analyze/21/fault-classification?analysis_id=${analysisId}`);
   return data as {
