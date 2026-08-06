@@ -16,6 +16,8 @@ import cmath
 import math
 
 import numpy as np
+import pytest
+from fastapi import HTTPException
 
 from webapp.api.routers.relay_21_de import (
     _compute_double_ended,
@@ -351,3 +353,31 @@ def test_distance_histogram_falls_back_when_record_never_clears():
         invert_phase_sequence_a=False, invert_phase_sequence_b=False,
     )
     assert len(hist) >= 1
+
+
+def test_terminal_phasor_rejects_shift_that_lands_before_inception():
+    """Regression test for a real-world bug found via the Kebumen-Gombong
+    pair: a large negative shift_s (as manual_shift_ms grows, since
+    _compute_double_ended passes shift_s=-manual_shift_ms/1000 for terminal
+    B) could silently land the evaluation window entirely in the pre-fault
+    region — the phasor would then describe steady load current, not fault
+    current, with no error at all. A user trying to synchronize by
+    adjusting manual_shift_ms would see the residual bounce around
+    unpredictably and never converge, because they were unknowingly
+    chasing pre-fault noise for part of the range. This must now raise
+    instead of silently returning a pre-fault phasor."""
+    v_pre_mag, i_pre_mag = 220.0, 5.0
+    v_fault, i_fault = complex(4000.0, 0.0), complex(300.0, 40.0)
+    inception = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
+    payload = _build_terminal_payload(v_pre_mag, i_pre_mag, v_fault, i_fault, inception, "GI-TEST")
+
+    # A shift larger (in magnitude) than the pre-fault run-up pushes the
+    # evaluation window entirely before inception.
+    huge_negative_shift_s = -(inception / SR) - 0.05
+    with pytest.raises(HTTPException):
+        _terminal_phasor(payload, "ZA", False, False, shift_s=huge_negative_shift_s)
+
+    # A small, legitimate shift within the fault region must still work.
+    small_shift_s = 0.01
+    term = _terminal_phasor(payload, "ZA", False, False, shift_s=small_shift_s)
+    assert abs(term["i_primary"]) > i_pre_mag * 2  # reads fault current, not pre-fault load current
