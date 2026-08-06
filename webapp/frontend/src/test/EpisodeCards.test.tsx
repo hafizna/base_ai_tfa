@@ -6,7 +6,7 @@ import { loadReconstructionFixture } from "./fixtures/loadReconstructionFixture"
 describe("EpisodeCards", () => {
   it("renders one card per episode with facts, hypotheses, and missing evidence", () => {
     const { episodes, records } = loadReconstructionFixture();
-    render(<EpisodeCards episodes={episodes} records={records} />);
+    render(<EpisodeCards incidentId="test-incident" episodes={episodes} records={records} />);
 
     episodes.forEach((ep) => {
       expect(screen.getByText(`Episode ${ep.episode_index + 1}`)).toBeInTheDocument();
@@ -16,13 +16,13 @@ describe("EpisodeCards", () => {
 
   it("labels local cause hypotheses as record-local, not confirmed root cause", () => {
     const { episodes, records } = loadReconstructionFixture();
-    render(<EpisodeCards episodes={episodes} records={records} />);
+    render(<EpisodeCards incidentId="test-incident" episodes={episodes} records={records} />);
 
     expect(screen.getAllByText(/record-local, not confirmed root cause/).length).toBeGreaterThan(0);
   });
 
   it("shows a helpful empty state instead of crashing when there are no episodes", () => {
-    render(<EpisodeCards episodes={[]} records={[]} />);
+    render(<EpisodeCards incidentId="test-incident" episodes={[]} records={[]} />);
     expect(screen.getByText(/No episodes reconstructed yet/)).toBeInTheDocument();
   });
 });

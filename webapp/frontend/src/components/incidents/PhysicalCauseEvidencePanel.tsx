@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { FaultEpisodeOut, PhysicalCauseEvidenceOut } from "../../api/client";
 import styles from "./PhysicalCauseEvidencePanel.module.css";
 
@@ -105,7 +106,7 @@ export default function PhysicalCauseEvidencePanel({ physicalCauseEvidence, epis
                             >
                               {c.name}
                             </span>
-                          )).reduce((acc, el, i) => (i === 0 ? [el] : [...acc, ", ", el]), [] as (JSX.Element | string)[])
+                          )).reduce((acc, el, i) => (i === 0 ? [el] : [...acc, ", ", el]), [] as ReactNode[])
                         : "none"}
                     </td>
                   </tr>
