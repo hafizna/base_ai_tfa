@@ -576,6 +576,16 @@ export default function DoubleEndedFL() {
 
       {result && (
         <div className={styles.resultCard}>
+          {Math.abs(result.m_residual_imag) > 0.15 && (
+            <div className={styles.unreliableBanner}>
+              <strong>This result is not reliable yet.</strong> The two terminals' equations never found a
+              consistent intersection (Im(m)={result.m_residual_imag.toFixed(3)}) — the numbers below will keep
+              changing unpredictably if you adjust the line length, because the underlying disagreement between
+              terminal A and terminal B is not a line-length problem. Go back to step 3 and drag the sync shift
+              until terminal B's current step visually lines up with terminal A's, then re-run. See the warning
+              below for what to check next if that doesn't resolve it.
+            </div>
+          )}
           <div className={styles.stepTitle}>Double-ended fault location result</div>
           <div className={styles.resultGrid}>
             <div className={styles.resultStat}>
