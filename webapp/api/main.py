@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from . import ml_predict
-from .routers import event_simulator, incidents, upload, relay_21, relay_87l, relay_87t, relay_ocr, relay_ref, tws, report, training
+from .routers import event_simulator, incidents, upload, relay_21, relay_21_de, relay_87l, relay_87t, relay_ocr, relay_ref, tws, report, training
 from .storage import get_session_ttl_hours, get_storage_backend
 
 logger = logging.getLogger("uvicorn")
@@ -87,6 +87,7 @@ app.add_middleware(GZipMiddleware, minimum_size=10_000, compresslevel=6)
 
 app.include_router(upload.router)
 app.include_router(relay_21.router)
+app.include_router(relay_21_de.router)
 app.include_router(relay_87l.router)
 app.include_router(relay_87t.router)
 app.include_router(relay_ocr.router)

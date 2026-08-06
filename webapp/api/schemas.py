@@ -382,3 +382,59 @@ class TccResponse(BaseModel):
     curves: List[TccCurveLine]
     fault_points: List[TccFaultPoint]
     assessment: str                         # descriptive evaluation text (kept + enriched)
+
+
+# --- Double Ended FL (two-terminal Kirchhoff fault location) ---
+# Two independently-uploaded COMTRADE records (one per line terminal), manually
+# time-synchronized by the user (mirrors the SIGRA workflow this feature is
+# modeled on), then combined via Kirchhoff's voltage law — which eliminates
+# fault resistance and zero-sequence compensation error from the single-ended
+# calculation entirely. See webapp/api/routers/relay_21_de.py module docstring.
+
+class DoubleEndedAlignRequest(BaseModel):
+    analysis_id_a: str
+    analysis_id_b: str
+
+
+class DoubleEndedAlignResponse(BaseModel):
+    inception_time_a_s: Optional[float]         # record-relative, from A's own time[]
+    inception_time_b_s: Optional[float]         # record-relative, from B's own time[]
+    timing_source_a: str
+    timing_source_b: str
+    estimated_shift_ms: Optional[float]         # coarse ISO-based starting point for the sync UI
+    estimate_available: bool
+    estimate_reason: str                        # why unavailable, or how it was derived
+
+
+class DoubleEndedComputeRequest(BaseModel):
+    analysis_id_a: str
+    analysis_id_b: str
+    loop: str = "ZA"                            # one of LOOP_CHANNELS: ZA/ZB/ZC/ZAB/ZBC/ZCA
+    line_len_km: float
+    r1_ohm_per_km: float
+    x1_ohm_per_km: float
+    manual_shift_ms: float = 0.0                # user-confirmed cursor-drag offset, B relative to A
+    invert_i_a: bool = False
+    invert_i_b: bool = False
+    invert_phase_sequence_a: bool = False
+    invert_phase_sequence_b: bool = False
+    # No CT/VT ratio override here: stored COMTRADE samples are already in
+    # primary units (core/comtrade_parser.py), and this calculation works
+    # entirely in primary volts/amps vs primary ohm-per-km — unlike the
+    # single-ended locus, which additionally scales to relay-secondary ohms
+    # for zone-overlay display. If a record's CT/PT ratio is wrong, fix it
+    # via the existing CTVTRatioCorrection panel (recalculate-ratio) before
+    # running this calculation, not via a local override here.
+
+
+class DoubleEndedComputeResponse(BaseModel):
+    loop: str
+    distance_km: float
+    distance_pct: float                         # distance_km / line_len_km * 100
+    fault_current_a: float                      # |I_A + I_B| at the fault point, primary amps
+    m_residual_imag: float                      # imaginary residual of the per-unit-distance solution
+    inception_time_a_s: float
+    inception_time_b_s: float
+    active_tag_a: Optional[str]
+    active_tag_b: Optional[str]
+    warnings: List[str] = []

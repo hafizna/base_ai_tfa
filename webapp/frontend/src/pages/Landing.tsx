@@ -60,6 +60,14 @@ const RELAY_OPTIONS: RelayOption[] = [
       "Upload Qualitrol Cashel TWS FL .cdb exports, inspect paired-end waveforms, GPS tags, record numbers, and fault distance results.",
     icon: "TWS",
   },
+  {
+    id: "DE_FL",
+    label: "Double Ended FL",
+    subtitle: "Two-terminal Kirchhoff fault locator",
+    tooltip:
+      "Upload two independently-recorded COMTRADE files (one per line terminal), synchronize them manually, and compute fault distance via Kirchhoff's law — no fault resistance or zero-sequence compensation assumption required.",
+    icon: "2-END",
+  },
 ];
 
 export default function Landing() {
@@ -68,7 +76,7 @@ export default function Landing() {
 
   function select(type: RelayType) {
     setRelayType(type);
-    navigate("/upload");
+    navigate(type === "DE_FL" ? "/de-fl" : "/upload");
   }
 
   return (

@@ -14,6 +14,7 @@ const RELAY_LABELS: Record<string, string> = {
   REF: "REF",
   SBEF: "SBEF",
   TWS_FL: "TWS FL - Traveling Wave",
+  DE_FL: "Double Ended FL - Two-Terminal",
 };
 
 interface DetectionSuggestion {
