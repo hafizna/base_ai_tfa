@@ -390,7 +390,9 @@ def _phase_from_status_name(name: str) -> Optional[str]:
             rf"\bPH\s*{phase}\b",
             rf"\bPH-{phase}\b",
             rf"\bPH{phase}\b",
+            rf"\bPHS{phase}\b",  # PCS900 "phase selector output" convention, e.g. PhSA
             rf"\bPHASE\s+{phase}\b",
+            rf"\bPHASE\s+SELECT\s+{phase}\b",
             rf"\b{phase}\s+PHASE\b",
             rf"\b{phase}\s*-\s*PH\b",
             rf"\b{phase}\s+PH\b",
@@ -563,7 +565,19 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
             and ("CONT" in name or "CONTACT" in name or re.search(r"\b52A\b", name) is not None)
             and not any(block in name for block in ("TRIP", "ALARM", "FAIL", "LOCK", "BLOCK"))
         )
-        is_startup = "STARTUP" in name or "START UP" in name or "PICKUP" in name or "PICK UP" in name
+        # "Phase select(or)" channels (e.g. Siemens/generic "Phase Select A",
+        # PCS900 "PhS[ABC]") are a distance relay's own authoritative
+        # single-pole fault-phase determination — exactly the kind of
+        # digital evidence digital_startup_phases is meant to carry, and
+        # should be preferred over the waveform per-phase RMS threshold
+        # below (which can misread a healthy phase's mutual-coupling current
+        # from a large SLG fault as a second faulted phase).
+        is_startup = (
+            "STARTUP" in name or "START UP" in name
+            or "PICKUP" in name or "PICK UP" in name
+            or "PHASE SELECT" in name
+            or re.search(r"\bPHS[ABC]\b", name) is not None
+        )
         is_fault = "FAULT" in name and phase is not None
 
         if phase and first_ms is not None:
