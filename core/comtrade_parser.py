@@ -341,9 +341,21 @@ def _load_with_sanitized_cfg(com: Comtrade, cfg_path: Path, dat_path: Optional[s
 
         if cfg_lines:
             first_line_parts = [part.strip() for part in cfg_lines[0].split(",")]
-            # The bundled parser expects a simple "station,rec_dev_id" header.
-            if len(first_line_parts) > 2:
-                cfg_lines[0] = ",".join(first_line_parts[:2])
+            # The bundled parser accepts either "station,rec_dev_id" (2 fields,
+            # pre-1999) or "station,rec_dev_id,rev_year" (3 fields) — anything
+            # else (e.g. a trailing empty field from a stray comma) makes it
+            # fall back to unpacking only 2 values and silently default
+            # rev_year to REV_1991, which flips DD/MM/YYYY date parsing to
+            # MM/DD/YYYY for every timestamp in the file. Truncating to the
+            # first 2 fields (the old behavior here) throws away a real
+            # rev_year field whenever more than 3 fields are present (e.g.
+            # "NR,LINE_DISTANCE_RELAY,1999," from a trailing comma) and
+            # induces exactly that corruption — keep the first 3 fields
+            # instead so a genuine rev_year survives, and only drop the
+            # header down to 2 fields when there wasn't a 3rd field to begin
+            # with (a real 2-field pre-1999 header).
+            if len(first_line_parts) > 3:
+                cfg_lines[0] = ",".join(first_line_parts[:3])
 
             for idx, line in enumerate(cfg_lines):
                 match = date_re.match(line)

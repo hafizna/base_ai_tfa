@@ -5,6 +5,7 @@ import {
   computeDoubleEndedFL,
   fetchAnalysis,
   fetchDoubleEndedAlignEstimate,
+  fetchFaultClassification21,
   uploadComtrade,
   type DoubleEndedComputeResult,
 } from "../api/client";
@@ -41,6 +42,30 @@ const LOOP_OPTIONS = [
   { value: "ZBC", label: "B-C (phase)" },
   { value: "ZCA", label: "C-A (phase)" },
 ];
+
+/** Maps the existing fault-classification result (phases + to_ground) onto
+ * one of the 6 double-ended loop names — same phase-pair convention as
+ * relay_21.py's LOOP_CHANNELS. Returns null for anything the calculation
+ * can't represent as a single loop (3-phase faults, or no phases at all),
+ * so the caller falls back to leaving the loop selection manual. */
+function loopFromClassification(phases: string[], toGround: boolean): string | null {
+  const set = new Set(phases.map((p) => p.trim().toUpperCase()));
+  if (set.size === 1 && toGround) {
+    const [phase] = set;
+    if (phase === "A") return "ZA";
+    if (phase === "B") return "ZB";
+    if (phase === "C") return "ZC";
+    return null;
+  }
+  if (set.size === 2 && !toGround) {
+    const key = [...set].sort().join("");
+    if (key === "AB") return "ZAB";
+    if (key === "BC") return "ZBC";
+    if (key === "AC") return "ZCA";
+    return null;
+  }
+  return null;
+}
 
 function fileExt(file: File) {
   return file.name.split(".").pop()?.toLowerCase() ?? "";
@@ -111,6 +136,8 @@ export default function DoubleEndedFL() {
   const [terminalB, setTerminalB] = useState<TerminalState>(EMPTY_TERMINAL);
 
   const [loop, setLoop] = useState("ZA");
+  const [loopTouchedManually, setLoopTouchedManually] = useState(false);
+  const [loopSuggestion, setLoopSuggestion] = useState<{ loop: string; label: string } | null>(null);
   const [lineLenKm, setLineLenKm] = useState<string>("");
   const [r1, setR1] = useState<string>("0.05");
   const [x1, setX1] = useState<string>("0.4");
@@ -162,14 +189,37 @@ export default function DoubleEndedFL() {
     }
   }
 
+  // Absolute trigger timestamps come straight from each record's own CFG and
+  // are frequently wrong or un-synced between two independently-owned DFRs
+  // (wrong clock, wrong timezone, or a date-format bug in the source file) —
+  // the align-estimate endpoint already says so in its own docstring. A
+  // genuine two-terminal sync offset for a transmission line is sub-second
+  // (propagation delay + trigger jitter); anything beyond this is far more
+  // likely a bad timestamp than real clock drift, so it's shown as
+  // information only — never silently written into the shift field the
+  // calculation actually uses.
+  const PLAUSIBLE_SHIFT_MS = 30_000;
+
   async function fetchEstimate(idA: string, idB: string) {
     setEstimateLoading(true);
     try {
       const est = await fetchDoubleEndedAlignEstimate(idA, idB);
-      if (est.estimate_available && est.estimated_shift_ms != null) {
+      if (
+        est.estimate_available &&
+        est.estimated_shift_ms != null &&
+        Math.abs(est.estimated_shift_ms) <= PLAUSIBLE_SHIFT_MS
+      ) {
         setManualShiftMs(Math.round(est.estimated_shift_ms * 10) / 10);
+        setEstimateNote(est.estimate_reason);
+      } else if (est.estimate_available && est.estimated_shift_ms != null) {
+        setEstimateNote(
+          `Estimate from record timestamps is ${(est.estimated_shift_ms / 1000).toFixed(1)}s — ` +
+          "too large to be a real two-terminal sync offset, so it was NOT applied. " +
+          "One or both records likely have a wrong/un-synced clock. Set the shift from the cursors below."
+        );
+      } else {
+        setEstimateNote(est.estimate_reason);
       }
-      setEstimateNote(est.estimate_reason);
     } catch {
       setEstimateNote("Could not compute a starting estimate — set the shift manually from the cursors below.");
     } finally {
@@ -189,6 +239,38 @@ export default function DoubleEndedFL() {
     if (estimateRequestedFor.current === key) return;
     estimateRequestedFor.current = key;
     void fetchEstimate(analysisIdA, analysisIdB);
+  }, [analysisIdA, analysisIdB]);
+
+  // Suggest the loop from the existing single-ended fault classifier (reused
+  // as-is, not reimplemented) so the user isn't guessing between ZA/ZB/ZC/
+  // ZAB/ZBC/ZCA — runs against terminal A, since both terminals see the same
+  // physical fault and should classify to the same phase(s). Only ever
+  // pre-fills the field the FIRST time a suggestion arrives for this pair;
+  // once the user has touched the loop selector themselves, their choice is
+  // never overwritten.
+  const loopSuggestionRequestedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!analysisIdA || !analysisIdB) return;
+    const key = `${analysisIdA}:${analysisIdB}`;
+    if (loopSuggestionRequestedFor.current === key) return;
+    loopSuggestionRequestedFor.current = key;
+    fetchFaultClassification21(analysisIdA)
+      .then((cls) => {
+        if (cls.no_fault || !cls.phases.length) return;
+        const suggested = loopFromClassification(cls.phases, cls.to_ground);
+        if (!suggested) return;
+        setLoopSuggestion({ loop: suggested, label: cls.phases_label });
+        if (!loopTouchedManually) setLoop(suggested);
+      })
+      .catch(() => {
+        // Classification is a convenience, not a requirement — leave the
+        // loop selector on its default/manual value if it fails.
+      });
+    // loopTouchedManually intentionally omitted: this effect's identity is
+    // keyed on the analysis-id pair, not on that flag — re-running it every
+    // time the user touches the selector would refetch the classification
+    // for no reason. The flag is still read fresh via closure each run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysisIdA, analysisIdB]);
 
   const syncTraces = useMemo(() => {
@@ -410,11 +492,25 @@ export default function DoubleEndedFL() {
           <div className={styles.fieldRow}>
             <div className={styles.field}>
               <label htmlFor="loop-select">Loop</label>
-              <select id="loop-select" value={loop} onChange={(e) => setLoop(e.target.value)}>
+              <select
+                id="loop-select"
+                value={loop}
+                onChange={(e) => {
+                  setLoopTouchedManually(true);
+                  setLoop(e.target.value);
+                }}
+              >
                 {LOOP_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+              {loopSuggestion && (
+                <span className={styles.estimateHint}>
+                  {loopSuggestion.loop === loop
+                    ? `Auto-detected from fault classification: ${loopSuggestion.label}`
+                    : `Detected fault: ${loopSuggestion.label} (loop ${loopSuggestion.loop}) — you selected a different loop`}
+                </span>
+              )}
             </div>
             <div className={styles.field}>
               <label htmlFor="line-len">Line length (km)</label>
