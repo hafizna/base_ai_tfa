@@ -160,6 +160,25 @@ def _terminal_phasor(
             status_code=422,
             detail="Synchronization shift moves the evaluation window before the start of the record.",
         )
+    # A large negative shift_s can push the whole [s, k] window before this
+    # record's OWN detected inception without ever going negative (it's
+    # still a valid slice into the record — just the wrong part of it):
+    # verified against a real record where shift values the user was
+    # actively trying (100-230ms) silently landed the window entirely in
+    # the pre-fault/load-current region, producing a plausible-looking but
+    # physically meaningless phasor (steady load current, not fault
+    # current) with no error at all — the caller had no way to tell this
+    # apart from a genuine fault-window reading, and no amount of further
+    # shift adjustment could ever converge because the "signal" being
+    # chased was pre-fault noise, not the fault. Guard explicitly instead
+    # of letting this pass silently.
+    if k < inception_idx:
+        raise HTTPException(
+            status_code=422,
+            detail="Synchronization shift moves the evaluation window entirely before this record's own "
+                   "detected fault inception — the phasor would describe pre-fault load current, not the "
+                   "fault. Reduce the magnitude of the sync shift.",
+        )
 
     active_tag = _detect_active_line_tag(channels)
     if invert_phase_sequence:
