@@ -830,6 +830,166 @@ def _compute_electrical_params(payload: dict) -> dict:
     return result
 
 
+def _evidence_based_fault_phases(payload: dict, row: dict) -> tuple[list[str], bool]:
+    """Combined-evidence fault-phase determination — replaces a single
+    waveform-amplitude threshold (which can't tell a genuine multi-phase
+    fault apart from one healthy phase's mutual-coupling current, e.g. a
+    real Kebumen-Gombong SLG-R record whose small IC perturbation used to
+    get reported as a second faulted phase, C).
+
+    Ground involvement (``to_ground``) is decided from 3I0/I1 alone — that
+    ratio genuinely does distinguish "ground is/isn't part of this fault"
+    (confirmed: an SLG and a DLG both show high 3I0; an LL fault does not).
+    It does NOT and must not decide WHICH phase(s) are involved — that
+    needs per-phase evidence, combined:
+
+    - Digital trip/pole-open phase(s) (``digital_trip_phases`` /
+      ``digital_cb_open_phases``): the relay's own operate decision — the
+      strongest available evidence when present.
+    - Per-phase ground-loop impedance magnitude (|V_phase / (I_phase +
+      K0*3I0)|, K0=1 as a rough discriminator, not a calibrated relay
+      setting): the loop actually seeing the fault has a small |Z|; a
+      healthy phase's loop, even with some mutual-coupling current, sits
+      far outside — this is the loop-comparison the source analysis
+      argued for (Z_RG vs Z_TG), reusing the exact V/I phasor machinery
+      _compute_locus already uses rather than re-deriving fault impedance
+      from scratch.
+    - Reclose evidence (single-pole AR success on a specific phase) is
+      used ONLY as an optional corroborating boost, never as a
+      requirement — a record can be truncated before reclose completes
+      (or have no AR at all) and still be a perfectly clear single-phase
+      fault; treating "no reclose evidence" as evidence AGAINST a phase
+      would penalize truncated-but-otherwise-clear records for a gap in
+      the recording, not a gap in the fault. Mirrors the same absence-is-
+      not-evidence stance core/fault_detector.py already takes for
+      truncated AR sequences (returns None, not False).
+
+    Falls back to the plain per-phase amplitude threshold (previous
+    behavior) when there isn't enough of the above evidence to do better
+    (e.g. no voltage channels, single-line CFG without a residual current
+    channel or computable 3I0) — never raises, never silently guesses past
+    what the record actually supports.
+    """
+    channels = payload.get("analog_channels", [])
+    time = np.array(payload.get("time", []))
+    freq = float(payload.get("frequency", 50.0))
+    if len(time) < 4:
+        phases_str = row.get("faulted_phases", "") or "A"
+        return [p for p in phases_str.split("+") if p], bool(row.get("is_ground_fault", False))
+
+    to_ground = bool(row.get("is_ground_fault", False))
+
+    active_tag = _detect_active_line_tag(channels)
+    inception_idx, _src, _conf = _canonical_inception_idx(payload, time)
+    sr = 1.0 / (time[1] - time[0]) if len(time) > 1 else freq * 20.0
+    win = max(1, int(round(sr / freq)))
+    voltage_scale = _voltage_to_volts_scale(channels)
+
+    va = _find_phase_voltage(channels, "A", active_tag)
+    vb = _find_phase_voltage(channels, "B", active_tag)
+    vc = _find_phase_voltage(channels, "C", active_tag)
+    ia = _find_phase_current(channels, "A", active_tag)
+    ib = _find_phase_current(channels, "B", active_tag)
+    ic = _find_phase_current(channels, "C", active_tag)
+    i_n = _find_channel(channels, ["IN", "I0", "3I0", "IRESIDUAL", "IEN", "IE", "IR"], active_tag)
+    if i_n is None and ia is not None and ib is not None and ic is not None:
+        i_n = ia + ib + ic
+
+    have_voltage = va is not None and vb is not None and vc is not None
+    have_current = ia is not None and ib is not None and ic is not None
+
+    if not have_current:
+        phases_str = row.get("faulted_phases", "") or "A"
+        return [p for p in phases_str.split("+") if p], to_ground
+
+    # Evaluate one cycle a short way into the fault — same convention as
+    # _compute_electrical_params (inception + win), avoids the inception
+    # transient itself.
+    s = min(inception_idx + win, max(0, len(time) - win))
+    k0 = complex(1.0, 0.0)  # rough discriminator only — not a calibrated relay K0 setting.
+
+    def _loop_z(v_arr, i_arr) -> Optional[complex]:
+        if v_arr is None or i_arr is None:
+            return None
+        v_ph = _fundamental_phasor(v_arr * voltage_scale, s, win, freq, sr, inception_idx)
+        i_ph = _fundamental_phasor(i_arr, s, win, freq, sr, inception_idx)
+        if i_n is not None and len(i_n) == len(i_arr):
+            i_ph = i_ph + k0 * _fundamental_phasor(i_n, s, win, freq, sr, inception_idx)
+        if not np.isfinite(abs(v_ph)) or not np.isfinite(abs(i_ph)) or abs(i_ph) < 1e-9:
+            return None
+        return v_ph / i_ph
+
+    z_by_phase: dict[str, Optional[complex]] = {}
+    if have_voltage:
+        z_by_phase = {"A": _loop_z(va, ia), "B": _loop_z(vb, ib), "C": _loop_z(vc, ic)}
+
+    peak_current = {
+        phase: float(np.max(np.abs(arr[inception_idx: inception_idx + win])))
+        for phase, arr in (("A", ia), ("B", ib), ("C", ic))
+        if arr is not None and len(arr) > inception_idx
+    }
+    digital_trip = set(row.get("digital_trip_phases") or [])
+    digital_cb_open = set(row.get("digital_cb_open_phases") or [])
+    digital_cb_close = set(row.get("digital_cb_close_phases") or [])  # reclose corroboration only
+
+    support: dict[str, float] = {"A": 0.0, "B": 0.0, "C": 0.0}
+    STRONG, MODERATE, WEAK = 3.0, 1.5, 0.5
+
+    for phase in "ABC":
+        if phase in digital_trip:
+            support[phase] += STRONG
+        if phase in digital_cb_open:
+            support[phase] += STRONG
+        if phase in digital_cb_close:
+            # Corroboration only — reclosing this phase means it was the one
+            # that opened, reinforcing (never substituting for) the trip
+            # evidence above. Absence of this (no AR, or record truncated
+            # before reclose) intentionally contributes nothing either way.
+            support[phase] += WEAK
+
+    z_mags = {p: abs(z) for p, z in z_by_phase.items() if z is not None}
+    if len(z_mags) >= 2:
+        min_z = min(z_mags.values())
+        for phase, mag in z_mags.items():
+            # A loop within 2x the smallest |Z| is "also consistent with
+            # seeing the fault" (matches the source analysis's "both ground
+            # loops consistent -> DLG candidate" case); anything further out
+            # reads as the healthy phase's mutual-coupling residue.
+            if mag <= min_z * 2.0:
+                support[phase] += STRONG if mag <= min_z * 1.2 else MODERATE
+
+    if peak_current:
+        max_i = max(peak_current.values())
+        if max_i > 0:
+            for phase, i_mag in peak_current.items():
+                if i_mag >= max_i * 0.5:
+                    support[phase] += MODERATE
+                elif i_mag >= max_i * 0.15:
+                    support[phase] += WEAK
+
+    # A phase needs at least one piece of real (non-corroboration-only)
+    # evidence to be included — pure reclose evidence with nothing else
+    # backing a phase isn't enough on its own.
+    has_primary_evidence = {
+        phase: (phase in digital_trip or phase in digital_cb_open or z_mags.get(phase) is not None
+                or phase in peak_current)
+        for phase in "ABC"
+    }
+    threshold = STRONG  # requires at least one strong signal, or two moderate ones
+    faulted = sorted(
+        phase for phase in "ABC"
+        if has_primary_evidence[phase] and support[phase] >= threshold
+    )
+
+    if not faulted:
+        # Not enough combined evidence to improve on the plain threshold —
+        # fall back rather than report nothing.
+        phases_str = row.get("faulted_phases", "") or "A"
+        return [p for p in phases_str.split("+") if p], to_ground
+
+    return faulted, to_ground
+
+
 def _compute_fault_classification(payload: dict) -> dict:
     """Derive fault type code, phases, zone, trip and timing for the Jenis Gangguan panel."""
     time = np.array(payload.get("time", []))
@@ -865,9 +1025,7 @@ def _compute_fault_classification(payload: dict) -> dict:
     fault_ms = float(row.get("fault_duration_ms", 0) or 0)
     prefault_ms = max(0.0, round(total_ms - fault_ms, 1))
 
-    phases_str = row.get("faulted_phases", "") or ""
-    phases = [phase for phase in phases_str.split("+") if phase]
-    to_ground = bool(row.get("is_ground_fault", False))
+    phases, to_ground = _evidence_based_fault_phases(payload, row)
     n_phases = len(phases)
 
     if n_phases >= 3:

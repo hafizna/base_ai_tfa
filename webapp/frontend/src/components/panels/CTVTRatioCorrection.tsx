@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ComtradeData } from "../../context/AnalysisContext";
 import { recalculateRatio } from "../../api/client";
@@ -63,7 +63,25 @@ function detectVtKv(primary: number, secondary: number): { kv: number; secV: num
   return match ? { kv: match.kv, secV: match.secV } : null;
 }
 
-/** Given a target system voltage and current secondary convention, return the standard primary. */
+/** Given a target system voltage and current secondary convention, return the standard primary.
+ *
+ * BUG HISTORY: the actual-voltage branch previously computed
+ * `(kv * 1000) / secondary`, which for a 150kV system with secondary=100
+ * returned 1500 instead of the correct 150000 — dividing by `secondary`
+ * twice (once implicitly, since `kv * 1000` is already the correct primary
+ * voltage in volts, and again explicitly here) turned a real, already-
+ * correct ratio into one 100x too small. This corrupted every sample this
+ * ratio was later applied to via recalculate-ratio (webapp/api/routers/
+ * upload.py), confirmed against a real 150kV/100V record where clicking
+ * this exact preset flipped a working Double Ended FL result into a
+ * physically nonsensical one.
+ *
+ * Fixed by using VT_RATIO_TABLE as the single source of truth (primary =
+ * ratio * secondary) instead of re-deriving it from kv, since the table's
+ * ratios are the real standard transformer ratios and are NOT exact
+ * multiples of kv*1000 for secondary=110/115 (e.g. 150kV/110V is
+ * 1364:1 = 150,040V, not 150,000V) — recomputing from kv alone silently
+ * drops that real-world rounding. */
 function vtPrimaryForSystem(kv: number, secondary: number): number {
   if (secondary <= 1) {
     // ratio-as-primary convention (secondary=1)
@@ -71,8 +89,16 @@ function vtPrimaryForSystem(kv: number, secondary: number): number {
     if (kv === 275) return 2500;
     return kv * 10;
   }
-  // actual-voltage convention (secondary=100/110/115 etc.)
-  return Math.round((kv * 1000) / secondary);
+  // actual-voltage convention (secondary=100/110/115 etc.) — look up the
+  // real standard ratio for this (kv, secondary) pair rather than deriving
+  // one, since the standard ratios aren't exact round numbers.
+  const match = VT_RATIO_TABLE.find((m) => m.kv === kv && m.secV === secondary);
+  if (match) return match.ratio * match.secV;
+  // No exact standard ratio for this secondary convention (e.g. an
+  // unlisted secondary voltage) — kv*1000 is the correct value ONLY when
+  // secondary=100 (see cross-check above); for anything else this is a
+  // best-effort fallback, not a verified standard ratio.
+  return kv * 1000;
 }
 
 const CT_SECONDARY_OPTIONS = [1, 5];
@@ -163,11 +189,17 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
   const [groups, setGroups] = useState<RatioGroup[]>(baseGroups);
   const [loading, setLoading] = useState(false);
   const [applied, setApplied] = useState(false);
-
-  useEffect(() => {
+  // Reset local edits whenever the underlying comtrade record changes (a new
+  // upload, or another panel's onUpdate swapping the record). Derived
+  // during render rather than in a useEffect — React's own recommended
+  // pattern for "reset state when a prop changes" (avoids the extra render
+  // pass a setState-in-effect would otherwise cause).
+  const [lastBaseGroups, setLastBaseGroups] = useState(baseGroups);
+  if (baseGroups !== lastBaseGroups) {
+    setLastBaseGroups(baseGroups);
     setGroups(baseGroups);
     setApplied(false);
-  }, [baseGroups]);
+  }
 
   function updateField(idx: number, field: "newPrimary" | "newSecondary", raw: string | number) {
     const value = typeof raw === "number" ? raw : parseFloat(raw);
@@ -370,7 +402,14 @@ export default function CTVTRatioCorrection({ analysisId, comtrade, onUpdate }: 
               </span>
             )}
             Nilai Z, R, X dihitung dari sampel yang sudah diskalakan. Koreksi hanya perlu jika rasio di .cfg{" "}
-            <em>tidak sesuai</em> setting CT/VT aktual di lapangan.
+            <em>tidak sesuai</em> setting CT/VT aktual di lapangan.{" "}
+            <strong style={{ color: "#b45309" }}>
+              Peringatan: rasio ini sudah ada nilainya dari .cfg (bukan 1:1) — mengubahnya menulis ulang
+              sampel secara permanen dan bisa mengubah hasil kalkulasi ke arah yang lebih buruk walau
+              angka yang dimasukkan terlihat benar (dua vendor bisa menulis rasio yang sama dengan konvensi
+              berbeda). Coba dulu dan bandingkan hasilnya sebelum yakin; gunakan Reset untuk kembali ke
+              nilai .cfg apa adanya.
+            </strong>
           </>
         )}
       </div>
