@@ -75,6 +75,16 @@ def _is_operate_status(name: str) -> bool:
     is_operate = (
         re.search(r"(?:^|[._\s])OP(?:[._\s]|$)", nm) is not None
         or "TRIP" in nm
+        # NR/NARI PCS900 convention abbreviates "Trip" to "Trp" and appends
+        # the phase letter with no separator (CB1.TrpA/TrpB/TrpC) — already
+        # recognized by core/fault_detector.py and core/protection_router.py
+        # ('TRPA' in name_upper etc.) but this webapp-side operate-status
+        # gate never picked it up, so a real single-pole trip on this
+        # vendor's records fell through to the noisier waveform-threshold
+        # phase-detection path entirely (see ml_predict.py's
+        # _phase_from_status_name TRP{phase} pattern for the other half of
+        # this fix).
+        or re.search(r"\bTRP[ABC]?\b", nm) is not None
         or "OP_PROT" in nm.replace(" ", "")
     )
     is_standing = any(

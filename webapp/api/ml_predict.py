@@ -391,6 +391,7 @@ def _phase_from_status_name(name: str) -> Optional[str]:
             rf"\bPH-{phase}\b",
             rf"\bPH{phase}\b",
             rf"\bPHS{phase}\b",  # PCS900 "phase selector output" convention, e.g. PhSA
+            rf"\bTRP{phase}\b",  # NR/NARI "CB1.TrpA" trip-per-phase convention, no separator before the phase letter
             rf"\bPHASE\s+{phase}\b",
             rf"\bPHASE\s+SELECT\s+{phase}\b",
             rf"\b{phase}\s+PHASE\b",
