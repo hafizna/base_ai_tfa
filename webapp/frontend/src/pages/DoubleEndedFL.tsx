@@ -43,26 +43,41 @@ const LOOP_OPTIONS = [
   { value: "ZCA", label: "C-A (phase)" },
 ];
 
+interface LoopCandidates {
+  loops: string[];
+  /** True for a double line-to-ground fault, where two ground loops (e.g.
+   * ZA and ZC) are both physically valid candidates and there is no single
+   * "correct" one — unlike a clean SLG or LL fault, which map to exactly
+   * one loop. */
+  ambiguous: boolean;
+}
+
 /** Maps the existing fault-classification result (phases + to_ground) onto
- * one of the 6 double-ended loop names — same phase-pair convention as
+ * candidate double-ended loop name(s) — same phase-pair convention as
  * relay_21.py's LOOP_CHANNELS. Returns null for anything the calculation
- * can't represent as a single loop (3-phase faults, or no phases at all),
- * so the caller falls back to leaving the loop selection manual. */
-function loopFromClassification(phases: string[], toGround: boolean): string | null {
+ * can't represent as a loop suggestion at all (3-phase faults, or no
+ * phases), so the caller falls back to leaving the loop selection manual.
+ * A DLG fault (2 phases + ground) has no single correct loop in distance-
+ * relay practice, so it returns BOTH ground candidates rather than picking
+ * one — the caller shows both and lets the user decide. */
+function loopCandidatesFromClassification(phases: string[], toGround: boolean): LoopCandidates | null {
   const set = new Set(phases.map((p) => p.trim().toUpperCase()));
+  const groundLoop: Record<string, string> = { A: "ZA", B: "ZB", C: "ZC" };
+
   if (set.size === 1 && toGround) {
     const [phase] = set;
-    if (phase === "A") return "ZA";
-    if (phase === "B") return "ZB";
-    if (phase === "C") return "ZC";
-    return null;
+    return groundLoop[phase] ? { loops: [groundLoop[phase]], ambiguous: false } : null;
   }
   if (set.size === 2 && !toGround) {
     const key = [...set].sort().join("");
-    if (key === "AB") return "ZAB";
-    if (key === "BC") return "ZBC";
-    if (key === "AC") return "ZCA";
-    return null;
+    const phaseLoop: Record<string, string> = { AB: "ZAB", BC: "ZBC", AC: "ZCA" };
+    return phaseLoop[key] ? { loops: [phaseLoop[key]], ambiguous: false } : null;
+  }
+  if (set.size === 2 && toGround) {
+    // DLG — both single-phase ground loops for the two faulted phases are
+    // physically valid; there is no single "correct" one to pick.
+    const loops = [...set].map((phase) => groundLoop[phase]).filter((l): l is string => Boolean(l));
+    return loops.length === 2 ? { loops, ambiguous: true } : null;
   }
   return null;
 }
@@ -137,7 +152,7 @@ export default function DoubleEndedFL() {
 
   const [loop, setLoop] = useState("ZA");
   const [loopTouchedManually, setLoopTouchedManually] = useState(false);
-  const [loopSuggestion, setLoopSuggestion] = useState<{ loop: string; label: string } | null>(null);
+  const [loopSuggestion, setLoopSuggestion] = useState<(LoopCandidates & { label: string }) | null>(null);
   const [lineLenKm, setLineLenKm] = useState<string>("");
   const [r1, setR1] = useState<string>("0.05");
   const [x1, setX1] = useState<string>("0.4");
@@ -257,10 +272,13 @@ export default function DoubleEndedFL() {
     fetchFaultClassification21(analysisIdA)
       .then((cls) => {
         if (cls.no_fault || !cls.phases.length) return;
-        const suggested = loopFromClassification(cls.phases, cls.to_ground);
-        if (!suggested) return;
-        setLoopSuggestion({ loop: suggested, label: cls.phases_label });
-        if (!loopTouchedManually) setLoop(suggested);
+        const candidates = loopCandidatesFromClassification(cls.phases, cls.to_ground);
+        if (!candidates) return;
+        setLoopSuggestion({ ...candidates, label: cls.phases_label });
+        // Only pre-fill automatically when there's exactly one candidate —
+        // a DLG's two candidates are shown for the user to pick between,
+        // never silently defaulted to one.
+        if (!loopTouchedManually && !candidates.ambiguous) setLoop(candidates.loops[0]);
       })
       .catch(() => {
         // Classification is a convenience, not a requirement — leave the
@@ -504,11 +522,32 @@ export default function DoubleEndedFL() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              {loopSuggestion && (
+              {loopSuggestion && !loopSuggestion.ambiguous && (
                 <span className={styles.estimateHint}>
-                  {loopSuggestion.loop === loop
+                  {loopSuggestion.loops[0] === loop
                     ? `Auto-detected from fault classification: ${loopSuggestion.label}`
-                    : `Detected fault: ${loopSuggestion.label} (loop ${loopSuggestion.loop}) — you selected a different loop`}
+                    : `Detected fault: ${loopSuggestion.label} (loop ${loopSuggestion.loops[0]}) — you selected a different loop`}
+                </span>
+              )}
+              {loopSuggestion && loopSuggestion.ambiguous && (
+                <span className={styles.estimateHint}>
+                  Detected fault: {loopSuggestion.label} — a double line-to-ground fault has no single
+                  correct loop. Pick one to try:{" "}
+                  {loopSuggestion.loops.map((candidate, i) => (
+                    <span key={candidate}>
+                      {i > 0 ? " or " : ""}
+                      <button
+                        type="button"
+                        className={styles.loopCandidateLink}
+                        onClick={() => {
+                          setLoopTouchedManually(true);
+                          setLoop(candidate);
+                        }}
+                      >
+                        {candidate}
+                      </button>
+                    </span>
+                  ))}
                 </span>
               )}
             </div>

@@ -81,3 +81,44 @@ def test_ar_slash_and_cb_aux_phase_contact_detect_reclose_success():
     assert features["digital_first_cb_close_ms"] == 4473.0
     assert features["digital_ar_dead_time_ms"] == 995.0
     assert features["digital_reclose_mode"] == "single_pole"
+
+
+def test_phase_select_channel_recognized_as_startup_evidence():
+    """Regression test for a real Kebumen-Gombong SLG-A record: a
+    "Phase Select A" digital channel is a distance relay's own authoritative
+    single-pole fault-phase determination, but it matched none of the old
+    is_startup keywords (STARTUP/PICKUP) — so faulted-phase determination
+    fell through to the waveform per-phase RMS threshold in
+    _extract_electrical_features, which misread the healthy phase C's small
+    mutual-coupling current as a second faulted phase and reported a
+    non-existent DLG (A+C) fault instead of the real SLG (A)."""
+    time = _time_ms()
+    samples = np.zeros(len(time), dtype=int)
+    samples[240:] = 1
+    samples[400:] = 0
+
+    features = _digital_sequence_features(
+        [{"name": "Phase Select A", "samples": samples.tolist()}],
+        time,
+        inception_idx=200,
+    )
+
+    assert features["digital_startup_phases"] == ["A"]
+
+
+def test_pcs900_phs_channel_recognized_as_startup_evidence():
+    """PCS900 vendor convention names this channel PhSA/PhSB/PhSC (see
+    core/protection_router.py's PhS notation comment) — same "phase
+    selector output" concept as "Phase Select A", different naming."""
+    time = _time_ms()
+    samples = np.zeros(len(time), dtype=int)
+    samples[240:] = 1
+    samples[400:] = 0
+
+    features = _digital_sequence_features(
+        [{"name": "PhSA", "samples": samples.tolist()}],
+        time,
+        inception_idx=200,
+    )
+
+    assert features["digital_startup_phases"] == ["A"]
