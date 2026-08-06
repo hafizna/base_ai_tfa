@@ -305,9 +305,24 @@ def _compute_double_ended(
             f"CT/PT ratios, phase sequence, and loop selection."
         )
     if abs(m_residual_imag) > 0.15:
+        # This residual is the tool's own honest failure signal: a genuine
+        # two-terminal solution to V_A - m*Zline*I_A = V_B - (1-m)*Zline*I_B
+        # collapses Im(m) toward zero once A and B's phasors actually
+        # describe the same physical instant. A residual this large means
+        # the "intersection" the two terminals' equations are supposed to
+        # agree on was never found — changing line_len_km alone cannot fix
+        # this (Zline scales with it, but the underlying disagreement
+        # between A's and B's phasors does not), so the message must tell
+        # the user WHERE to go fix it, not just that something is wrong.
         warnings.append(
-            f"Large residual imaginary component (Im(m)={m_residual_imag:.3f}) suggests "
-            f"a synchronization or line-parameter error rather than a clean solution."
+            f"Large residual imaginary component (Im(m)={m_residual_imag:.3f}) — the tool could not find a "
+            f"consistent intersection between terminal A's and terminal B's equations at this synchronization. "
+            f"Re-entering a different line length will NOT fix this on its own. If the manual sync shift "
+            f"(step 3) is still at its default/unconfirmed value, go there first and drag it until terminal "
+            f"B's current step visually lines up with terminal A's on the overlay plot — a residual this size "
+            f"almost always means the two records are not yet time-aligned. If the shift is already confirmed "
+            f"and the residual is still large, check next: the loop selection (step 4 — does it match the "
+            f"actually-faulted phase?), then each terminal's CT/PT ratio (step 2), then phase sequence."
         )
 
     fault_current_a = float(abs(i_a + i_b))

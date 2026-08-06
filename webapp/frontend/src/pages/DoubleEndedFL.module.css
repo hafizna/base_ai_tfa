@@ -304,3 +304,14 @@
   font-size: 0.8rem;
   color: #92400e;
 }
+
+.unreliableBanner {
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.83rem;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
