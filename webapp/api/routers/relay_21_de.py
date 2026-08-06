@@ -53,8 +53,10 @@ from fastapi import APIRouter, HTTPException
 from ..schemas import (
     DoubleEndedAlignRequest, DoubleEndedAlignResponse,
     DoubleEndedComputeRequest, DoubleEndedComputeResponse,
+    DoubleEndedSingleEndedResult,
 )
 from ..storage import load_analysis
+from core.event_analysis import build_event_window
 from .relay_21 import (
     LOOP_CHANNELS,
     _canonical_inception_idx,
@@ -214,6 +216,42 @@ def _terminal_phasor(
     }
 
 
+def _solve_m(
+    v_a: complex, i_a: complex, v_b: complex, i_b: complex, z_line: complex, min_i: float = 1e-6,
+) -> Optional[tuple[float, float]]:
+    """The Kirchhoff closed-form solve itself, factored out of
+    ``_compute_double_ended`` so both the single authoritative result AND
+    the distance-histogram sweep below call the exact same algebra rather
+    than maintaining two copies of it. Given one fixed V/I phasor pair per
+    terminal, this has exactly ONE solution — it is NOT a sweep-able
+    function on its own; the sweep happens by calling this repeatedly with
+    phasors from different evaluation windows (see
+    ``_compute_distance_histogram``).
+
+    ``min_i`` is an ABSOLUTE amps floor by default (fine for
+    ``_compute_double_ended``, which only ever evaluates the one window at
+    real fault inception — current there is never marginal). The histogram
+    sweep passes a floor scaled to that record's own peak fault current
+    instead: a real record's current genuinely approaches zero near the
+    fault's clearing edge (the fault is actually extinguishing), and 1e-6 A
+    is not a real floor at line-current scale (hundreds to thousands of
+    amps) — verified against a real dual-terminal record where windows near
+    clearing produced distance readings off by hundreds of km from the
+    fault-duration cluster, caused by dividing by a near-zero-but-not-quite
+    -zero current rather than a genuine second solution.
+
+    Returns (m, residual_imag) or None for a degenerate window (near-zero
+    combined current — I_A + I_B ~= 0, usually a polarity mismatch or a
+    window with no real fault current flowing)."""
+    if abs(i_a) < min_i or abs(i_b) < min_i:
+        return None
+    denom = z_line * (i_a + i_b)
+    if abs(denom) < 1e-9:
+        return None
+    m_complex = (v_a - v_b + z_line * i_b) / denom
+    return float(np.real(m_complex)), float(np.imag(m_complex))
+
+
 def _compute_double_ended(
     payload_a: dict,
     payload_b: dict,
@@ -242,9 +280,7 @@ def _compute_double_ended(
     v_a, i_a = term_a["v_primary"], term_a["i_primary"]
     v_b, i_b = term_b["v_primary"], term_b["i_primary"]
 
-    warnings: list[str] = []
-    min_i = 1e-6
-    if abs(i_a) < min_i or abs(i_b) < min_i:
+    if abs(i_a) < 1e-6 or abs(i_b) < 1e-6:
         raise HTTPException(
             status_code=422,
             detail="Fault current at one or both terminals is effectively zero — "
@@ -252,19 +288,17 @@ def _compute_double_ended(
         )
 
     z_line = complex(r1_ohm_per_km, x1_ohm_per_km) * line_len_km
-    denom = z_line * (i_a + i_b)
-    if abs(denom) < 1e-9:
+    solved = _solve_m(v_a, i_a, v_b, i_b, z_line)
+    if solved is None:
         raise HTTPException(
             status_code=422,
             detail="Degenerate solution (I_A + I_B ~= 0) — the two terminals' currents "
                    "nearly cancel, which usually means a polarity/invert-current mismatch "
                    "between the two records.",
         )
+    m, m_residual_imag = solved
 
-    m_complex = (v_a - v_b + z_line * i_b) / denom
-    m = float(np.real(m_complex))
-    m_residual_imag = float(np.imag(m_complex))
-
+    warnings: list[str] = []
     if m < 0.0 or m > 1.0:
         warnings.append(
             f"Solved distance falls outside the line (m={m:.3f}) — check synchronization, "
@@ -291,6 +325,156 @@ def _compute_double_ended(
         "active_tag_b": term_b["active_tag"],
         "warnings": warnings,
     }
+
+
+def _single_ended_distance(
+    term: dict, r1_ohm_per_km: float, x1_ohm_per_km: float, line_len_km: float, terminal_label: str,
+) -> dict:
+    """One terminal's OWN single-ended distance reading — the classic
+    single-ended calculation (webapp/api/routers/relay_21.py's locus, in
+    spirit), computed here directly from primary V/I rather than reusing
+    ``_compute_locus`` (which additionally scales to relay-secondary ohms
+    for zone-overlay display; this needs primary ohms to match
+    ``r1_ohm_per_km``/``x1_ohm_per_km``, the same convention
+    ``_compute_double_ended`` already uses).
+
+    m_single = Re(Z_measured / Z_per_km), same Re() convention as the
+    two-ended m = Re(m_complex) above — NOT |Z|/|Z_per_km|. This matters
+    physically: a fault resistance Rf adds a real (resistive) term to
+    Z_measured (Z_measured = m*Z_per_km*L + Rf, to first order, when this
+    terminal supplies essentially all of the fault current), and
+    Re(Z_measured/Z_per_km) inflates by Rf*Re(1/Z_per_km) — a positive
+    km-equivalent addition — reproducing exactly the "single-ended error
+    grows with fault resistance" effect the source PPTX motivates this
+    whole feature with. |Z|/|Z_per_km| would not isolate that resistive
+    term the same way.
+
+    Deliberately NOT clamped to [0, line_len_km] — an out-of-range
+    single-ended reading (e.g. a K2 reading landing beyond the line's own
+    length) is itself the illustrative point of showing it alongside the
+    two-ended answer, not an error to hide."""
+    v, i = term["v_primary"], term["i_primary"]
+    warnings: list[str] = []
+    if abs(i) < 1e-6:
+        return {
+            "terminal": terminal_label, "distance_km": 0.0, "distance_pct": 0.0,
+            "fault_current_a": 0.0, "r_measured_ohm": 0.0, "x_measured_ohm": 0.0,
+            "warnings": [f"Terminal {terminal_label}: fault current too small for a single-ended reading."],
+        }
+    z_measured = v / i
+    z_per_km = complex(r1_ohm_per_km, x1_ohm_per_km)
+    m_single = float(np.real(z_measured / z_per_km))
+    distance_km = m_single * line_len_km
+    if distance_km < 0.0 or distance_km > line_len_km:
+        warnings.append(
+            f"Terminal {terminal_label} single-ended reading ({distance_km:.2f} km) falls outside the line "
+            f"length — expected under high fault resistance, since this reading (unlike the two-ended answer) "
+            f"cannot separate Rf from line impedance."
+        )
+    return {
+        "terminal": terminal_label,
+        "distance_km": distance_km,
+        "distance_pct": (distance_km / line_len_km) * 100.0,
+        "fault_current_a": float(abs(i)),
+        "r_measured_ohm": float(np.real(z_measured)),
+        "x_measured_ohm": float(np.imag(z_measured)),
+        "warnings": warnings,
+    }
+
+
+def _compute_distance_histogram(
+    payload_a: dict,
+    payload_b: dict,
+    loop: str,
+    line_len_km: float,
+    r1_ohm_per_km: float,
+    x1_ohm_per_km: float,
+    manual_shift_ms: float,
+    invert_i_a: bool,
+    invert_i_b: bool,
+    invert_phase_sequence_a: bool,
+    invert_phase_sequence_b: bool,
+    n_windows: int = 41,
+) -> list[float]:
+    """Window-voting distance samples: solve the SAME Kirchhoff closed-form
+    (_solve_m) at many evaluation windows spanning the fault's own detected
+    duration [inception_idx, clearing_idx] (from build_event_window — the
+    same fault-duration window the rest of the app already treats as
+    ground truth, reused as-is here) rather than at one single window.
+    Each surviving sample is a real, independently-computed Kirchhoff
+    solution — not a fabricated confidence score. A tight cluster of
+    samples near one distance is itself evidence the answer is robust to
+    exactly which instant within the fault was evaluated; a wide spread is
+    honest evidence that it isn't.
+
+    Falls back to a narrow one-cycle sweep when clearing_idx is unavailable
+    (e.g. a record truncated before the fault cleared) — never fabricates
+    a clearing time to widen the sweep."""
+    time_a = np.array(payload_a.get("time", []))
+    if len(time_a) < 4:
+        return []
+    freq = float(payload_a.get("frequency", 50.0))
+    sr = 1.0 / (time_a[1] - time_a[0]) if len(time_a) > 1 else freq * 20.0
+
+    window = build_event_window(payload_a)
+    inception_idx = window.inception_idx if window.inception_idx is not None else 0
+    if window.clearing_idx is not None and window.clearing_idx > inception_idx:
+        end_idx = window.clearing_idx
+    else:
+        end_idx = min(inception_idx + int(round(sr / freq)), len(time_a) - 1)
+
+    z_line = complex(r1_ohm_per_km, x1_ohm_per_km) * line_len_km
+    base_shift_b_s = -manual_shift_ms / 1000.0
+
+    # First pass: gather every window's terminal phasors (not yet solved for
+    # m) so a relative current floor can be set from this record's own peak
+    # fault current — a real record's current genuinely tapers toward zero
+    # near the fault's clearing edge, and an absolute amps floor tuned for
+    # per-unit synthetic tests is not a meaningful floor at real line-
+    # current scale (see _solve_m's docstring for the concrete failure this
+    # fixes: windows near clearing landing hundreds of km off the rest of
+    # the fault-duration cluster).
+    raw: list[tuple[complex, complex, complex, complex]] = []
+    for k in np.linspace(inception_idx, end_idx, max(2, n_windows)):
+        shift_s = (float(k) - inception_idx) / sr
+        try:
+            term_a = _terminal_phasor(payload_a, loop, invert_i_a, invert_phase_sequence_a, shift_s=shift_s)
+            term_b = _terminal_phasor(
+                payload_b, loop, invert_i_b, invert_phase_sequence_b, shift_s=base_shift_b_s + shift_s,
+            )
+        except HTTPException:
+            continue  # window ran off the record edge — skip, don't fail the whole sweep
+        raw.append((term_a["v_primary"], term_a["i_primary"], term_b["v_primary"], term_b["i_primary"]))
+
+    if not raw:
+        return []
+
+    # Per-TERMINAL floor, not one shared floor from the two terminals'
+    # combined peak — the two terminals' fault currents are frequently very
+    # different magnitudes (e.g. a strong local source at A feeding a much
+    # smaller remote contribution through B), so a single global floor
+    # dominated by whichever terminal has the larger peak would filter out
+    # essentially every window of the OTHER terminal, even at its own
+    # perfectly good peak. Verified against a real record where a shared
+    # floor emptied the histogram entirely because terminal B's peak
+    # (~270A) never got within 5% of terminal A's much larger peak
+    # (~3660A).
+    peak_i_a = max(abs(i_a) for (_v_a, i_a, _v_b, _i_b) in raw)
+    peak_i_b = max(abs(i_b) for (_v_a, _i_a, _v_b, i_b) in raw)
+    min_i_a = max(peak_i_a * 0.05, 1e-6)  # 5% of this terminal's own peak, same convention as _compute_locus
+    min_i_b = max(peak_i_b * 0.05, 1e-6)
+
+    samples: list[float] = []
+    for v_a, i_a, v_b, i_b in raw:
+        if abs(i_a) < min_i_a or abs(i_b) < min_i_b:
+            continue
+        solved = _solve_m(v_a, i_a, v_b, i_b, z_line, min_i=0.0)
+        if solved is None:
+            continue
+        m, _residual = solved
+        samples.append(m * line_len_km)
+
+    return samples
 
 
 @router.post("/align-estimate", response_model=DoubleEndedAlignResponse)
@@ -348,19 +532,45 @@ async def align_estimate(body: DoubleEndedAlignRequest):
     )
 
 
+def _run_compute(payload_a: dict, payload_b: dict, body: DoubleEndedComputeRequest) -> dict:
+    result = _compute_double_ended(
+        payload_a, payload_b, body.loop, body.line_len_km,
+        body.r1_ohm_per_km, body.x1_ohm_per_km, body.manual_shift_ms,
+        body.invert_i_a, body.invert_i_b,
+        body.invert_phase_sequence_a, body.invert_phase_sequence_b,
+    )
+
+    # Single-ended K1/K2 readings and the distance histogram both need their
+    # own terminal phasor pair — recomputed here rather than threading
+    # _compute_double_ended's internal term_a/term_b out through its return
+    # value, deliberately keeping that function's existing, already-tested
+    # contract untouched. Each call is one cheap one-cycle-window phasor
+    # extraction, not a meaningful cost next to the histogram sweep below.
+    term_a = _terminal_phasor(payload_a, body.loop, body.invert_i_a, body.invert_phase_sequence_a, shift_s=0.0)
+    term_b = _terminal_phasor(
+        payload_b, body.loop, body.invert_i_b, body.invert_phase_sequence_b,
+        shift_s=-body.manual_shift_ms / 1000.0,
+    )
+    result["single_ended_a"] = DoubleEndedSingleEndedResult(
+        **_single_ended_distance(term_a, body.r1_ohm_per_km, body.x1_ohm_per_km, body.line_len_km, "A")
+    )
+    result["single_ended_b"] = DoubleEndedSingleEndedResult(
+        **_single_ended_distance(term_b, body.r1_ohm_per_km, body.x1_ohm_per_km, body.line_len_km, "B")
+    )
+    result["distance_histogram_km"] = _compute_distance_histogram(
+        payload_a, payload_b, body.loop, body.line_len_km,
+        body.r1_ohm_per_km, body.x1_ohm_per_km, body.manual_shift_ms,
+        body.invert_i_a, body.invert_i_b,
+        body.invert_phase_sequence_a, body.invert_phase_sequence_b,
+    )
+    return result
+
+
 @router.post("/compute", response_model=DoubleEndedComputeResponse)
 async def compute(body: DoubleEndedComputeRequest):
     payload_a = _load_or_404(body.analysis_id_a)
     payload_b = _load_or_404(body.analysis_id_b)
 
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
-        None,
-        lambda: _compute_double_ended(
-            payload_a, payload_b, body.loop, body.line_len_km,
-            body.r1_ohm_per_km, body.x1_ohm_per_km, body.manual_shift_ms,
-            body.invert_i_a, body.invert_i_b,
-            body.invert_phase_sequence_a, body.invert_phase_sequence_b,
-        ),
-    )
+    result = await loop.run_in_executor(None, lambda: _run_compute(payload_a, payload_b, body))
     return DoubleEndedComputeResponse(**result)
