@@ -23,9 +23,11 @@ from webapp.api.routers.relay_21_de import (
     _compute_double_ended,
     _compute_distance_histogram,
     _find_optimal_shift,
+    _run_compute,
     _single_ended_distance,
     _terminal_phasor,
 )
+from webapp.api.schemas import DoubleEndedComputeRequest
 
 
 FREQ = 50.0
@@ -450,6 +452,24 @@ def test_find_optimal_shift_recovers_a_known_misalignment():
     )
     assert abs(final["distance_km"] - m0 * line_len_km) < 0.1
     assert final["warnings"] == []
+
+    # Regression for the real UI failure: at the edge of the half-cycle
+    # search range the very first A window can map before B's inception, but
+    # later simultaneous windows are valid. The full response (including its
+    # single-ended comparison) must use a valid paired window instead of
+    # raising after the authoritative result has already been calculated.
+    boundary_body = DoubleEndedComputeRequest(
+        analysis_id_a="unused-a",
+        analysis_id_b="unused-b",
+        loop="ZA",
+        line_len_km=line_len_km,
+        r1_ohm_per_km=r1,
+        x1_ohm_per_km=x1,
+        manual_shift_ms=known_shift_s * 1000.0 - 500.0 / FREQ,
+    )
+    boundary = _run_compute(payload_a, payload_b, boundary_body)
+    assert boundary["single_ended_a"] is not None
+    assert boundary["single_ended_b"] is not None
 
 
 def test_ground_double_ended_requires_three_phase_quantities():

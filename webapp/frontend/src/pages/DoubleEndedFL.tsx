@@ -24,6 +24,7 @@ interface TerminalState {
   error: string | null;
   analysisId: string | null;
   comtrade: ComtradeData | null;
+  invertCurrent: boolean;
   invertPhaseSequence: boolean;
 }
 
@@ -33,6 +34,7 @@ const EMPTY_TERMINAL: TerminalState = {
   error: null,
   analysisId: null,
   comtrade: null,
+  invertCurrent: false,
   invertPhaseSequence: false,
 };
 
@@ -331,6 +333,8 @@ export default function DoubleEndedFL() {
         lineLenKm: lineLen,
         r1OhmPerKm: r1v,
         x1OhmPerKm: x1v,
+        invertIA: terminalA.invertCurrent,
+        invertIB: terminalB.invertCurrent,
         invertPhaseSequenceA: terminalA.invertPhaseSequence,
         invertPhaseSequenceB: terminalB.invertPhaseSequence,
       });
@@ -372,6 +376,8 @@ export default function DoubleEndedFL() {
         r1OhmPerKm: r1v,
         x1OhmPerKm: x1v,
         manualShiftMs,
+        invertIA: terminalA.invertCurrent,
+        invertIB: terminalB.invertCurrent,
         invertPhaseSequenceA: terminalA.invertPhaseSequence,
         invertPhaseSequenceB: terminalB.invertPhaseSequence,
       });
@@ -448,6 +454,14 @@ export default function DoubleEndedFL() {
               <label className={styles.toggleRow}>
                 <input
                   type="checkbox"
+                  checked={terminalA.invertCurrent}
+                  onChange={(e) => setTerminalA((prev) => ({ ...prev, invertCurrent: e.target.checked }))}
+                />
+                Invert current polarity (CT direction)
+              </label>
+              <label className={styles.toggleRow}>
+                <input
+                  type="checkbox"
                   checked={terminalA.invertPhaseSequence}
                   onChange={(e) => setTerminalA((prev) => ({ ...prev, invertPhaseSequence: e.target.checked }))}
                 />
@@ -463,6 +477,14 @@ export default function DoubleEndedFL() {
                   onUpdate={(updated) => setTerminalB((prev) => ({ ...prev, comtrade: updated }))}
                 />
               )}
+              <label className={styles.toggleRow}>
+                <input
+                  type="checkbox"
+                  checked={terminalB.invertCurrent}
+                  onChange={(e) => setTerminalB((prev) => ({ ...prev, invertCurrent: e.target.checked }))}
+                />
+                Invert current polarity (CT direction)
+              </label>
               <label className={styles.toggleRow}>
                 <input
                   type="checkbox"
