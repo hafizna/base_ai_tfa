@@ -3,9 +3,10 @@
 Implements the two-terminal fault-location method documented in PLN's
 "Double Ended Fault Locator Aplikasi SiGRA 4.6" training material: given two
 independently-uploaded COMTRADE records — one per line terminal (A and B) —
-manually time-synchronized by the user, Kirchhoff's voltage law across both
-terminals eliminates the fault resistance (Rf) and the zero-sequence
-compensation factor (K0) from the single-ended distance calculation entirely.
+time-synchronized on a common reference, Kirchhoff's voltage law across both
+terminals eliminates fault resistance (Rf). Ground loops are solved with
+negative-sequence quantities (Z2 approximated by the configured Z1), rather
+than incorrectly applying scalar Z1 to an uncompensated phase current.
 
 Single-ended distance (webapp/api/routers/relay_21.py, ``_compute_locus``)
 estimates impedance from ONE terminal's V/I and is sensitive to Rf and to
@@ -17,10 +18,10 @@ double-ended method instead solves:
     V_B - (1-m)*Zline*I_B = V_F               (fault voltage, seen from B)
 
 Both equations describe the SAME unknown fault-point voltage V_F, so
-eliminating it (subtracting) never involves Rf (which only ever multiplied
-the unknown fault current at V_F, canceling along with V_F) or K0 (never
-appears — the phasors used here are plain per-phase/loop V and I, not a
-K0-compensated residual current):
+eliminating it (subtracting) never involves Rf, which only multiplies the
+unknown fault current at V_F and cancels with the common fault-point voltage.
+For phase-to-phase loops, V/I loop quantities are used directly; for ground
+faults, V2/I2 are used so the scalar line impedance is physically meaningful:
 
     m = (V_A - V_B + Zline*I_B) / (Zline*(I_A + I_B))
     distance_km = Re(m) * line_len_km
@@ -64,12 +65,15 @@ from .relay_21 import (
     _detect_active_line_tag,
     _find_channel,
     _find_phase_current,
+    _find_phase_voltage,
     _find_voltage_for_loop,
     _fundamental_phasor,
     _voltage_to_volts_scale,
 )
 
 router = APIRouter(prefix="/api/analyze/21de", tags=["relay-21-double-ended"])
+
+GROUND_LOOPS = {"ZA", "ZB", "ZC"}
 
 
 def _parse_iso(value: Optional[str]) -> Optional[datetime]:
@@ -117,7 +121,14 @@ def _swap_bc(loop: str) -> tuple[str, bool]:
     return loop, False
 
 
-def _build_terminal_context(payload: dict, loop: str, invert_i: bool, invert_phase_sequence: bool) -> dict:
+def _build_terminal_context(
+    payload: dict,
+    loop: str,
+    invert_i: bool,
+    invert_phase_sequence: bool,
+    *,
+    sequence_for_ground: bool = False,
+) -> dict:
     """The parts of ``_terminal_phasor`` that do NOT depend on ``shift_s``:
     channel resolution (which voltage/current channel this loop maps to)
     and fault-inception detection. Factored out so a shift-search sweep
@@ -133,11 +144,50 @@ def _build_terminal_context(payload: dict, loop: str, invert_i: bool, invert_pha
         raise HTTPException(status_code=422, detail="Record too short for double-ended analysis.")
 
     freq = float(payload.get("frequency", 50.0))
-    inception_idx, timing_source, _confidence = _canonical_inception_idx(payload, time)
+    event_window = build_event_window(payload)
+    inception_idx = event_window.inception_idx if event_window.inception_idx is not None else 0
+    timing_source = event_window.method
     sr = 1.0 / (time[1] - time[0]) if len(time) > 1 else freq * 20.0
     win = max(1, int(round(sr / freq)))  # one cycle window, same convention as _compute_locus
 
     active_tag = _detect_active_line_tag(channels)
+
+    # A phase-to-ground voltage drop cannot in general be represented by
+    # Z1 * Iphase: the zero-sequence path has a different impedance.  For the
+    # two-ended solve, use negative-sequence quantities instead.  The
+    # negative-sequence network is independent of fault resistance and uses
+    # Z2 ~= Z1, avoiding an unsafe implicit assumption that Z0 == Z1.
+    if sequence_for_ground and loop in GROUND_LOOPS:
+        voltages = [_find_phase_voltage(channels, phase, active_tag) for phase in "ABC"]
+        currents = [_find_phase_current(channels, phase, active_tag) for phase in "ABC"]
+        if any(value is None for value in voltages) or any(value is None for value in currents):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Ground-fault double-ended location requires all three phase voltages and currents "
+                    "so negative-sequence quantities can be calculated safely."
+                ),
+            )
+        if invert_phase_sequence:
+            voltages[1], voltages[2] = voltages[2], voltages[1]
+            currents[1], currents[2] = currents[2], currents[1]
+        if invert_i:
+            currents = [-value for value in currents]
+        voltage_scale = _voltage_to_volts_scale(channels)
+        return {
+            "time": time,
+            "freq": freq,
+            "sr": sr,
+            "win": win,
+            "inception_idx": inception_idx,
+            "clearing_idx": event_window.clearing_idx,
+            "timing_source": timing_source,
+            "active_tag": active_tag,
+            "basis": "negative_sequence",
+            "v_phases_scaled": [value * voltage_scale for value in voltages],
+            "i_phases": currents,
+        }
+
     if invert_phase_sequence:
         effective_loop, negate_bc = _swap_bc(loop)
     else:
@@ -177,10 +227,68 @@ def _build_terminal_context(payload: dict, loop: str, invert_i: bool, invert_pha
         "sr": sr,
         "win": win,
         "inception_idx": inception_idx,
+        "clearing_idx": event_window.clearing_idx,
         "timing_source": timing_source,
         "active_tag": active_tag,
+        "basis": "phase_loop",
         "v_scaled": v * voltage_scale,
         "i": i,
+    }
+
+
+def _phasor_at_window_start(ctx: dict, start: int, aligned_start_s: Optional[float] = None) -> dict:
+    """Extract one full-cycle V/I pair beginning at ``start``.
+
+    ``_fundamental_phasor`` reports angle relative to the window start.  When
+    ``aligned_start_s`` is supplied, rotate both phasors to a shared t=0
+    reference so phasors from independently-triggered records can be used in
+    one Kirchhoff equation without a hidden window-angle error.
+    """
+    win = ctx["win"]
+    inception_idx = ctx["inception_idx"]
+    if start < 0 or start + win > len(ctx["time"]):
+        raise HTTPException(status_code=422, detail="Synchronization shift moves the phasor window off the record.")
+    if start + win - 1 < inception_idx:
+        raise HTTPException(
+            status_code=422,
+            detail="Synchronization shift moves the phasor window entirely before fault inception.",
+        )
+
+    if ctx.get("basis") == "negative_sequence":
+        a = np.exp(1j * 2.0 * np.pi / 3.0)
+        vabc = [
+            _fundamental_phasor(value, start, win, ctx["freq"], ctx["sr"], inception_idx)
+            for value in ctx["v_phases_scaled"]
+        ]
+        iabc = [
+            _fundamental_phasor(value, start, win, ctx["freq"], ctx["sr"], inception_idx)
+            for value in ctx["i_phases"]
+        ]
+        v_ph = (vabc[0] + (a ** 2) * vabc[1] + a * vabc[2]) / 3.0
+        i_ph = (iabc[0] + (a ** 2) * iabc[1] + a * iabc[2]) / 3.0
+    else:
+        v_ph = _fundamental_phasor(ctx["v_scaled"], start, win, ctx["freq"], ctx["sr"], inception_idx)
+        i_ph = _fundamental_phasor(ctx["i"], start, win, ctx["freq"], ctx["sr"], inception_idx)
+
+    if aligned_start_s is not None:
+        rotation = np.exp(-1j * 2.0 * np.pi * ctx["freq"] * aligned_start_s)
+        v_ph *= rotation
+        i_ph *= rotation
+
+    if not np.isfinite(abs(v_ph)) or not np.isfinite(abs(i_ph)):
+        raise HTTPException(status_code=422, detail="Could not compute a valid synchronized V/I phasor.")
+
+    return {
+        "v_primary": v_ph,
+        "i_primary": i_ph,
+        "inception_idx": inception_idx,
+        "clearing_idx": ctx.get("clearing_idx"),
+        "inception_time_s": float(ctx["time"][inception_idx]),
+        "timing_source": ctx["timing_source"],
+        "active_tag": ctx["active_tag"],
+        "eval_sample": start + win - 1,
+        "window_start_sample": start,
+        "basis": ctx.get("basis", "phase_loop"),
     }
 
 
@@ -227,25 +335,7 @@ def _terminal_phasor_from_context(ctx: dict, shift_s: float) -> dict:
                    "fault. Reduce the magnitude of the sync shift.",
         )
 
-    v_ph = _fundamental_phasor(ctx["v_scaled"], s, win, ctx["freq"], sr, inception_idx)
-    i_ph = _fundamental_phasor(ctx["i"], s, win, ctx["freq"], sr, inception_idx)
-
-    if not np.isfinite(abs(v_ph)) or not np.isfinite(abs(i_ph)):
-        raise HTTPException(
-            status_code=422,
-            detail="Could not compute a valid V/I phasor at the synchronized fault window "
-                   "(record too short, or shift moved the window off the fault).",
-        )
-
-    return {
-        "v_primary": v_ph,
-        "i_primary": i_ph,
-        "inception_idx": inception_idx,
-        "inception_time_s": float(time[inception_idx]) if inception_idx < len(time) else 0.0,
-        "timing_source": ctx["timing_source"],
-        "active_tag": ctx["active_tag"],
-        "eval_sample": k,
-    }
+    return _phasor_at_window_start(ctx, s)
 
 
 def _terminal_phasor(
@@ -313,6 +403,115 @@ def _solve_m(
     return float(np.real(m_complex)), float(np.imag(m_complex))
 
 
+def _aligned_terminal_pair(ctx_a: dict, ctx_b: dict, shift_ms: float, offset_s: float = 0.0) -> tuple[dict, dict]:
+    """Return A/B phasors from the same aligned physical time.
+
+    The UI convention is ``t_B_aligned = t_B - shift``.  Therefore a window
+    beginning at ``t_A`` must be read from B at ``t_A + shift``.  Both DFT
+    results are then rotated from their window-local angle reference to the
+    common aligned time axis.
+    """
+    start_a = ctx_a["inception_idx"] + 1 + int(round(offset_s * ctx_a["sr"]))
+    if start_a + ctx_a["win"] > len(ctx_a["time"]):
+        raise HTTPException(status_code=422, detail="Terminal A has no complete phasor window at this fault offset.")
+
+    common_start_s = float(ctx_a["time"][start_a])
+    shift_s = shift_ms / 1000.0
+    target_b_s = common_start_s + shift_s
+    start_b = int(np.searchsorted(ctx_b["time"], target_b_s, side="left"))
+    if start_b >= len(ctx_b["time"]):
+        raise HTTPException(status_code=422, detail="Synchronization shift moves terminal B beyond its record.")
+    if start_b > 0 and abs(float(ctx_b["time"][start_b - 1]) - target_b_s) < abs(float(ctx_b["time"][start_b]) - target_b_s):
+        start_b -= 1
+    if start_b < ctx_b["inception_idx"]:
+        raise HTTPException(
+            status_code=422,
+            detail="Synchronization shift maps terminal A's fault window before terminal B's detected inception.",
+        )
+
+    term_a = _phasor_at_window_start(ctx_a, start_a, aligned_start_s=common_start_s)
+    aligned_b_start_s = float(ctx_b["time"][start_b]) - shift_s
+    term_b = _phasor_at_window_start(ctx_b, start_b, aligned_start_s=aligned_b_start_s)
+    return term_a, term_b
+
+
+def _paired_fault_windows(
+    ctx_a: dict,
+    ctx_b: dict,
+    shift_ms: float,
+    *,
+    n_windows: int = 17,
+) -> list[tuple[dict, dict]]:
+    """Select simultaneous, high-current windows from the fault interval."""
+    freq = ctx_a["freq"]
+    max_a_idx = (ctx_a.get("clearing_idx") or len(ctx_a["time"]) - 1) - ctx_a["win"]
+    max_b_idx = (ctx_b.get("clearing_idx") or len(ctx_b["time"]) - 1) - ctx_b["win"]
+    duration_a_s = max(0.0, (max_a_idx - ctx_a["inception_idx"]) / ctx_a["sr"])
+    duration_b_s = max(0.0, (max_b_idx - ctx_b["inception_idx"]) / ctx_b["sr"])
+    # Four cycles are enough to move beyond inception transients while not
+    # drifting into breaker clearing or a later event in a long record.
+    max_offset_s = min(duration_a_s, duration_b_s, 4.0 / freq)
+    offsets = np.linspace(0.0, max_offset_s, max(3, n_windows))
+
+    pairs: list[tuple[dict, dict]] = []
+    for offset_s in offsets:
+        try:
+            pairs.append(_aligned_terminal_pair(ctx_a, ctx_b, shift_ms, float(offset_s)))
+        except HTTPException:
+            continue
+    if not pairs:
+        return []
+
+    peak_a = max(abs(a["i_primary"]) for a, _b in pairs)
+    peak_b = max(abs(b["i_primary"]) for _a, b in pairs)
+    selected = [
+        pair for pair in pairs
+        if abs(pair[0]["i_primary"]) >= 0.60 * peak_a and abs(pair[1]["i_primary"]) >= 0.60 * peak_b
+    ]
+    return selected if len(selected) >= 3 else pairs
+
+
+def _solve_multiwindow(pairs: list[tuple[dict, dict]], z_line: complex) -> Optional[dict]:
+    """Least-squares real distance using several simultaneous KVL equations."""
+    rows: list[tuple[complex, complex, float]] = []
+    for term_a, term_b in pairs:
+        i_a, i_b = term_a["i_primary"], term_b["i_primary"]
+        if abs(i_a) < 1e-6 or abs(i_b) < 1e-6:
+            continue
+        lhs = term_a["v_primary"] - term_b["v_primary"] + z_line * i_b
+        rhs = z_line * (i_a + i_b)
+        if abs(rhs) < 1e-9:
+            continue
+        weight = min(abs(i_a), abs(i_b)) ** 2
+        rows.append((lhs, rhs, weight))
+    if not rows:
+        return None
+
+    denom = sum(weight * abs(rhs) ** 2 for _lhs, rhs, weight in rows)
+    if denom <= 1e-18:
+        return None
+    m = float(np.real(sum(weight * np.conj(rhs) * lhs for lhs, rhs, weight in rows)) / denom)
+    individual = np.array([lhs / rhs for lhs, rhs, _weight in rows], dtype=complex)
+    weights = np.array([weight for _lhs, _rhs, weight in rows], dtype=float)
+    weights /= float(np.sum(weights))
+    residual_imag = float(np.sqrt(np.sum(weights * np.imag(individual) ** 2)))
+    distance_spread_pu = float(np.sqrt(np.sum(weights * (np.real(individual) - m) ** 2)))
+    kvl_residual = float(
+        np.sqrt(
+            sum(weight * abs(lhs - m * rhs) ** 2 for lhs, rhs, weight in rows)
+            / denom
+        )
+    )
+    return {
+        "m": m,
+        "residual_imag": residual_imag,
+        "distance_spread_pu": distance_spread_pu,
+        "kvl_residual": kvl_residual,
+        "individual_m": individual,
+        "window_count": len(rows),
+    }
+
+
 def _compute_double_ended(
     payload_a: dict,
     payload_b: dict,
@@ -328,36 +527,33 @@ def _compute_double_ended(
 ) -> dict:
     if line_len_km <= 0:
         raise HTTPException(status_code=422, detail="line_len_km must be positive.")
-
-    term_a = _terminal_phasor(payload_a, loop, invert_i_a, invert_phase_sequence_a, shift_s=0.0)
-    # Positive manual_shift_ms means "shift record B later by this much" —
-    # matching the PPTX's "Shift Fault record B by ..." framing (slide 27) —
-    # so B's evaluation window moves back (earlier, into B's own samples) by
-    # that amount to land on the same physical instant as A's window.
-    term_b = _terminal_phasor(
-        payload_b, loop, invert_i_b, invert_phase_sequence_b, shift_s=-manual_shift_ms / 1000.0,
-    )
-
-    v_a, i_a = term_a["v_primary"], term_a["i_primary"]
-    v_b, i_b = term_b["v_primary"], term_b["i_primary"]
-
-    if abs(i_a) < 1e-6 or abs(i_b) < 1e-6:
-        raise HTTPException(
-            status_code=422,
-            detail="Fault current at one or both terminals is effectively zero — "
-                   "check that both records actually see this fault and that the sync offset is correct.",
-        )
-
     z_line = complex(r1_ohm_per_km, x1_ohm_per_km) * line_len_km
-    solved = _solve_m(v_a, i_a, v_b, i_b, z_line)
+    if abs(z_line) < 1e-9:
+        raise HTTPException(status_code=422, detail="R1/X1 must define a non-zero line impedance.")
+
+    use_sequence = loop in GROUND_LOOPS
+    ctx_a = _build_terminal_context(
+        payload_a, loop, invert_i_a, invert_phase_sequence_a,
+        sequence_for_ground=use_sequence,
+    )
+    ctx_b = _build_terminal_context(
+        payload_b, loop, invert_i_b, invert_phase_sequence_b,
+        sequence_for_ground=use_sequence,
+    )
+    if abs(ctx_a["freq"] - ctx_b["freq"]) > 0.1:
+        raise HTTPException(status_code=422, detail="Terminal A and B nominal frequencies do not match.")
+
+    pairs = _paired_fault_windows(ctx_a, ctx_b, manual_shift_ms, n_windows=21)
+    solved = _solve_multiwindow(pairs, z_line)
     if solved is None:
         raise HTTPException(
             status_code=422,
-            detail="Degenerate solution (I_A + I_B ~= 0) — the two terminals' currents "
-                   "nearly cancel, which usually means a polarity/invert-current mismatch "
-                   "between the two records.",
+            detail="No valid simultaneous high-current windows were found — check synchronization, polarity, "
+                   "fault inception detection, and that both records contain the same event.",
         )
-    m, m_residual_imag = solved
+    m = solved["m"]
+    m_residual_imag = solved["residual_imag"]
+    term_a, term_b = pairs[0]
 
     warnings: list[str] = []
     if m < 0.0 or m > 1.0:
@@ -365,7 +561,7 @@ def _compute_double_ended(
             f"Solved distance falls outside the line (m={m:.3f}) — check synchronization, "
             f"CT/PT ratios, phase sequence, and loop selection."
         )
-    if abs(m_residual_imag) > 0.15:
+    if abs(m_residual_imag) > 0.15 or solved["kvl_residual"] > 0.15:
         # This residual is the tool's own honest failure signal: a genuine
         # two-terminal solution to V_A - m*Zline*I_A = V_B - (1-m)*Zline*I_B
         # collapses Im(m) toward zero once A and B's phasors actually
@@ -376,8 +572,9 @@ def _compute_double_ended(
         # between A's and B's phasors does not), so the message must tell
         # the user WHERE to go fix it, not just that something is wrong.
         warnings.append(
-            f"Large residual imaginary component (Im(m)={m_residual_imag:.3f}) — the tool could not find a "
-            f"consistent intersection between terminal A's and terminal B's equations at this synchronization. "
+            f"Large multi-window inconsistency (RMS Im(m)={m_residual_imag:.3f}, normalized KVL "
+            f"residual={solved['kvl_residual']:.3f}) — terminal A and B do not agree across the selected "
+            f"simultaneous fault windows at this synchronization. "
             f"Re-entering a different line length will NOT fix this on its own. If the manual sync shift "
             f"(step 3) is still at its default/unconfirmed value, go there first and drag it until terminal "
             f"B's current step visually lines up with terminal A's on the overlay plot — a residual this size "
@@ -386,7 +583,19 @@ def _compute_double_ended(
             f"actually-faulted phase?), then each terminal's CT/PT ratio (step 2), then phase sequence."
         )
 
-    fault_current_a = float(abs(i_a + i_b))
+    if use_sequence:
+        phase_ctx_a = _build_terminal_context(
+            payload_a, loop, invert_i_a, invert_phase_sequence_a,
+            sequence_for_ground=False,
+        )
+        phase_ctx_b = _build_terminal_context(
+            payload_b, loop, invert_i_b, invert_phase_sequence_b,
+            sequence_for_ground=False,
+        )
+        phase_pairs = _paired_fault_windows(phase_ctx_a, phase_ctx_b, manual_shift_ms, n_windows=21)
+        fault_current_a = float(np.median([abs(a["i_primary"] + b["i_primary"]) for a, b in phase_pairs]))
+    else:
+        fault_current_a = float(np.median([abs(a["i_primary"] + b["i_primary"]) for a, b in pairs]))
     distance_km = m * line_len_km
 
     return {
@@ -395,6 +604,10 @@ def _compute_double_ended(
         "distance_pct": (distance_km / line_len_km) * 100.0,
         "fault_current_a": fault_current_a,
         "m_residual_imag": m_residual_imag,
+        "kvl_residual": solved["kvl_residual"],
+        "distance_spread_km": solved["distance_spread_pu"] * line_len_km,
+        "selected_window_count": solved["window_count"],
+        "calculation_basis": "negative_sequence" if use_sequence else "phase_loop",
         "inception_time_a_s": term_a["inception_time_s"],
         "inception_time_b_s": term_b["inception_time_s"],
         "active_tag_a": term_a["active_tag"],
@@ -415,67 +628,56 @@ def _find_optimal_shift(
     invert_phase_sequence_a: bool,
     invert_phase_sequence_b: bool,
 ) -> dict:
-    """Search for the manual_shift_ms value that minimizes |Im(m)| — the
-    SAME residual _compute_double_ended already reports and warns on. A
-    residual near zero means the two terminals' Kirchhoff equations found
-    a genuinely consistent intersection at that shift; this is a real,
-    verifiable property of the two records (not a heuristic or guess), so
-    unlike ``align-estimate`` (which extrapolates from possibly-wrong
-    wall-clock timestamps and is explicitly NOT trusted), this search result
-    is grounded in the same physics the final answer itself relies on.
+    """Estimate time-axis alignment from inception, refined by multi-window KVL.
 
-    Found via real-world use, this is still surfaced as a SUGGESTION to
-    visually confirm on the sync overlay plot before running the final
-    calculation — never auto-applied — for the same reason the module
-    docstring gives for manual_shift_ms being authoritative: a residual
-    minimum is necessary evidence of a consistent solution, but multiple
-    local minima can exist (verified against a real record: candidates at
-    -55ms with residual 0.076 AND -48.5ms with residual 0.003 both looked
-    locally "good" scanning coarsely) and only the user can confirm which
-    one corresponds to the ACTUAL fault, not a spurious numerical
-    coincidence from a different part of the waveform.
-
-    Two-stage coarse-then-fine search, NOT a single fine sweep across the
-    whole range: a single-pass 0.1ms-resolution scan across several
-    seconds of plausible offset would call _terminal_phasor_from_context
-    tens of thousands of times. Coarse stage (2ms steps) finds candidate
-    regions in well under a second (reusing _build_terminal_context ONCE
-    per terminal — see that function's docstring for the ~1900x speedup
-    this unlocks over the naive approach), then a fine stage (0.05ms steps)
-    refines only around the single best coarse candidate.
+    Searching an entire record for one minimum of Im(m) is ambiguous every
+    power-frequency cycle and can fit a spurious window.  Here the detected
+    inception-time difference fixes the correct cycle, while several paired
+    high-current windows provide an overdetermined complex KVL objective.
     """
-    ctx_a = _build_terminal_context(payload_a, loop, invert_i_a, invert_phase_sequence_a)
-    ctx_b = _build_terminal_context(payload_b, loop, invert_i_b, invert_phase_sequence_b)
+    if line_len_km <= 0:
+        raise HTTPException(status_code=422, detail="line_len_km must be positive.")
+    use_sequence = loop in GROUND_LOOPS
+    ctx_a = _build_terminal_context(
+        payload_a, loop, invert_i_a, invert_phase_sequence_a,
+        sequence_for_ground=use_sequence,
+    )
+    ctx_b = _build_terminal_context(
+        payload_b, loop, invert_i_b, invert_phase_sequence_b,
+        sequence_for_ground=use_sequence,
+    )
     z_line = complex(r1_ohm_per_km, x1_ohm_per_km) * line_len_km
+    if abs(z_line) < 1e-9:
+        raise HTTPException(status_code=422, detail="R1/X1 must define a non-zero line impedance.")
 
-    # Search range: bounded by how far a shift can go before
-    # _terminal_phasor_from_context's own guards reject it (window off the
-    # record, or before inception) — no need for a separately-chosen
-    # arbitrary range, since anything wider is guaranteed to error out for
-    # every terminal-B shift_s in that region anyway. +/- the shorter
-    # record's own duration comfortably covers this.
-    max_range_s = min(float(ctx_a["time"][-1]), float(ctx_b["time"][-1])) or 1.0
+    inception_shift_ms = (
+        float(ctx_b["time"][ctx_b["inception_idx"]])
+        - float(ctx_a["time"][ctx_a["inception_idx"]])
+    ) * 1000.0
+    half_cycle_ms = 500.0 / ctx_a["freq"]
 
-    def _residual_at(shift_ms: float) -> Optional[float]:
-        try:
-            term_a = _terminal_phasor_from_context(ctx_a, 0.0)
-            term_b = _terminal_phasor_from_context(ctx_b, -shift_ms / 1000.0)
-        except HTTPException:
+    def _score_at(shift_ms: float) -> Optional[tuple[float, dict]]:
+        pairs = _paired_fault_windows(ctx_a, ctx_b, shift_ms, n_windows=13)
+        solved = _solve_multiwindow(pairs, z_line)
+        if solved is None or solved["window_count"] < 3:
             return None
-        solved = _solve_m(term_a["v_primary"], term_a["i_primary"], term_b["v_primary"], term_b["i_primary"], z_line)
-        if solved is None:
-            return None
-        return abs(solved[1])
+        # KVL mismatch already contains both the imaginary inconsistency and
+        # the real-distance spread.  A soft out-of-line penalty prevents an
+        # algebraically neat but physically impossible candidate from winning.
+        m = solved["m"]
+        outside_penalty = max(0.0, -m, m - 1.0)
+        return solved["kvl_residual"] + outside_penalty, solved
 
-    coarse_step_ms = 2.0
-    coarse_range_ms = max_range_s * 1000.0
+    coarse_step_ms = 0.5
     best_shift_ms: Optional[float] = None
-    best_residual = float("inf")
-    shift_ms = -coarse_range_ms
-    while shift_ms <= coarse_range_ms:
-        residual = _residual_at(shift_ms)
-        if residual is not None and residual < best_residual:
-            best_residual = residual
+    best_score = float("inf")
+    best_solution: Optional[dict] = None
+    shift_ms = inception_shift_ms - half_cycle_ms
+    end_ms = inception_shift_ms + half_cycle_ms
+    while shift_ms <= end_ms + 1e-9:
+        candidate = _score_at(shift_ms)
+        if candidate is not None and candidate[0] < best_score:
+            best_score, best_solution = candidate
             best_shift_ms = shift_ms
         shift_ms += coarse_step_ms
 
@@ -483,35 +685,30 @@ def _find_optimal_shift(
         return {
             "shift_ms": None,
             "residual": None,
-            "searched_range_ms": coarse_range_ms,
-            "reason": "No valid evaluation window was found anywhere in the searchable range — check that "
-                      "both records actually contain the same fault before trying a manual shift.",
+            "searched_range_ms": half_cycle_ms,
+            "reason": "No common high-current fault windows were found near the detected inception alignment.",
         }
 
-    # Fine stage: refine within one coarse step of the best coarse candidate.
-    fine_step_ms = 0.05
+    fine_step_ms = 0.02
     fine_shift_ms = best_shift_ms - coarse_step_ms
     fine_end_ms = best_shift_ms + coarse_step_ms
-    while fine_shift_ms <= fine_end_ms:
-        residual = _residual_at(fine_shift_ms)
-        if residual is not None and residual < best_residual:
-            best_residual = residual
+    while fine_shift_ms <= fine_end_ms + 1e-9:
+        candidate = _score_at(fine_shift_ms)
+        if candidate is not None and candidate[0] < best_score:
+            best_score, best_solution = candidate
             best_shift_ms = fine_shift_ms
         fine_shift_ms += fine_step_ms
 
+    assert best_solution is not None
     return {
         "shift_ms": round(best_shift_ms, 2),
-        "residual": round(best_residual, 5),
-        "searched_range_ms": coarse_range_ms,
+        "residual": round(best_solution["kvl_residual"], 5),
+        "searched_range_ms": half_cycle_ms,
         "reason": (
-            f"Found the shift that minimizes the two terminals' Kirchhoff residual "
-            f"(|Im(m)|={best_residual:.4f}) across +/-{coarse_range_ms/1000.0:.1f}s. "
-            "Confirm this against the waveform overlay before running the calculation — "
-            "a low residual is necessary but not sufficient evidence this is the correct alignment."
-            if best_residual <= 0.15 else
-            f"The best shift found still has a large residual (|Im(m)|={best_residual:.4f}) — "
-            "no clean alignment was found anywhere in the searched range. Check loop selection, "
-            "CT/PT ratios, and phase sequence before trusting any shift value for this pair."
+            f"Detected-inception alignment is {inception_shift_ms:.2f} ms; multi-window refinement selected "
+            f"{best_shift_ms:.2f} ms using {best_solution['window_count']} simultaneous high-current windows "
+            f"(normalized KVL residual={best_solution['kvl_residual']:.4f}). Confirm the inception markers on "
+            "the zoomed waveform before running the final calculation."
         ),
     }
 
@@ -585,79 +782,24 @@ def _compute_distance_histogram(
     invert_phase_sequence_b: bool,
     n_windows: int = 41,
 ) -> list[float]:
-    """Window-voting distance samples: solve the SAME Kirchhoff closed-form
-    (_solve_m) at many evaluation windows spanning the fault's own detected
-    duration [inception_idx, clearing_idx] (from build_event_window — the
-    same fault-duration window the rest of the app already treats as
-    ground truth, reused as-is here) rather than at one single window.
-    Each surviving sample is a real, independently-computed Kirchhoff
-    solution — not a fabricated confidence score. A tight cluster of
-    samples near one distance is itself evidence the answer is robust to
-    exactly which instant within the fault was evaluated; a wide spread is
-    honest evidence that it isn't.
-
-    Falls back to a narrow one-cycle sweep when clearing_idx is unavailable
-    (e.g. a record truncated before the fault cleared) — never fabricates
-    a clearing time to widen the sweep."""
-    time_a = np.array(payload_a.get("time", []))
-    if len(time_a) < 4:
-        return []
-    freq = float(payload_a.get("frequency", 50.0))
-    sr = 1.0 / (time_a[1] - time_a[0]) if len(time_a) > 1 else freq * 20.0
-
-    window = build_event_window(payload_a)
-    inception_idx = window.inception_idx if window.inception_idx is not None else 0
-    if window.clearing_idx is not None and window.clearing_idx > inception_idx:
-        end_idx = window.clearing_idx
-    else:
-        end_idx = min(inception_idx + int(round(sr / freq)), len(time_a) - 1)
-
+    """Per-window solutions from simultaneous, high-current fault windows."""
     z_line = complex(r1_ohm_per_km, x1_ohm_per_km) * line_len_km
-    base_shift_b_s = -manual_shift_ms / 1000.0
-
-    # First pass: gather every window's terminal phasors (not yet solved for
-    # m) so a relative current floor can be set from this record's own peak
-    # fault current — a real record's current genuinely tapers toward zero
-    # near the fault's clearing edge, and an absolute amps floor tuned for
-    # per-unit synthetic tests is not a meaningful floor at real line-
-    # current scale (see _solve_m's docstring for the concrete failure this
-    # fixes: windows near clearing landing hundreds of km off the rest of
-    # the fault-duration cluster).
-    raw: list[tuple[complex, complex, complex, complex]] = []
-    for k in np.linspace(inception_idx, end_idx, max(2, n_windows)):
-        shift_s = (float(k) - inception_idx) / sr
-        try:
-            term_a = _terminal_phasor(payload_a, loop, invert_i_a, invert_phase_sequence_a, shift_s=shift_s)
-            term_b = _terminal_phasor(
-                payload_b, loop, invert_i_b, invert_phase_sequence_b, shift_s=base_shift_b_s + shift_s,
-            )
-        except HTTPException:
-            continue  # window ran off the record edge — skip, don't fail the whole sweep
-        raw.append((term_a["v_primary"], term_a["i_primary"], term_b["v_primary"], term_b["i_primary"]))
-
-    if not raw:
-        return []
-
-    # Per-TERMINAL floor, not one shared floor from the two terminals'
-    # combined peak — the two terminals' fault currents are frequently very
-    # different magnitudes (e.g. a strong local source at A feeding a much
-    # smaller remote contribution through B), so a single global floor
-    # dominated by whichever terminal has the larger peak would filter out
-    # essentially every window of the OTHER terminal, even at its own
-    # perfectly good peak. Verified against a real record where a shared
-    # floor emptied the histogram entirely because terminal B's peak
-    # (~270A) never got within 5% of terminal A's much larger peak
-    # (~3660A).
-    peak_i_a = max(abs(i_a) for (_v_a, i_a, _v_b, _i_b) in raw)
-    peak_i_b = max(abs(i_b) for (_v_a, _i_a, _v_b, i_b) in raw)
-    min_i_a = max(peak_i_a * 0.05, 1e-6)  # 5% of this terminal's own peak, same convention as _compute_locus
-    min_i_b = max(peak_i_b * 0.05, 1e-6)
-
+    use_sequence = loop in GROUND_LOOPS
+    ctx_a = _build_terminal_context(
+        payload_a, loop, invert_i_a, invert_phase_sequence_a,
+        sequence_for_ground=use_sequence,
+    )
+    ctx_b = _build_terminal_context(
+        payload_b, loop, invert_i_b, invert_phase_sequence_b,
+        sequence_for_ground=use_sequence,
+    )
+    pairs = _paired_fault_windows(ctx_a, ctx_b, manual_shift_ms, n_windows=n_windows)
     samples: list[float] = []
-    for v_a, i_a, v_b, i_b in raw:
-        if abs(i_a) < min_i_a or abs(i_b) < min_i_b:
-            continue
-        solved = _solve_m(v_a, i_a, v_b, i_b, z_line, min_i=0.0)
+    for term_a, term_b in pairs:
+        solved = _solve_m(
+            term_a["v_primary"], term_a["i_primary"],
+            term_b["v_primary"], term_b["i_primary"], z_line,
+        )
         if solved is None:
             continue
         m, _residual = solved
@@ -735,11 +877,15 @@ def _run_compute(payload_a: dict, payload_b: dict, body: DoubleEndedComputeReque
     # value, deliberately keeping that function's existing, already-tested
     # contract untouched. Each call is one cheap one-cycle-window phasor
     # extraction, not a meaningful cost next to the histogram sweep below.
-    term_a = _terminal_phasor(payload_a, body.loop, body.invert_i_a, body.invert_phase_sequence_a, shift_s=0.0)
-    term_b = _terminal_phasor(
-        payload_b, body.loop, body.invert_i_b, body.invert_phase_sequence_b,
-        shift_s=-body.manual_shift_ms / 1000.0,
+    single_ctx_a = _build_terminal_context(
+        payload_a, body.loop, body.invert_i_a, body.invert_phase_sequence_a,
+        sequence_for_ground=False,
     )
+    single_ctx_b = _build_terminal_context(
+        payload_b, body.loop, body.invert_i_b, body.invert_phase_sequence_b,
+        sequence_for_ground=False,
+    )
+    term_a, term_b = _aligned_terminal_pair(single_ctx_a, single_ctx_b, body.manual_shift_ms)
     result["single_ended_a"] = DoubleEndedSingleEndedResult(
         **_single_ended_distance(term_a, body.r1_ohm_per_km, body.x1_ohm_per_km, body.line_len_km, "A")
     )
