@@ -406,6 +406,30 @@ class DoubleEndedAlignResponse(BaseModel):
     estimate_reason: str                        # why unavailable, or how it was derived
 
 
+class DoubleEndedSuggestShiftRequest(BaseModel):
+    analysis_id_a: str
+    analysis_id_b: str
+    loop: str = "ZA"
+    line_len_km: float
+    r1_ohm_per_km: float
+    x1_ohm_per_km: float
+    invert_i_a: bool = False
+    invert_i_b: bool = False
+    invert_phase_sequence_a: bool = False
+    invert_phase_sequence_b: bool = False
+
+
+class DoubleEndedSuggestShiftResponse(BaseModel):
+    # A residual-minimizing shift, grounded in the same Kirchhoff physics
+    # the final calculation uses — but still only a SUGGESTION to visually
+    # confirm on the sync overlay before running the calculation, never
+    # auto-applied. See _find_optimal_shift's docstring in relay_21_de.py.
+    shift_ms: Optional[float]
+    residual: Optional[float]
+    searched_range_ms: float
+    reason: str
+
+
 class DoubleEndedComputeRequest(BaseModel):
     analysis_id_a: str
     analysis_id_b: str

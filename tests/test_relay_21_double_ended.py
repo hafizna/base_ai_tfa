@@ -22,6 +22,7 @@ from fastapi import HTTPException
 from webapp.api.routers.relay_21_de import (
     _compute_double_ended,
     _compute_distance_histogram,
+    _find_optimal_shift,
     _single_ended_distance,
     _terminal_phasor,
 )
@@ -381,3 +382,70 @@ def test_terminal_phasor_rejects_shift_that_lands_before_inception():
     small_shift_s = 0.01
     term = _terminal_phasor(payload, "ZA", False, False, shift_s=small_shift_s)
     assert abs(term["i_primary"]) > i_pre_mag * 2  # reads fault current, not pre-fault load current
+
+
+def test_find_optimal_shift_recovers_a_known_misalignment():
+    """Build A and B with their OWN inception at deliberately different
+    sample offsets (simulating two independently-triggered records whose
+    inception detectors land at genuinely different points relative to the
+    same physical fault instant) — a case where manual_shift_ms=0 does NOT
+    give a clean residual, but SOME shift does. Confirms
+    _find_optimal_shift's coarse-then-fine search actually locates a shift
+    that produces a physically correct answer (near-zero residual AND the
+    known ground-truth distance) — not that it recovers a specific signed
+    shift value, since the exact sign/magnitude relationship between an
+    inception-index offset and the resulting optimal manual_shift_ms
+    involves the window-centering convention in
+    _terminal_phasor_from_context and is not the property under test here."""
+    m0 = 0.4
+    line_len_km = 22.0
+    r1, x1 = 0.05, 0.4
+    z_line = complex(r1, x1) * line_len_km
+    i_a = complex(300.0, 40.0)
+    i_b = complex(120.0, -25.0)
+    v_f = complex(4000.0, 0.0)
+    v_a = v_f + m0 * z_line * i_a
+    v_b = v_f + (1.0 - m0) * z_line * i_b
+
+    inception_a = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
+    # B's own inception lands 250 samples later than A's — at SR=5000Hz,
+    # that's a genuine 50ms offset between the two records' own detected
+    # fault-start points, so manual_shift_ms=0 must NOT be a clean solution.
+    sample_offset = 250
+    inception_b = inception_a + sample_offset
+
+    clearing_a = inception_a + int(round(SR * 5 / FREQ))
+    clearing_b = inception_b + int(round(SR * 5 / FREQ))
+    payload_a = _build_clearing_payload(220.0, 5.0, v_a, i_a, inception_a, clearing_a, "GI-A")
+    payload_b = _build_clearing_payload(220.0, 5.0, v_b, i_b, inception_b, clearing_b, "GI-B")
+
+    # Confirm the premise: zero shift is NOT a clean solution for this
+    # deliberately-misaligned pair.
+    zero_shift = _compute_double_ended(
+        payload_a, payload_b, "ZA", line_len_km, r1, x1,
+        manual_shift_ms=0.0,
+        invert_i_a=False, invert_i_b=False,
+        invert_phase_sequence_a=False, invert_phase_sequence_b=False,
+    )
+    assert abs(zero_shift["m_residual_imag"]) > 0.15
+
+    result = _find_optimal_shift(
+        payload_a, payload_b, "ZA", line_len_km, r1, x1,
+        invert_i_a=False, invert_i_b=False,
+        invert_phase_sequence_a=False, invert_phase_sequence_b=False,
+    )
+
+    assert result["shift_ms"] is not None
+    assert result["residual"] is not None
+    assert result["residual"] < 0.01
+
+    # And confirm this suggested shift actually produces a clean two-ended
+    # result when fed back into the real calculation.
+    final = _compute_double_ended(
+        payload_a, payload_b, "ZA", line_len_km, r1, x1,
+        manual_shift_ms=result["shift_ms"],
+        invert_i_a=False, invert_i_b=False,
+        invert_phase_sequence_a=False, invert_phase_sequence_b=False,
+    )
+    assert abs(final["distance_km"] - m0 * line_len_km) < 0.1
+    assert final["warnings"] == []

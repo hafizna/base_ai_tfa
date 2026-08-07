@@ -5,6 +5,7 @@ import {
   computeDoubleEndedFL,
   fetchAnalysis,
   fetchDoubleEndedAlignEstimate,
+  fetchDoubleEndedSuggestShift,
   fetchFaultClassification21,
   uploadComtrade,
   type DoubleEndedComputeResult,
@@ -161,6 +162,8 @@ export default function DoubleEndedFL() {
   const [manualShiftMs, setManualShiftMs] = useState<number>(0);
   const [estimateNote, setEstimateNote] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
+  const [shiftSearchLoading, setShiftSearchLoading] = useState(false);
+  const [shiftSearchNote, setShiftSearchNote] = useState<string | null>(null);
 
   const [computing, setComputing] = useState(false);
   const [computeError, setComputeError] = useState<string | null>(null);
@@ -305,6 +308,41 @@ export default function DoubleEndedFL() {
     const tB = terminalB.comtrade.time.map((t) => t - manualShiftMs / 1000);
     return { tA, iaSamples: iaChannel.samples, tB, ibSamples: ibChannel.samples };
   }, [terminalA.comtrade, terminalB.comtrade, manualShiftMs]);
+
+  async function handleFindOptimalShift() {
+    if (!terminalA.analysisId || !terminalB.analysisId) return;
+    const lineLen = parseFloat(lineLenKm);
+    const r1v = parseFloat(r1);
+    const x1v = parseFloat(x1);
+    if (!Number.isFinite(lineLen) || lineLen <= 0 || !Number.isFinite(r1v) || !Number.isFinite(x1v)) {
+      setShiftSearchNote("Fill in line length and R1/X1 (step 4) before searching for a shift.");
+      return;
+    }
+
+    setShiftSearchLoading(true);
+    setShiftSearchNote(null);
+    try {
+      const res = await fetchDoubleEndedSuggestShift({
+        analysisIdA: terminalA.analysisId,
+        analysisIdB: terminalB.analysisId,
+        loop,
+        lineLenKm: lineLen,
+        r1OhmPerKm: r1v,
+        x1OhmPerKm: x1v,
+        invertPhaseSequenceA: terminalA.invertPhaseSequence,
+        invertPhaseSequenceB: terminalB.invertPhaseSequence,
+      });
+      if (res.shift_ms != null) {
+        setManualShiftMs(Math.round(res.shift_ms * 100) / 100);
+      }
+      setShiftSearchNote(res.reason);
+    } catch (err: unknown) {
+      const response = (err as { response?: { data?: { detail?: string } } }).response;
+      setShiftSearchNote(response?.data?.detail ?? "Shift search failed — check inputs and try again.");
+    } finally {
+      setShiftSearchLoading(false);
+    }
+  }
 
   async function handleCompute() {
     if (!terminalA.analysisId || !terminalB.analysisId) return;
@@ -499,6 +537,23 @@ export default function DoubleEndedFL() {
             {estimateLoading && <span className={styles.estimateHint}>Estimating starting offset…</span>}
             {estimateNote && !estimateLoading && <span className={styles.estimateHint}>{estimateNote}</span>}
           </div>
+          <div className={styles.syncReadout} style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => void handleFindOptimalShift()}
+              disabled={shiftSearchLoading || !lineLenKm}
+            >
+              {shiftSearchLoading ? "Searching…" : "Find shift with lowest residual"}
+            </button>
+            {shiftSearchNote && <span className={styles.estimateHint}>{shiftSearchNote}</span>}
+          </div>
+          <p className={styles.estimateHint} style={{ marginTop: 4 }}>
+            This searches for the shift that makes both terminals' equations most self-consistent (uses the
+            line length and R1/X1 from step 4 below, and the loop selected there) — grounded in the same
+            physics the final result relies on, unlike the coarse estimate above. Still only a suggestion:
+            confirm it against the waveform overlay before trusting it.
+          </p>
         </div>
       )}
 
