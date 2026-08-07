@@ -709,6 +709,12 @@ def _find_optimal_shift(
             f"{best_shift_ms:.2f} ms using {best_solution['window_count']} simultaneous high-current windows "
             f"(normalized KVL residual={best_solution['kvl_residual']:.4f}). Confirm the inception markers on "
             "the zoomed waveform before running the final calculation."
+            if best_solution["kvl_residual"] <= 0.15 else
+            f"No clean alignment was found near the detected inception ({inception_shift_ms:.2f} ms). The best "
+            f"available candidate is {best_shift_ms:.2f} ms using {best_solution['window_count']} simultaneous "
+            f"windows, but its normalized KVL residual is still high ({best_solution['kvl_residual']:.4f}). "
+            "The value is filled for comparison only; expect an unreliable-result warning and check polarity, "
+            "phase sequence, channel mapping, line parameters, and whether both records contain the same event."
         ),
     }
 
@@ -885,7 +891,15 @@ def _run_compute(payload_a: dict, payload_b: dict, body: DoubleEndedComputeReque
         payload_b, body.loop, body.invert_i_b, body.invert_phase_sequence_b,
         sequence_for_ground=False,
     )
-    term_a, term_b = _aligned_terminal_pair(single_ctx_a, single_ctx_b, body.manual_shift_ms)
+    single_pairs = _paired_fault_windows(
+        single_ctx_a, single_ctx_b, body.manual_shift_ms, n_windows=21,
+    )
+    if not single_pairs:
+        raise HTTPException(
+            status_code=422,
+            detail="No simultaneous phase-loop window is available for the single-ended comparison.",
+        )
+    term_a, term_b = single_pairs[0]
     result["single_ended_a"] = DoubleEndedSingleEndedResult(
         **_single_ended_distance(term_a, body.r1_ohm_per_km, body.x1_ohm_per_km, body.line_len_km, "A")
     )
