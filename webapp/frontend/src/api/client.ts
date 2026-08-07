@@ -298,6 +298,47 @@ export async function fetchDoubleEndedAlignEstimate(analysisIdA: string, analysi
   return data;
 }
 
+export interface DoubleEndedSuggestShiftRequest {
+  analysisIdA: string;
+  analysisIdB: string;
+  loop: string;
+  lineLenKm: number;
+  r1OhmPerKm: number;
+  x1OhmPerKm: number;
+  invertIA?: boolean;
+  invertIB?: boolean;
+  invertPhaseSequenceA?: boolean;
+  invertPhaseSequenceB?: boolean;
+}
+
+export interface DoubleEndedSuggestShiftResult {
+  shift_ms: number | null;
+  residual: number | null;
+  searched_range_ms: number;
+  reason: string;
+}
+
+// Grounded in the same Kirchhoff residual the final calculation itself
+// reports (unlike align-estimate, which extrapolates from possibly-wrong
+// wall-clock timestamps) — but still only a SUGGESTION to confirm on the
+// sync overlay plot, never auto-applied. See relay_21_de.py's
+// _find_optimal_shift docstring for why (multiple local minima can exist).
+export async function fetchDoubleEndedSuggestShift(req: DoubleEndedSuggestShiftRequest) {
+  const { data } = await api.post<DoubleEndedSuggestShiftResult>("/api/analyze/21de/suggest-shift", {
+    analysis_id_a: req.analysisIdA,
+    analysis_id_b: req.analysisIdB,
+    loop: req.loop,
+    line_len_km: req.lineLenKm,
+    r1_ohm_per_km: req.r1OhmPerKm,
+    x1_ohm_per_km: req.x1OhmPerKm,
+    invert_i_a: req.invertIA ?? false,
+    invert_i_b: req.invertIB ?? false,
+    invert_phase_sequence_a: req.invertPhaseSequenceA ?? false,
+    invert_phase_sequence_b: req.invertPhaseSequenceB ?? false,
+  });
+  return data;
+}
+
 export interface DoubleEndedComputeRequest {
   analysisIdA: string;
   analysisIdB: string;
