@@ -48,6 +48,7 @@ def _build_terminal_payload(
     i_fault: complex,
     inception_sample: int,
     station: str,
+    time_axis_shift_s: float = 0.0,
 ) -> dict:
     """One terminal's synthetic COMTRADE payload: phase-A voltage/current,
     clean pre-fault load then a step to the given fault-window phasors,
@@ -56,20 +57,27 @@ def _build_terminal_payload(
     an unambiguous, high-confidence inception to find."""
     t = np.arange(N) / SR
 
-    # Pre-fault: clean load current/voltage at phase-A reference.
-    va = v_pre_mag * np.cos(2 * math.pi * FREQ * t)
-    ia = i_pre_mag * np.cos(2 * math.pi * FREQ * t)
+    a = cmath.exp(1j * 2 * math.pi / 3)
+    reference_rotation = cmath.exp(-1j * 2 * math.pi * FREQ * time_axis_shift_s)
 
-    # Post-fault: replace with the target fault phasor (magnitude + phase),
-    # continuing at the same frequency so a one-cycle DFT window entirely
-    # inside the fault region recovers the injected phasor cleanly.
-    v_mag, v_ang = abs(v_fault), cmath.phase(v_fault)
-    i_mag, i_ang = abs(i_fault), cmath.phase(i_fault)
-    va_fault = v_mag * np.cos(2 * math.pi * FREQ * t + v_ang)
-    ia_fault = i_mag * np.cos(2 * math.pi * FREQ * t + i_ang)
+    def wave(phasor: complex) -> np.ndarray:
+        return abs(phasor) * np.cos(2 * math.pi * FREQ * t + cmath.phase(phasor))
 
-    va[inception_sample:] = va_fault[inception_sample:]
-    ia[inception_sample:] = ia_fault[inception_sample:]
+    # Balanced positive-sequence pre-fault quantities, followed by a pure
+    # negative-sequence fault set.  Phase A remains the originally requested
+    # phasor, while the full triplet lets the production ground-loop path
+    # exercise physically valid negative-sequence extraction.
+    v_pre = [v_pre_mag, v_pre_mag * a ** 2, v_pre_mag * a]
+    i_pre = [i_pre_mag, i_pre_mag * a ** 2, i_pre_mag * a]
+    v_fault_abc = [v_fault, a * v_fault, a ** 2 * v_fault]
+    i_fault_abc = [i_fault, a * i_fault, a ** 2 * i_fault]
+    voltages = [wave(value * reference_rotation) for value in v_pre]
+    currents = [wave(value * reference_rotation) for value in i_pre]
+    for phase in range(3):
+        fault_v = wave(v_fault_abc[phase] * reference_rotation)
+        fault_i = wave(i_fault_abc[phase] * reference_rotation)
+        voltages[phase][inception_sample:] = fault_v[inception_sample:]
+        currents[phase][inception_sample:] = fault_i[inception_sample:]
 
     status = [0] * N
     for idx in range(inception_sample, N):
@@ -82,16 +90,22 @@ def _build_terminal_payload(
         "trigger_time_iso": None,
         "start_time_iso": None,
         "analog_channels": [
-            {
-                "name": "VA", "canonical_name": "VA", "unit": "V", "phase": "A",
-                "measurement": "voltage", "ct_primary": 1.0, "ct_secondary": 1.0,
-                "samples": va.tolist(),
-            },
-            {
-                "name": "IA", "canonical_name": "IA", "unit": "A", "phase": "A",
-                "measurement": "current", "ct_primary": 1.0, "ct_secondary": 1.0,
-                "samples": ia.tolist(),
-            },
+            *[
+                {
+                    "name": f"V{phase}", "canonical_name": f"V{phase}", "unit": "V", "phase": phase,
+                    "measurement": "voltage", "ct_primary": 1.0, "ct_secondary": 1.0,
+                    "samples": voltages[idx].tolist(),
+                }
+                for idx, phase in enumerate("ABC")
+            ],
+            *[
+                {
+                    "name": f"I{phase}", "canonical_name": f"I{phase}", "unit": "A", "phase": phase,
+                    "measurement": "current", "ct_primary": 1.0, "ct_secondary": 1.0,
+                    "samples": currents[idx].tolist(),
+                }
+                for idx, phase in enumerate("ABC")
+            ],
         ],
         "status_channels": [
             {"name": "TRIP_A", "samples": status},
@@ -185,50 +199,34 @@ def test_out_of_range_distance_warns():
     assert any("outside the line" in w for w in result["warnings"])
 
 
-def _build_clearing_payload(v_pre_mag, i_pre_mag, v_fault, i_fault, inception_sample, clearing_sample, station):
+def _build_clearing_payload(
+    v_pre_mag, i_pre_mag, v_fault, i_fault, inception_sample, clearing_sample, station,
+    time_axis_shift_s=0.0,
+):
     """Same shape as _build_terminal_payload, but the fault status channel
     (and the fault-level V/I) genuinely clears at clearing_sample rather
     than persisting to the end of the record — needed so
     core.event_analysis.build_event_window can detect a real clearing_idx,
     which _compute_distance_histogram sweeps between."""
+    payload = _build_terminal_payload(
+        v_pre_mag, i_pre_mag, v_fault, i_fault, inception_sample, station,
+        time_axis_shift_s=time_axis_shift_s,
+    )
     t = np.arange(N) / SR
-    va = v_pre_mag * np.cos(2 * math.pi * FREQ * t)
-    ia = i_pre_mag * np.cos(2 * math.pi * FREQ * t)
-
-    v_mag, v_ang = abs(v_fault), cmath.phase(v_fault)
-    i_mag, i_ang = abs(i_fault), cmath.phase(i_fault)
-    va_fault = v_mag * np.cos(2 * math.pi * FREQ * t + v_ang)
-    ia_fault = i_mag * np.cos(2 * math.pi * FREQ * t + i_ang)
-
-    va[inception_sample:clearing_sample] = va_fault[inception_sample:clearing_sample]
-    ia[inception_sample:clearing_sample] = ia_fault[inception_sample:clearing_sample]
-
+    a = cmath.exp(1j * 2 * math.pi / 3)
+    rotation = cmath.exp(-1j * 2 * math.pi * FREQ * time_axis_shift_s)
+    v_pre = [v_pre_mag, v_pre_mag * a ** 2, v_pre_mag * a]
+    i_pre = [i_pre_mag, i_pre_mag * a ** 2, i_pre_mag * a]
+    for channel in payload["analog_channels"]:
+        phase_idx = "ABC".index(channel["phase"])
+        phasor = (v_pre if channel["measurement"] == "voltage" else i_pre)[phase_idx] * rotation
+        pre_wave = abs(phasor) * np.cos(2 * math.pi * FREQ * t + cmath.phase(phasor))
+        channel["samples"][clearing_sample:] = pre_wave[clearing_sample:].tolist()
     status = [0] * N
     for idx in range(inception_sample, clearing_sample):
         status[idx] = 1
-
-    return {
-        "station_name": station,
-        "frequency": FREQ,
-        "time": (t - t[0]).tolist(),
-        "trigger_time_iso": None,
-        "start_time_iso": None,
-        "analog_channels": [
-            {
-                "name": "VA", "canonical_name": "VA", "unit": "V", "phase": "A",
-                "measurement": "voltage", "ct_primary": 1.0, "ct_secondary": 1.0,
-                "samples": va.tolist(),
-            },
-            {
-                "name": "IA", "canonical_name": "IA", "unit": "A", "phase": "A",
-                "measurement": "current", "ct_primary": 1.0, "ct_secondary": 1.0,
-                "samples": ia.tolist(),
-            },
-        ],
-        "status_channels": [
-            {"name": "TRIP_A", "samples": status},
-        ],
-    }
+    payload["status_channels"][0]["samples"] = status
+    return payload
 
 
 def test_single_ended_distance_recovers_known_location_at_zero_rf():
@@ -391,12 +389,10 @@ def test_find_optimal_shift_recovers_a_known_misalignment():
     same physical fault instant) — a case where manual_shift_ms=0 does NOT
     give a clean residual, but SOME shift does. Confirms
     _find_optimal_shift's coarse-then-fine search actually locates a shift
-    that produces a physically correct answer (near-zero residual AND the
-    known ground-truth distance) — not that it recovers a specific signed
-    shift value, since the exact sign/magnitude relationship between an
-    inception-index offset and the resulting optimal manual_shift_ms
-    involves the window-centering convention in
-    _terminal_phasor_from_context and is not the property under test here."""
+    that produces a physically correct answer: the known time-axis shift,
+    a near-zero multi-window residual, AND the known ground-truth distance.
+    This explicitly prevents the old one-cycle-periodic false-positive from
+    satisfying the regression with merely "some" residual minimum."""
     m0 = 0.4
     line_len_km = 22.0
     r1, x1 = 0.05, 0.4
@@ -417,7 +413,11 @@ def test_find_optimal_shift_recovers_a_known_misalignment():
     clearing_a = inception_a + int(round(SR * 5 / FREQ))
     clearing_b = inception_b + int(round(SR * 5 / FREQ))
     payload_a = _build_clearing_payload(220.0, 5.0, v_a, i_a, inception_a, clearing_a, "GI-A")
-    payload_b = _build_clearing_payload(220.0, 5.0, v_b, i_b, inception_b, clearing_b, "GI-B")
+    known_shift_s = sample_offset / SR
+    payload_b = _build_clearing_payload(
+        220.0, 5.0, v_b, i_b, inception_b, clearing_b, "GI-B",
+        time_axis_shift_s=known_shift_s,
+    )
 
     # Confirm the premise: zero shift is NOT a clean solution for this
     # deliberately-misaligned pair.
@@ -438,6 +438,7 @@ def test_find_optimal_shift_recovers_a_known_misalignment():
     assert result["shift_ms"] is not None
     assert result["residual"] is not None
     assert result["residual"] < 0.01
+    assert abs(result["shift_ms"] - known_shift_s * 1000.0) < 0.2
 
     # And confirm this suggested shift actually produces a clean two-ended
     # result when fed back into the real calculation.
@@ -449,3 +450,26 @@ def test_find_optimal_shift_recovers_a_known_misalignment():
     )
     assert abs(final["distance_km"] - m0 * line_len_km) < 0.1
     assert final["warnings"] == []
+
+
+def test_ground_double_ended_requires_three_phase_quantities():
+    """Never silently apply Z1 to an uncompensated A-phase current."""
+    line_len_km = 20.0
+    z_line = complex(0.05, 0.4) * line_len_km
+    i_a = complex(300.0, 40.0)
+    i_b = complex(120.0, -25.0)
+    v_f = complex(4000.0, 0.0)
+    inception = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
+    payload_a = _build_terminal_payload(220.0, 5.0, v_f + 0.4 * z_line * i_a, i_a, inception, "GI-A")
+    payload_b = _build_terminal_payload(220.0, 5.0, v_f + 0.6 * z_line * i_b, i_b, inception, "GI-B")
+    payload_b["analog_channels"] = [
+        channel for channel in payload_b["analog_channels"] if channel["canonical_name"] != "IC"
+    ]
+
+    with pytest.raises(HTTPException, match="all three phase voltages and currents"):
+        _compute_double_ended(
+            payload_a, payload_b, "ZA", line_len_km, 0.05, 0.4,
+            manual_shift_ms=0.0,
+            invert_i_a=False, invert_i_b=False,
+            invert_phase_sequence_a=False, invert_phase_sequence_b=False,
+        )

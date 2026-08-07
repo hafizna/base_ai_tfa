@@ -387,9 +387,9 @@ class TccResponse(BaseModel):
 # --- Double Ended FL (two-terminal Kirchhoff fault location) ---
 # Two independently-uploaded COMTRADE records (one per line terminal), manually
 # time-synchronized by the user (mirrors the SIGRA workflow this feature is
-# modeled on), then combined via Kirchhoff's voltage law — which eliminates
-# fault resistance and zero-sequence compensation error from the single-ended
-# calculation entirely. See webapp/api/routers/relay_21_de.py module docstring.
+# modeled on), then combined via Kirchhoff's voltage law. Ground faults use
+# negative-sequence quantities instead of an uncompensated phase-current/Z1
+# shortcut. See webapp/api/routers/relay_21_de.py module docstring.
 
 class DoubleEndedAlignRequest(BaseModel):
     analysis_id_a: str
@@ -472,6 +472,10 @@ class DoubleEndedComputeResponse(BaseModel):
     distance_pct: float                         # distance_km / line_len_km * 100
     fault_current_a: float                      # |I_A + I_B| at the fault point, primary amps
     m_residual_imag: float                      # imaginary residual of the per-unit-distance solution
+    kvl_residual: float = 0.0                   # normalized complex multi-window KVL mismatch
+    distance_spread_km: float = 0.0             # weighted spread between selected window solutions
+    selected_window_count: int = 1
+    calculation_basis: str = "phase_loop"       # negative_sequence for ground loops
     inception_time_a_s: float
     inception_time_b_s: float
     active_tag_a: Optional[str]

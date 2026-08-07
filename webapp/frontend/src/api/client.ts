@@ -369,6 +369,10 @@ export interface DoubleEndedComputeResult {
   distance_pct: number;
   fault_current_a: number;
   m_residual_imag: number;
+  kvl_residual: number;
+  distance_spread_km: number;
+  selected_window_count: number;
+  calculation_basis: "negative_sequence" | "phase_loop";
   inception_time_a_s: number;
   inception_time_b_s: number;
   active_tag_a: string | null;

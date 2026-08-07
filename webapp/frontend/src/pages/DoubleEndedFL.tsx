@@ -162,6 +162,7 @@ export default function DoubleEndedFL() {
   const [manualShiftMs, setManualShiftMs] = useState<number>(0);
   const [estimateNote, setEstimateNote] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
+  const [detectedInceptionAS, setDetectedInceptionAS] = useState<number | null>(null);
   const [shiftSearchLoading, setShiftSearchLoading] = useState(false);
   const [shiftSearchNote, setShiftSearchNote] = useState<string | null>(null);
 
@@ -223,6 +224,7 @@ export default function DoubleEndedFL() {
     setEstimateLoading(true);
     try {
       const est = await fetchDoubleEndedAlignEstimate(idA, idB);
+      setDetectedInceptionAS(est.inception_time_a_s);
       if (
         est.estimate_available &&
         est.estimated_shift_ms != null &&
@@ -510,7 +512,14 @@ export default function DoubleEndedFL() {
                   autosize: true,
                   height: 280,
                   margin: { l: 50, r: 20, t: 20, b: 40 },
-                  xaxis: { title: { text: "Time (s, terminal A reference)" }, gridcolor: "#e2e8f0" },
+                  xaxis: {
+                    title: { text: "Time (s, terminal A reference)" },
+                    gridcolor: "#e2e8f0",
+                    range: detectedInceptionAS == null
+                      ? undefined
+                      : [detectedInceptionAS - 0.08, detectedInceptionAS + 0.16],
+                    rangeslider: { visible: true },
+                  },
                   yaxis: { title: { text: "IA (A, primary)" }, gridcolor: "#e2e8f0" },
                   legend: { orientation: "h" },
                   paper_bgcolor: "#ffffff",
@@ -631,10 +640,11 @@ export default function DoubleEndedFL() {
 
       {result && (
         <div className={styles.resultCard}>
-          {Math.abs(result.m_residual_imag) > 0.15 && (
+          {(Math.abs(result.m_residual_imag) > 0.15 || result.kvl_residual > 0.15) && (
             <div className={styles.unreliableBanner}>
               <strong>This result is not reliable yet.</strong> The two terminals' equations never found a
-              consistent intersection (Im(m)={result.m_residual_imag.toFixed(3)}) — the numbers below will keep
+              consistent multi-window solution (RMS Im(m)={result.m_residual_imag.toFixed(3)}, KVL residual={" "}
+              {result.kvl_residual.toFixed(3)}) — the numbers below will keep
               changing unpredictably if you adjust the line length, because the underlying disagreement between
               terminal A and terminal B is not a line-length problem. Go back to step 3 and drag the sync shift
               until terminal B's current step visually lines up with terminal A's, then re-run. See the warning
@@ -658,6 +668,24 @@ export default function DoubleEndedFL() {
             <div className={styles.resultStat}>
               <div className={styles.resultStatLabel}>Loop</div>
               <div className={styles.resultStatValue}>{result.loop}</div>
+            </div>
+            <div className={styles.resultStat}>
+              <div className={styles.resultStatLabel}>Calculation basis</div>
+              <div className={styles.resultStatValue}>
+                {result.calculation_basis === "negative_sequence" ? "Negative sequence" : "Phase loop"}
+              </div>
+            </div>
+            <div className={styles.resultStat}>
+              <div className={styles.resultStatLabel}>Selected windows</div>
+              <div className={styles.resultStatValue}>{result.selected_window_count}</div>
+            </div>
+            <div className={styles.resultStat}>
+              <div className={styles.resultStatLabel}>Distance spread</div>
+              <div className={styles.resultStatValue}>{result.distance_spread_km.toFixed(2)} km</div>
+            </div>
+            <div className={styles.resultStat}>
+              <div className={styles.resultStatLabel}>KVL residual</div>
+              <div className={styles.resultStatValue}>{result.kvl_residual.toFixed(3)}</div>
             </div>
           </div>
           {result.warnings.length > 0 && (
