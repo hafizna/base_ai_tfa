@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createIncident, listIncidents, type IncidentOut, type IncidentStatus } from "../api/client";
+import {
+  createIncident,
+  deleteIncident,
+  fetchIncident,
+  listIncidents,
+  updateIncident,
+  uploadIncidentRecords,
+  type IncidentOut,
+  type IncidentStatus,
+} from "../api/client";
+import { formatDate, isoToMs, readFacts } from "../components/incidents/incidentStory";
+import { useMultiComtradeEnabled } from "../hooks/useFeatureFlags";
 import styles from "./IncidentList.module.css";
 
 const STATUS_OPTIONS: Array<IncidentStatus | "ALL"> = [
@@ -22,8 +33,21 @@ function formatTime(iso: string | null) {
   }
 }
 
+/** "GI BRINGIN · MJSNG2 · 21 Agu 2023", from the incident's first record. */
+function titleFromRecords(incident: IncidentOut): { title: string; station: string | null } | null {
+  const first = incident.records[0];
+  if (!first) return null;
+  const facts = readFacts(first);
+  const when = isoToMs(first.trigger_time_iso ?? first.record_start_iso);
+  const parts = [first.station_name, facts.selectedLine, when !== null ? formatDate(when) : null].filter(
+    (p): p is string => Boolean(p),
+  );
+  return parts.length ? { title: parts.join(" · "), station: first.station_name } : null;
+}
+
 export default function IncidentList() {
   const navigate = useNavigate();
+  const multiComtradeEnabled = useMultiComtradeEnabled();
   const [incidents, setIncidents] = useState<IncidentOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +56,9 @@ export default function IncidentList() {
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     setLoading(true);
@@ -80,21 +107,96 @@ export default function IncidentList() {
     }
   }
 
+  /** Dropped files become a new incident: create, upload, name it from the records, open it. */
+  async function createFromFiles(files: File[]) {
+    if (files.length === 0 || progress) return;
+    setError(null);
+    let incidentId: string | null = null;
+    try {
+      setProgress("Membuat insiden…");
+      const created = await createIncident({ title: "Insiden baru" });
+      incidentId = created.incident_id;
+      setProgress(`Menganalisa ${files.length} file…`);
+      const result = await uploadIncidentRecords(incidentId, files, { partialSuccess: true });
+      if (result.records_created.length === 0) {
+        await deleteIncident(incidentId).catch(() => undefined);
+        const reasons = result.errors.map((e) => `${e.files.join(", ")}: ${e.reason}`).join(" · ");
+        setError(`Tidak ada rekaman yang bisa dianalisa. ${reasons}`);
+        return;
+      }
+      const incident = await fetchIncident(incidentId);
+      const named = titleFromRecords(incident);
+      if (named) {
+        await updateIncident(incidentId, { title: named.title, station_name: incident.station_name ?? named.station });
+      }
+      navigate(`/incidents/${incidentId}`);
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || (err instanceof Error ? err.message : "Gagal membuat insiden dari file."));
+      if (incidentId) navigate(`/incidents/${incidentId}`);
+    } finally {
+      setProgress(null);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <div className={styles.eyebrow}>Incidents</div>
-          <h1 className={styles.title}>Incident workspace</h1>
+          <div className={styles.eyebrow}>Insiden</div>
+          <h1 className={styles.title}>Insiden gangguan</h1>
           <p className={styles.subtitle}>
-            Group related COMTRADE records into one incident. Record relationships are manual in this stage —
-            automatic reconstruction has not yet been implemented.
+            Satu insiden adalah satu kejadian gangguan, bisa terdiri dari beberapa rekaman: gangguan, reclose, dan
+            gangguan ulang. Urutan kejadian disusun otomatis dari rekamannya.
           </p>
         </div>
-        <button type="button" className={styles.primaryButton} onClick={() => setShowCreate(true)}>
-          + New incident
+        <button type="button" className={styles.secondaryButton} onClick={() => setShowCreate(true)}>
+          + Insiden kosong
         </button>
       </header>
+
+      {multiComtradeEnabled && (
+        <div
+          className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            void createFromFiles(Array.from(e.dataTransfer.files || []));
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept=".cfg,.dat,.cff"
+            className={styles.hiddenInput}
+            aria-label="Pilih file COMTRADE untuk insiden baru"
+            onChange={(e) => void createFromFiles(Array.from(e.target.files || []))}
+          />
+          {progress ? (
+            <p className={styles.dropTitle} role="status">
+              {progress}
+            </p>
+          ) : (
+            <>
+              <p className={styles.dropTitle}>Tarik file COMTRADE dari satu kejadian ke sini</p>
+              <p className={styles.dropHint}>
+                Pasangan .cfg + .dat atau file .cff, boleh beberapa rekaman sekaligus. Insiden baru langsung dibuat
+                dan dianalisa.
+              </p>
+              <button type="button" className={styles.primaryButton} onClick={() => inputRef.current?.click()}>
+                Pilih file
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div className={styles.filters}>
         <label className={styles.filterField}>
@@ -123,9 +225,9 @@ export default function IncidentList() {
       {error && <div className={styles.error}>{error}</div>}
 
       {loading ? (
-        <div className={styles.empty}>Loading incidents…</div>
+        <div className={styles.empty}>Memuat insiden…</div>
       ) : filtered.length === 0 ? (
-        <div className={styles.empty}>No incidents yet. Create one to start grouping records.</div>
+        <div className={styles.empty}>Belum ada insiden.</div>
       ) : (
         <div className={styles.grid}>
           {filtered.map((incident) => (
@@ -161,7 +263,7 @@ export default function IncidentList() {
       {showCreate && (
         <div className={styles.modalOverlay} onClick={() => setShowCreate(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2>New incident</h2>
+            <h2>Insiden kosong</h2>
             <label className={styles.modalField}>
               Title
               <input
@@ -174,10 +276,10 @@ export default function IncidentList() {
             </label>
             <div className={styles.modalActions}>
               <button type="button" onClick={() => setShowCreate(false)}>
-                Cancel
+                Batal
               </button>
               <button type="button" className={styles.primaryButton} onClick={handleCreate} disabled={creating}>
-                {creating ? "Creating…" : "Create"}
+                {creating ? "Membuat…" : "Buat"}
               </button>
             </div>
           </div>

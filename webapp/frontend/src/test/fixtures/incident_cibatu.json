@@ -1,0 +1,723 @@
+{
+ "incident": {
+  "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+  "title": "cbtu fixture",
+  "status": "DRAFT",
+  "station_name": "150 kV MKSRI 2",
+  "bay_name": null,
+  "asset_id": null,
+  "asset_name": null,
+  "asset_type": null,
+  "voltage_level_kv": null,
+  "protection_family": null,
+  "incident_start_iso": "2024-04-26T14:29:20.194000",
+  "incident_end_iso": "2024-04-26T14:29:20.194000",
+  "clock_assessment": "UNKNOWN",
+  "clock_assessment_reason": null,
+  "record_ids": [
+   "1fd0e1d687d34a7fac5dbb9342113710"
+  ],
+  "evidence_ids": [],
+  "observed_summary": {
+   "record_count": 1,
+   "records_with_absolute_time": 1,
+   "records_without_absolute_time": 0,
+   "protection_types": [
+    "21"
+   ],
+   "faulted_phase_sets": [
+    [
+     "A"
+    ]
+   ],
+   "reclose_outcomes": [
+    "successful"
+   ],
+   "cause_hypotheses_per_record": [
+    {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    }
+   ]
+  },
+  "incident_interpretation": {
+   "summary": "Single record attached. Interpretation matches the record-level canonical analysis.",
+   "scope": "INCIDENT_RECORD_COLLECTION_SUMMARY"
+  },
+  "incident_hypotheses": [],
+  "missing_evidence": [
+   {
+    "type": "BAY_NAME_UNDETERMINED",
+    "description": "Bay name has not been set for this incident."
+   },
+   {
+    "type": "REMOTE_END_UNAVAILABLE",
+    "description": "No remote-end record is attached."
+   }
+  ],
+  "operator_notes": null,
+  "created_at": "2026-10-08T15:24:16.571507+00:00",
+  "updated_at": "2026-10-08T15:24:22.614451+00:00",
+  "schema_version": "stage2",
+  "records": [
+   {
+    "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+    "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+    "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+    "source_filename": "cbtu.CFG",
+    "station_name": "150 kV MKSRI 2",
+    "bay_name": null,
+    "relay_id": "1",
+    "relay_model": null,
+    "protection_type": "21",
+    "record_start_iso": "2024-04-26T14:29:16.687000",
+    "trigger_time_iso": "2024-04-26T14:29:20.194000",
+    "trigger_offset_s": 3.507,
+    "sequence_index": 0,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "source_metadata": {
+      "station_name": "150 kV MKSRI 2",
+      "rec_dev_id": "1",
+      "rev_year": "2001",
+      "frequency": 50.0,
+      "total_samples": 12624,
+      "trigger_time_s": 3.507,
+      "start_time_iso": "2024-04-26T14:29:16.687000",
+      "trigger_time_iso": "2024-04-26T14:29:20.194000",
+      "trigger_offset_s": 3.507,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 8,
+      "status_channel_count": 32,
+      "parser_warnings": [],
+      "timing_warnings": [],
+      "multi_line_record": false
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 3507.0,
+      "inception_idx": 4178,
+      "inception_time_ms": 3480.273962020874,
+      "clearing_idx": 4286,
+      "clearing_time_ms": 3570.2381134033203,
+      "fault_duration_ms": 53.312063217163086,
+      "method": "status_waveform_aligned",
+      "timing_source": "status_waveform_aligned",
+      "confidence": 0.9,
+      "faulted_phases": [
+       "A"
+      ],
+      "reclose_events": [
+       {
+        "time": 4.578167915344238,
+        "success": true
+       }
+      ],
+      "warnings": []
+     },
+     "fault_episodes": [
+      {
+       "episode_index": 0,
+       "inception_time_ms": 3480.273962020874,
+       "clearing_time_ms": 3570.2381134033203,
+       "fault_duration_ms": 53.312063217163086,
+       "faulted_phases": [
+        "A"
+       ],
+       "detection_method": "status_waveform_aligned",
+       "confidence": 0.9,
+       "reclose_events": [
+        {
+         "time": 4.578167915344238,
+         "success": true
+        }
+       ]
+      }
+     ],
+     "protection_operations": [
+      {
+       "name": "Z2",
+       "role": "zone",
+       "zone": 2,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        3506.93
+       ],
+       "off_ms": [
+        3570.238
+       ]
+      },
+      {
+       "name": "DIST Trip A",
+       "role": "trip",
+       "zone": null,
+       "phase": "A",
+       "initially_on": false,
+       "on_ms": [
+        3516.926
+       ],
+       "off_ms": [
+        3570.238
+       ]
+      },
+      {
+       "name": "DIST UNB CR",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        3516.926
+       ],
+       "off_ms": [
+        3598.56
+       ]
+      },
+      {
+       "name": "A/R 1P In Prog",
+       "role": "reclose",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        3516.926
+       ],
+       "off_ms": [
+        4509.862
+       ]
+      },
+      {
+       "name": "DIST. Chan Recv",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        3516.926
+       ],
+       "off_ms": [
+        3598.56
+       ]
+      },
+      {
+       "name": "CB Aux A",
+       "role": "breaker",
+       "zone": null,
+       "phase": "A",
+       "initially_on": false,
+       "on_ms": [
+        3566.906
+       ],
+       "off_ms": [
+        4569.838
+       ]
+      },
+      {
+       "name": "Any Pole Dead",
+       "role": "breaker",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        3570.238,
+        4579.834
+       ],
+       "off_ms": [
+        4578.168,
+        4583.166
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "prefault": {
+       "current_rms": {
+        "A": 704.301,
+        "B": 655.022,
+        "C": 695.307
+       },
+       "voltage_rms": {
+        "A": 84.416,
+        "B": 85.027,
+        "C": 84.952
+       }
+      },
+      "fault": {
+       "current_peak": {
+        "A": 20716.539,
+        "B": 1383.46,
+        "C": 2598.96
+       },
+       "current_rms_max": {
+        "A": 12004.247,
+        "B": 908.772,
+        "C": 1666.957
+       },
+       "voltage_rms_min": {
+        "A": 35.332,
+        "B": 74.862,
+        "C": 75.156
+       }
+      },
+      "after_clearing": {
+       "current_rms": {
+        "A": 3.81,
+        "B": 574.68,
+        "C": 681.126
+       },
+       "voltage_rms": {
+        "A": 19.567,
+        "B": 83.846,
+        "C": 83.527
+       }
+      }
+     },
+     "observed_facts": {
+      "faulted_phases": [
+       "A"
+      ],
+      "reclose_attempted": true,
+      "reclose_events": [
+       {
+        "time": 4.578167915344238,
+        "success": true
+       }
+      ]
+     },
+     "protection_interpretation": {
+      "event_class": "TRANSIENT_LINE_FAULT",
+      "summary": "Fault detected from available waveform/status evidence."
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "status_waveform_aligned",
+      "timing_confidence": 0.9,
+      "no_fault_gate_reasons": [
+       "kanal proteksi beroperasi (TRIP/Op)",
+       "lonjakan arus 29.50\u00d7 prefault",
+       "voltage sag 97.5%",
+       "ketidakseimbangan urutan (I0/I1 76.6%, I2/I1 88.7%)"
+      ],
+      "line_selection": null,
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [],
+    "created_at": "2026-10-08T15:24:18.842234+00:00"
+   }
+  ],
+  "provenance": {
+   "schema_version": "stage2",
+   "incident_engine_version": "stage1.0",
+   "record_snapshot_versions": [
+    {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "status_waveform_aligned"
+    }
+   ],
+   "created_at": "2026-10-08T15:24:16.571507+00:00",
+   "updated_at": "2026-10-08T15:24:22.614451+00:00"
+  }
+ },
+ "reconstruction": {
+  "reconstruction_id": "0f1afe080024433384f2af01c71b772e",
+  "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+  "engine_version": "stage2.0",
+  "schema_version": "stage2",
+  "same_bay_status": "UNKNOWN",
+  "same_bay_evidence": [
+   {
+    "type": "SINGLE_RECORD",
+    "description": "Only one record attached; same-bay comparison not applicable."
+   }
+  ],
+  "same_bay_override": null,
+  "alignment": {
+   "status": "ALIGNED",
+   "confidence": 1.0,
+   "order_source": "ABSOLUTE_TIME",
+   "record_order": [
+    "3468bfa7bd4a45f8ae9ac707af750bb5"
+   ],
+   "pairwise_gaps_ms": [],
+   "overlap_groups": [],
+   "warnings": [],
+   "assumptions": []
+  },
+  "timeline_event_ids": [
+   "0f1afe080024433384f2af01c71b772e-3",
+   "0f1afe080024433384f2af01c71b772e-1",
+   "0f1afe080024433384f2af01c71b772e-2",
+   "0f1afe080024433384f2af01c71b772e-4",
+   "0f1afe080024433384f2af01c71b772e-5"
+  ],
+  "relationship_ids": [],
+  "episode_ids": [
+   "0f1afe080024433384f2af01c71b772e-6"
+  ],
+  "observed_incident_facts": {
+   "record_count": 1,
+   "episode_count": 1,
+   "incident_duration_ms": null,
+   "phase_sequence": [
+    [
+     "A"
+    ]
+   ],
+   "reclose_sequence": [
+    "successful"
+   ]
+  },
+  "protection_sequence_interpretation": {
+   "event_class": "SINGLE_TRANSIENT_FAULT",
+   "summary": "A single transient fault episode was cleared with a successful reclose."
+  },
+  "incident_hypotheses": [
+   {
+    "hypothesis": "SINGLE_TRANSIENT_NO_RECURRENCE",
+    "mechanism_signal": "CONSISTENT_WITH_TRANSIENT_STRIKE_OR_SWITCHING",
+    "confidence": 0.4,
+    "episode_indices": [
+     0
+    ],
+    "evidence_for": [
+     "A single 53 ms fault episode cleared on the first reclose attempt, with no recurrence or escalation seen in the attached records."
+    ],
+    "evidence_against": [],
+    "description": "A short, one-off fault that cleared on the first reclose is the classic transient-fault shape most consistent with a single lightning strike or switching transient. Not a confirmed cause, and does not rule out a physical cause that happened not to recur within the attached records."
+   }
+  ],
+  "physical_cause_evidence": {
+   "scope": "RECORD_LOCAL_SIGNATURES",
+   "records": [
+    {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+     "top_hypothesis": "PETIR",
+     "confidence": 0.92,
+     "cause_ranking": [
+      {
+       "cause": "PETIR",
+       "label": "Petir / Lightning",
+       "confidence": 0.92
+      },
+      {
+       "cause": "LAYANG",
+       "label": "Layang-Layang / Kite",
+       "confidence": 0.001
+      },
+      {
+       "cause": "PERALATAN",
+       "label": "Peralatan Rusak / Anomali Proteksi",
+       "confidence": 0.001
+      },
+      {
+       "cause": "BENDA_ASING",
+       "label": "Benda Asing",
+       "confidence": 0.0
+      },
+      {
+       "cause": "HEWAN",
+       "label": "Hewan / Binatang",
+       "confidence": 0.0
+      },
+      {
+       "cause": "KONDUKTOR",
+       "label": "Konduktor / Tower",
+       "confidence": 0.0
+      },
+      {
+       "cause": "POHON",
+       "label": "Pohon / Vegetasi",
+       "confidence": 0.0
+      }
+     ],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v1.2025-04",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": "status_waveform_aligned",
+     "timing_confidence": 0.9,
+     "raw_probabilities": {
+      "BENDA_ASING": 0.0,
+      "HEWAN": 0.0,
+      "KONDUKTOR": 0.0,
+      "LAYANG": 0.0,
+      "PERALATAN": 0.0,
+      "PETIR": 0.9999,
+      "POHON": 0.0
+     },
+     "calibrated_probabilities": {
+      "BENDA_ASING": 0.0,
+      "HEWAN": 0.0,
+      "KONDUKTOR": 0.0001,
+      "LAYANG": 0.0013,
+      "PERALATAN": 0.0005,
+      "PETIR": 0.9981,
+      "POHON": 0.0
+     },
+     "applied_caps": [
+      {
+       "name": "ceiling_92",
+       "before": 0.9980730742015262,
+       "after": 0.92,
+       "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."
+      }
+     ],
+     "evidence_role": "inception",
+     "fault_type": "transient",
+     "skip_reason": null
+    }
+   ],
+   "consistency": "CONSISTENT",
+   "incident_root_cause": "UNCONFIRMED"
+  },
+  "narrative": "1 COMTRADE record with an unconfirmed bay relationship were reconstructed into 1 fault episode.\n\nEpisode 1 was a single-line-to-ground (A fault), lasting 53 ms. Reclose was successful.\n\nThe per-record physical-cause signatures are consistent with each other.\nThe physical initiating cause remains unconfirmed from local COMTRADE evidence alone; external evidence (field inspection, lightning detection, protection engineer review) is needed to confirm it.",
+  "record_snapshot_versions": [
+   {
+    "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+    "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "status_waveform_aligned"
+   }
+  ],
+  "is_latest": true,
+  "supersedes": null,
+  "created_at": "2026-10-08T15:24:22.523248+00:00",
+  "timeline": [
+   {
+    "timeline_event_id": "0f1afe080024433384f2af01c71b772e-3",
+    "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+    "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2024-04-26T14:29:20.167274",
+    "relative_incident_ms": -26.7,
+    "relative_record_ms": 3480.273962020874,
+    "source": "canonical_event_window",
+    "label": "Fault inception (A)",
+    "details": {
+     "faulted_phases": [
+      "A"
+     ]
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "0f1afe080024433384f2af01c71b772e-1",
+    "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+    "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2024-04-26T14:29:20.194000",
+    "relative_incident_ms": 0.0,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (cbtu.CFG)",
+    "details": {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "0f1afe080024433384f2af01c71b772e-2",
+    "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+    "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2024-04-26T14:29:20.194000",
+    "relative_incident_ms": 0.0,
+    "relative_record_ms": 3507.0,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "0f1afe080024433384f2af01c71b772e-4",
+    "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+    "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+    "episode_id": null,
+    "event_type": "FAULT_CLEARING",
+    "absolute_time_iso": "2024-04-26T14:29:20.257238",
+    "relative_incident_ms": 63.2,
+    "relative_record_ms": 3570.2381134033203,
+    "source": "canonical_event_window",
+    "label": "Fault clearing",
+    "details": {
+     "fault_duration_ms": 53.312063217163086
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "0f1afe080024433384f2af01c71b772e-5",
+    "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+    "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+    "episode_id": null,
+    "event_type": "RECLOSE_SUCCESS",
+    "absolute_time_iso": "2024-04-26T14:29:21.265168",
+    "relative_incident_ms": 1071.2,
+    "relative_record_ms": 4578.167915344238,
+    "source": "canonical_event_window",
+    "label": "Reclose attempt #1 (successful)",
+    "details": {
+     "success": true
+    },
+    "confidence": 0.7,
+    "provenance": {
+     "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+     "incident_record_id": "3468bfa7bd4a45f8ae9ac707af750bb5",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   }
+  ],
+  "relationships": [],
+  "episodes": [
+   {
+    "episode_id": "0f1afe080024433384f2af01c71b772e-6",
+    "incident_id": "2431cb06bd854b74b4e57ed0727867a8",
+    "member_record_ids": [
+     "3468bfa7bd4a45f8ae9ac707af750bb5"
+    ],
+    "episode_index": 0,
+    "start_iso": "2024-04-26T14:29:20.194000",
+    "end_iso": "2024-04-26T14:29:20.194000",
+    "duration_ms": 53.312063217163086,
+    "faulted_phases": [
+     "A"
+    ],
+    "fault_type": "SLG",
+    "zone_operations": [],
+    "trip_types": [],
+    "reclose_outcome": "successful",
+    "electrical_summary": {},
+    "local_cause_hypotheses": [
+     {
+      "analysis_id": "1fd0e1d687d34a7fac5dbb9342113710",
+      "top_hypothesis": "PETIR",
+      "confidence": 0.92,
+      "cause_ranking": [
+       {
+        "cause": "PETIR",
+        "label": "Petir / Lightning",
+        "confidence": 0.92
+       },
+       {
+        "cause": "LAYANG",
+        "label": "Layang-Layang / Kite",
+        "confidence": 0.001
+       },
+       {
+        "cause": "PERALATAN",
+        "label": "Peralatan Rusak / Anomali Proteksi",
+        "confidence": 0.001
+       },
+       {
+        "cause": "BENDA_ASING",
+        "label": "Benda Asing",
+        "confidence": 0.0
+       },
+       {
+        "cause": "HEWAN",
+        "label": "Hewan / Binatang",
+        "confidence": 0.0
+       },
+       {
+        "cause": "KONDUKTOR",
+        "label": "Konduktor / Tower",
+        "confidence": 0.0
+       },
+       {
+        "cause": "POHON",
+        "label": "Pohon / Vegetasi",
+        "confidence": 0.0
+       }
+      ],
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": "status_waveform_aligned",
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "inception",
+      "fault_type": "transient",
+      "requires_review": false,
+      "skip_reason": null
+     }
+    ],
+    "relationship_to_previous": null,
+    "confidence": 0.9,
+    "observed_facts": {
+     "member_record_ids": [
+      "3468bfa7bd4a45f8ae9ac707af750bb5"
+     ],
+     "faulted_phases": [
+      "A"
+     ],
+     "reclose_outcome": "successful"
+    },
+    "interpretation": {
+     "event_classes": [
+      "TRANSIENT_LINE_FAULT"
+     ]
+    },
+    "missing_evidence": [],
+    "provenance": {
+     "member_analysis_ids": [
+      "1fd0e1d687d34a7fac5dbb9342113710"
+     ]
+    }
+   }
+  ]
+ }
+}

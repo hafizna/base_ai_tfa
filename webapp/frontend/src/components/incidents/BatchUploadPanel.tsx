@@ -10,14 +10,27 @@ import styles from "./BatchUploadPanel.module.css";
 interface Props {
   incidentId: string;
   onUploaded: (result: BatchUploadResponse, autoReconstruct: boolean) => void;
+  /** Files dropped elsewhere on the page, preselected here. */
+  initialFiles?: File[];
+  defaultPartialSuccess?: boolean;
+  /** The caller always reconstructs after an upload, so the checkbox is hidden. */
+  alwaysReconstruct?: boolean;
 }
 
-export default function BatchUploadPanel({ incidentId, onUploaded }: Props) {
-  const [files, setFiles] = useState<File[]>([]);
-  const [preview, setPreview] = useState<FilePairPreview | null>(null);
-  const [partialSuccess, setPartialSuccess] = useState(false);
+export default function BatchUploadPanel({
+  incidentId,
+  onUploaded,
+  initialFiles,
+  defaultPartialSuccess = false,
+  alwaysReconstruct = false,
+}: Props) {
+  const [files, setFiles] = useState<File[]>(initialFiles ?? []);
+  const [preview, setPreview] = useState<FilePairPreview | null>(() =>
+    initialFiles && initialFiles.length > 0 ? previewFilePairing(initialFiles) : null,
+  );
+  const [partialSuccess, setPartialSuccess] = useState(defaultPartialSuccess);
   const [overrideWarnings, setOverrideWarnings] = useState(false);
-  const [autoReconstruct, setAutoReconstruct] = useState(false);
+  const [autoReconstruct, setAutoReconstruct] = useState(alwaysReconstruct);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<BatchUploadResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -129,10 +142,12 @@ export default function BatchUploadPanel({ incidentId, onUploaded }: Props) {
           <input type="checkbox" checked={overrideWarnings} onChange={(e) => setOverrideWarnings(e.target.checked)} />
           Attach despite station-name mismatch with this incident
         </label>
-        <label className={styles.checkboxLabel}>
-          <input type="checkbox" checked={autoReconstruct} onChange={(e) => setAutoReconstruct(e.target.checked)} />
-          Automatically reconstruct after upload
-        </label>
+        {!alwaysReconstruct && (
+          <label className={styles.checkboxLabel}>
+            <input type="checkbox" checked={autoReconstruct} onChange={(e) => setAutoReconstruct(e.target.checked)} />
+            Automatically reconstruct after upload
+          </label>
+        )}
       </div>
 
       {hasBlockingErrors && !partialSuccess && (

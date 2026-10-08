@@ -26,6 +26,7 @@ from typing import Any, Optional
 from core.event_analysis import EventWindow, build_event_window
 from core.line_selection import scope_payload_with_selection
 from .fault_detection import detect_fault_presence
+from .record_facts import electrical_measurements, protection_operations
 
 
 @dataclass
@@ -262,8 +263,9 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         data_quality=data_quality,
         event_window=event_window,
         fault_episodes=fault_episodes,
-        protection_operations=[],
-        electrical_measurements={},
+        # Measured facts on the analysed line, for the incident story.
+        protection_operations=protection_operations(line_payload, event_window),
+        electrical_measurements=electrical_measurements(line_payload, event_window),
         cause_hypotheses=[],
         missing_evidence=missing_evidence,
         provenance=provenance,
