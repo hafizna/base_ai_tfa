@@ -16,6 +16,12 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./training-data:/app/training-data
+    # Docker keeps container logs forever by default; cap them at 3 x 10 MB.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test:
         [
