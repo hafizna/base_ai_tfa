@@ -1,18 +1,89 @@
 .page {
   min-height: 100vh;
-  padding: 32px 32px 64px;
-  max-width: 1100px;
-  margin: 0 auto;
+  background: var(--bg);
+  position: relative;
 }
 
-.backLink {
-  background: none;
-  border: none;
-  color: var(--subtle);
-  font-size: 0.85rem;
+.state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* --- header bar --- */
+
+.topBar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.topBarInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.breadcrumb a {
+  text-decoration: none;
+}
+
+.breadcrumbCurrent {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.primaryButton {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--brand);
+  background: var(--brand);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0;
-  margin-bottom: 16px;
+}
+
+.primaryButton:hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+}
+
+/* --- body --- */
+
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lead {
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .error {
@@ -21,56 +92,149 @@
   color: var(--danger-ink);
   padding: 12px 16px;
   border-radius: 10px;
-  margin-bottom: 16px;
 }
 
-.headerCard {
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
-  padding: 20px;
+.card {
   background: var(--surface);
-  margin-bottom: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.emptyCard {
+  background: var(--surface);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: 48px 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.headerTop {
-  display: flex;
   align-items: center;
   gap: 12px;
+  text-align: center;
 }
 
-.titleInput {
-  flex: 1;
-  font-size: 1.3rem;
+.emptyTitle {
+  font-size: 23px;
   font-weight: 700;
-  border: none;
-  outline: none;
-  padding: 4px 0;
 }
 
-.statusSelect {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line-strong);
-  font-weight: 600;
+.twoColumns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: stretch;
 }
 
-.archiveButton {
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--danger-line);
-  color: var(--danger);
+/* --- drop anywhere --- */
+
+.dropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.dropOverlayBox {
   background: var(--surface);
+  border: 2px dashed var(--brand);
+  border-radius: var(--radius-lg);
+  padding: 40px 48px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--brand-ink);
+  text-align: center;
+}
+
+/* --- technical details --- */
+
+.detailsCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  scroll-margin-top: 16px;
+}
+
+.detailsToggle {
+  width: 100%;
+  min-height: 64px;
+  padding: 16px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  white-space: nowrap;
+}
+
+.detailsHeading {
+  display: flex;
+  flex-direction: column;
+}
+
+.detailsTitle {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.chevron,
+.chevronOpen {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.detailsBody {
+  padding: 0 28px 28px;
+}
+
+.subsection {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.subsection h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+  color: var(--ink-2);
+}
+
+.subsectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.subsectionHeader h3 {
+  margin: 0;
 }
 
 .headerGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 14px;
+  margin-bottom: 14px;
 }
 
 .field {
@@ -94,26 +258,6 @@
   font-family: inherit;
 }
 
-.section {
-  margin-bottom: 28px;
-}
-
-.section h2 {
-  font-size: 1.1rem;
-  margin: 0 0 12px;
-}
-
-.sectionHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.sectionHeaderRow h2 {
-  margin: 0;
-}
-
 .smallButton {
   padding: 6px 12px;
   border-radius: 8px;
@@ -125,16 +269,15 @@
   font-weight: 600;
 }
 
-.subsection {
-  border-top: 1px solid var(--line-soft);
-  padding-top: 16px;
-  margin-top: 16px;
-}
-
-.subsection h3 {
-  font-size: 0.92rem;
-  margin: 0 0 10px;
-  color: var(--ink-2);
+.dangerButton {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .empty {
@@ -144,121 +287,6 @@
   border: 1px dashed var(--line-strong);
   border-radius: 12px;
   font-size: 0.85rem;
-}
-
-.recordList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.recordCard {
-  display: flex;
-  gap: 14px;
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  padding: 14px 16px;
-  background: var(--surface);
-  align-items: flex-start;
-}
-
-.recordOrderControls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 28px;
-}
-
-.recordOrderControls button {
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  border-radius: 6px;
-  width: 24px;
-  height: 22px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  line-height: 1;
-}
-
-.recordOrderControls button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.recordOrderControls span {
-  font-size: 0.75rem;
-  color: var(--subtle);
-  font-weight: 700;
-}
-
-.recordBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.recordTop {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.recordLink {
-  font-weight: 700;
-  color: var(--brand);
-  text-decoration: none;
-}
-
-.recordLink:hover {
-  text-decoration: underline;
-}
-
-.roleBadge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  background: var(--surface-sunken);
-  color: var(--muted);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.recordMeta {
-  font-size: 0.8rem;
-  color: var(--subtle);
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.warningList {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
-.warningBadge {
-  font-size: 0.72rem;
-  background: var(--warning-soft);
-  color: var(--warning-ink);
-  border: 1px solid var(--warning-line);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.detachButton {
-  border: 1px solid var(--danger-line);
-  color: var(--danger);
-  background: var(--surface);
-  border-radius: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 0.78rem;
-  white-space: nowrap;
-  align-self: center;
 }
 
 .evidenceForm {
@@ -379,4 +407,84 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* --- upload dialog --- */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--backdrop);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+}
+
+.modal {
+  width: 100%;
+  max-width: 720px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modalHeader h2 {
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.closeButton {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 26px;
+  line-height: 1;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: var(--surface-sunken);
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 20px 16px 48px;
+  }
+
+  .topBarInner {
+    padding: 12px 16px;
+  }
+
+  .card {
+    padding: 20px 16px;
+  }
+
+  .detailsToggle {
+    padding: 16px;
+  }
+
+  .detailsBody {
+    padding: 0 16px 20px;
+  }
+
+  .evidenceItem {
+    grid-template-columns: 1fr;
+  }
 }

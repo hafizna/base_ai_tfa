@@ -190,8 +190,38 @@ export interface CanonicalEventWindow {
   timing_source: string;
   confidence: number;
   faulted_phases: string[];
-  reclose_events: Array<{ time: number; success: boolean | null }>;
+  reclose_events: Array<{
+    time: number;
+    success: boolean | null;
+    cb_open_verified?: boolean;
+    dead_time_ms?: number | null;
+    source?: string;
+  }>;
   warnings: string[];
+}
+
+/** Per-phase values keyed "A" | "B" | "C" (null where the window had no data). */
+export type PhaseValues = Partial<Record<"A" | "B" | "C", number | null>>;
+
+/** Measured magnitudes around a record's event (webapp/api/record_facts.py). */
+export interface ElectricalMeasurements {
+  current_unit?: string | null;
+  voltage_unit?: string | null;
+  prefault?: { current_rms: PhaseValues; voltage_rms: PhaseValues };
+  fault?: { current_peak: PhaseValues; current_rms_max: PhaseValues; voltage_rms_min: PhaseValues };
+  after_clearing?: { current_rms: PhaseValues; voltage_rms: PhaseValues };
+  after_reclose?: { current_rms: PhaseValues; voltage_rms: PhaseValues };
+}
+
+/** A status channel that asserted, with edges in ms on the record's time axis. */
+export interface ProtectionOperation {
+  name: string;
+  role: "trip" | "zone" | "teleprotection" | "breaker" | "reclose" | "protection";
+  zone: number | null;
+  phase: "A" | "B" | "C" | "3P" | null;
+  initially_on: boolean;
+  on_ms: number[];
+  off_ms: number[];
 }
 
 export interface CanonicalRecordAnalysis {
@@ -200,8 +230,9 @@ export interface CanonicalRecordAnalysis {
   data_quality: Record<string, unknown>;
   event_window: CanonicalEventWindow | null;
   fault_episodes: Array<Record<string, unknown>>;
-  protection_operations: Array<Record<string, unknown>>;
-  electrical_measurements: Record<string, unknown>;
+  // Empty in snapshots taken before these facts existed.
+  protection_operations: ProtectionOperation[];
+  electrical_measurements: ElectricalMeasurements;
   observed_facts: Record<string, unknown>;
   protection_interpretation: Record<string, unknown>;
   cause_hypotheses: Array<Record<string, unknown>>;

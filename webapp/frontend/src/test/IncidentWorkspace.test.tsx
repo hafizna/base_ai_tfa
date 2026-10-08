@@ -1,11 +1,25 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import IncidentWorkspace from "../pages/IncidentWorkspace";
 import * as client from "../api/client";
-import { loadReconstructionFixture } from "./fixtures/loadReconstructionFixture";
+import bringinRaw from "./fixtures/incident_bringin.json";
 
-function renderWorkspace(incidentId = "inc-1") {
+type Fixture = { incident: client.IncidentOut; reconstruction: client.ReconstructionOut };
+const bringin = bringinRaw as unknown as Fixture;
+
+function health(enabled: boolean): client.HealthResponse {
+  return {
+    status: "ok",
+    version: "2.0.0",
+    analysis_storage: "filesystem",
+    analysis_ttl_hours: 24,
+    warmup: {},
+    feature_flags: { multi_comtrade_enabled: enabled },
+  };
+}
+
+function renderWorkspace(incidentId: string) {
   return render(
     <MemoryRouter initialEntries={[`/incidents/${incidentId}`]}>
       <Routes>
@@ -15,73 +29,96 @@ function renderWorkspace(incidentId = "inc-1") {
   );
 }
 
+function mockApi({
+  incident = bringin.incident,
+  reconstruction = bringin.reconstruction as client.ReconstructionOut | null,
+  enabled = true,
+} = {}) {
+  vi.spyOn(client, "fetchHealth").mockResolvedValue(health(enabled));
+  vi.spyOn(client, "fetchIncident").mockResolvedValue(incident);
+  vi.spyOn(client, "listIncidentEvidence").mockResolvedValue([]);
+  vi.spyOn(client, "listReconstructions").mockResolvedValue(reconstruction ? [reconstruction] : []);
+  if (reconstruction) vi.spyOn(client, "fetchReconstruction").mockResolvedValue(reconstruction);
+  else vi.spyOn(client, "fetchReconstruction").mockRejectedValue({ response: { status: 404 } });
+  return vi.spyOn(client, "reconstructIncident").mockResolvedValue(bringin.reconstruction);
+}
+
 describe("IncidentWorkspace", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
-  it("shows 'has not been reconstructed yet' when the incident has no reconstruction", async () => {
-    const { incident } = loadReconstructionFixture();
-    vi.spyOn(client, "fetchIncident").mockResolvedValue(incident);
-    vi.spyOn(client, "fetchHealth").mockResolvedValue({
-      status: "ok",
-      version: "2.0.0",
-      analysis_storage: "filesystem",
-      analysis_ttl_hours: 24,
-      warmup: {},
-      feature_flags: { multi_comtrade_enabled: true },
-    });
-    vi.spyOn(client, "fetchReconstruction").mockRejectedValue({ response: { status: 404 } });
-    vi.spyOn(client, "listReconstructions").mockResolvedValue([]);
+  it("tells the story of the latest reconstruction without rebuilding it", async () => {
+    const reconstruct = mockApi();
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Gangguan berulang setelah reclose" })).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Urutan kejadian" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Indikasi kontak fisik (pohon / benda asing)" })).toBeInTheDocument();
+    expect(screen.getByText("Trip 3-pole +45 ms · Z1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rekaman (3)" })).toBeInTheDocument();
+    expect(reconstruct).not.toHaveBeenCalled();
+  });
+
+  it("reconstructs automatically when the incident has records but no reconstruction yet", async () => {
+    const reconstruct = mockApi({ reconstruction: null });
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    await waitFor(() => expect(reconstruct).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Gangguan berulang setelah reclose" })).toBeInTheDocument());
+  });
+
+  it("reconstructs again when records were attached after the last reconstruction", async () => {
+    const extra = { ...bringin.incident.records[0], incident_record_id: "ir-new", analysis_id: "an-new" };
+    const reconstruct = mockApi({ incident: { ...bringin.incident, records: [...bringin.incident.records, extra] } });
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    await waitFor(() => expect(reconstruct).toHaveBeenCalledTimes(1));
+  });
+
+  it("asks for files when the incident has no records", async () => {
+    const reconstruct = mockApi({ incident: { ...bringin.incident, records: [] }, reconstruction: null });
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Belum ada rekaman" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Pilih file" }));
+    expect(screen.getByRole("dialog", { name: "Tambah rekaman" })).toBeInTheDocument();
+    expect(reconstruct).not.toHaveBeenCalled();
+  });
+
+  it("keeps every technical panel under Detail teknis", async () => {
+    mockApi();
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    const toggle = await screen.findByRole("button", { name: /^Detail teknis/ });
+    expect(screen.queryByText("Relationship inspector")).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.getByText("Attached records")).toBeInTheDocument();
+    expect(screen.getByText("Relationship inspector")).toBeInTheDocument();
+    expect(screen.getByText("Physical-cause evidence")).toBeInTheDocument();
+    expect(screen.getByText("Record collection summary")).toBeInTheDocument();
+  });
+
+  it("hides the story and uploads when the multi-COMTRADE feature is disabled", async () => {
+    vi.spyOn(client, "fetchHealth").mockResolvedValue(health(false));
+    vi.spyOn(client, "fetchIncident").mockResolvedValue(bringin.incident);
     vi.spyOn(client, "listIncidentEvidence").mockResolvedValue([]);
-
-    renderWorkspace(incident.incident_id);
-
-    await waitFor(() => expect(screen.getByText(/has not been reconstructed yet/)).toBeInTheDocument());
-  });
-
-  it("renders the reconstruction summary once a reconstruction is available", async () => {
-    const { incident, reconstruction } = loadReconstructionFixture();
-    vi.spyOn(client, "fetchIncident").mockResolvedValue(incident);
-    vi.spyOn(client, "fetchHealth").mockResolvedValue({
-      status: "ok",
-      version: "2.0.0",
-      analysis_storage: "filesystem",
-      analysis_ttl_hours: 24,
-      warmup: {},
-      feature_flags: { multi_comtrade_enabled: true },
-    });
-    vi.spyOn(client, "fetchReconstruction").mockResolvedValue(reconstruction);
-    vi.spyOn(client, "listReconstructions").mockResolvedValue([reconstruction]);
-    vi.spyOn(client, "listIncidentEvidence").mockResolvedValue([]);
-
-    renderWorkspace(incident.incident_id);
-
-    await waitFor(() => expect(screen.getByText("ORDER ONLY")).toBeInTheDocument());
-  });
-
-  it("hides Stage 2 sections entirely when the feature flag is disabled", async () => {
-    const { incident } = loadReconstructionFixture();
-    vi.spyOn(client, "fetchIncident").mockResolvedValue(incident);
-    vi.spyOn(client, "fetchHealth").mockResolvedValue({
-      status: "ok",
-      version: "2.0.0",
-      analysis_storage: "filesystem",
-      analysis_ttl_hours: 24,
-      warmup: {},
-      feature_flags: { multi_comtrade_enabled: false },
-    });
     vi.spyOn(client, "fetchReconstruction").mockRejectedValue({ response: { status: 403 } });
-    vi.spyOn(client, "listIncidentEvidence").mockResolvedValue([]);
+    vi.spyOn(client, "listReconstructions").mockResolvedValue([]);
 
-    renderWorkspace(incident.incident_id);
+    renderWorkspace(bringin.incident.incident_id);
 
-    // The feature flag arrives asynchronously (from GET /api/health), so the
-    // UI settles to its final state — Stage 2 sections must end up hidden
-    // regardless of the brief optimistic-default window before the flag
-    // check resolves.
-    await waitFor(() => expect(screen.getByText("Attached records")).toBeInTheDocument());
-    await waitFor(() => expect(screen.queryByText("Reconstruction")).not.toBeInTheDocument());
-    expect(screen.queryByText("Batch upload")).not.toBeInTheDocument();
+    // The flag arrives asynchronously (GET /api/health), so wait for the final state.
+    await waitFor(() => expect(screen.getByText(/Rekonstruksi multi-COMTRADE nonaktif/)).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Tambah rekaman" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Detail teknis/ }));
+    expect(screen.getByText("Attached records")).toBeInTheDocument();
+    expect(screen.queryByText("Relationship inspector")).not.toBeInTheDocument();
   });
 });

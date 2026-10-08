@@ -50,6 +50,59 @@
   cursor: not-allowed;
 }
 
+.secondaryButton {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.secondaryButton:hover {
+  background: var(--surface-muted);
+}
+
+.dropzone {
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 32px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dropzoneActive {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.dropTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dropHint {
+  max-width: 560px;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
 .filters {
   display: flex;
   gap: 20px;
