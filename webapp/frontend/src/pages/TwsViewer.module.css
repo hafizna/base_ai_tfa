@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
-  background: #eef1f5;
-  color: #111827;
+  background: var(--bg);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
 }
@@ -12,18 +12,18 @@
   align-items: center;
   gap: 14px;
   padding: 0 14px;
-  background: #ffffff;
-  border-bottom: 1px solid #c7ccd4;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-strong);
   font-size: 0.9rem;
 }
 
 .titleBar strong {
-  color: #111827;
+  color: var(--ink);
   font-weight: 800;
 }
 
 .titleBar span {
-  color: #475569;
+  color: var(--muted);
 }
 
 .viewer {
@@ -34,8 +34,8 @@
 }
 
 .lineSection {
-  background: #ffffff;
-  border-bottom: 1px solid #cbd5e1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-strong);
   padding: 8px 14px 14px;
 }
 
@@ -53,10 +53,11 @@
 }
 
 .lineMeta mark {
-  background: #19d8d3;
-  color: #083344;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
   font-weight: 800;
   padding: 1px 6px;
+  border-radius: var(--radius-sm);
 }
 
 .lineTrack {
@@ -72,7 +73,7 @@
   right: 24%;
   top: 34px;
   height: 2px;
-  background: #a66b77;
+  background: var(--subtle);
 }
 
 .endpoint {
@@ -88,9 +89,10 @@
   place-items: center;
   width: 24px;
   height: 18px;
-  background: #f3bfd2;
-  border: 1px solid #d78aa9;
-  color: #581c2d;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+  border-radius: 4px;
+  color: var(--brand-ink);
   font-weight: 800;
   line-height: 1;
 }
@@ -100,7 +102,7 @@
   margin-top: 4px;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .faultMarker {
@@ -115,22 +117,22 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  color: #111827;
+  color: var(--ink);
   font-size: 1.32rem;
   line-height: 1;
   text-shadow:
-    0 0 0 #facc15,
-    0 1px 0 #facc15,
-    1px 0 0 #facc15,
-    -1px 0 0 #facc15,
-    0 -1px 0 #facc15;
+    0 0 0 var(--fault),
+    0 1px 0 var(--fault),
+    1px 0 0 var(--fault),
+    -1px 0 0 var(--fault),
+    0 -1px 0 var(--fault);
 }
 
 .resultSummary {
   margin: 10px 12px 12px;
   padding: 16px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
 }
 
@@ -145,7 +147,7 @@
 .kicker {
   display: block;
   margin-bottom: 3px;
-  color: #0f766e;
+  color: var(--brand);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -154,14 +156,14 @@
 
 .resultHeader h2 {
   font-size: 1.05rem;
-  color: #111827;
+  color: var(--ink);
 }
 
 .lineLengthPill {
   flex: 0 0 auto;
   padding: 5px 10px;
-  background: #ccfbf1;
-  color: #134e4a;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 800;
@@ -179,9 +181,9 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-muted);
 }
 
 .endpointRole {
@@ -189,9 +191,10 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  background: #f3bfd2;
-  border: 1px solid #d78aa9;
-  color: #581c2d;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+  border-radius: 6px;
+  color: var(--brand-ink);
   font-weight: 900;
 }
 
@@ -201,17 +204,17 @@
 }
 
 .resultCard strong {
-  color: #0f172a;
+  color: var(--ink);
   font-size: 0.92rem;
 }
 
 .resultCard span {
-  color: #64748b;
+  color: var(--subtle);
   font-size: 0.78rem;
 }
 
 .distanceValue {
-  color: #0f766e;
+  color: var(--ink);
   font-size: 1.2rem;
   font-weight: 900;
   text-align: right;
@@ -225,23 +228,23 @@
 
 .resultNote {
   margin-top: 12px;
-  color: #475569;
+  color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.55;
 }
 
 .waveformDetails {
   margin: 0 12px 12px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .waveformDetails summary {
   padding: 10px 12px;
-  color: #334155;
-  background: #f8fafc;
+  color: var(--ink-2);
+  background: var(--surface-muted);
   font-size: 0.86rem;
   font-weight: 800;
   cursor: pointer;
@@ -249,8 +252,8 @@
 
 .waveformHint {
   padding: 10px 12px;
-  color: #64748b;
-  border-top: 1px solid #e2e8f0;
+  color: var(--subtle);
+  border-top: 1px solid var(--line-soft);
   font-size: 0.8rem;
 }
 
@@ -261,20 +264,15 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px;
   padding: 0 0 8px;
-  background: #626b77;
+  background: var(--line);
 }
 
 .pane {
   min-width: 0;
-  background: #ffffff;
-  border: 1px solid #5f6b78;
+  background: var(--surface);
+  border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-}
-
-.pane:nth-child(2) {
-  border-color: #f1a500;
-  box-shadow: inset 0 0 0 2px #f1a500;
 }
 
 .faultBanner {
@@ -283,15 +281,15 @@
   align-items: center;
   gap: 12px;
   padding: 5px 8px;
-  background: #16dad3;
-  border-bottom: 1px solid #0f766e;
+  background: var(--fault-soft);
+  border-bottom: 1px solid var(--fault-line);
+  color: var(--fault-ink);
   font-size: 0.9rem;
   font-weight: 800;
 }
 
 .faultBanner strong {
   font-size: 1.14rem;
-  text-decoration: underline;
 }
 
 .distanceFormula {
@@ -300,17 +298,17 @@
   align-items: center;
   gap: 34px;
   padding: 2px 8px;
-  border-bottom: 1px solid #cbd5e1;
+  border-bottom: 1px solid var(--line-strong);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .distanceFormula strong:first-of-type {
-  color: #1d4ed8;
+  color: var(--brand);
 }
 
 .distanceFormula strong:nth-of-type(2) {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .plot {
@@ -318,7 +316,7 @@
 }
 
 .tableShell {
-  border-top: 1px solid #9ca3af;
+  border-top: 1px solid var(--line-strong);
   overflow-x: auto;
 }
 
@@ -330,30 +328,30 @@
 
 .eventTable th,
 .eventTable td {
-  border-right: 1px solid #cbd5e1;
-  border-bottom: 1px solid #cbd5e1;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   text-align: left;
   padding: 4px 6px;
   white-space: nowrap;
 }
 
 .eventTable th {
-  background: #ffffff;
-  color: #334155;
+  background: var(--surface);
+  color: var(--ink-2);
   font-weight: 500;
 }
 
 .selectedRow td {
-  background: #1089dd;
-  color: #ffffff;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
 }
 
 .warning {
   margin: 6px 10px;
   padding: 8px 10px;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-line);
+  color: var(--warning-ink);
   font-size: 0.82rem;
 }
 
@@ -361,7 +359,7 @@
   flex: 1;
   display: grid;
   place-items: center;
-  color: #475569;
+  color: var(--muted);
   font-size: 0.95rem;
 }
 
@@ -387,8 +385,8 @@
 .selPanel {
   margin: 14px;
   padding: 12px 14px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
   font-size: 0.85rem;
 }
@@ -406,12 +404,12 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
 }
 
 .selHeader span {
-  color: #475569;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+  font-family: var(--font-mono);
   font-size: 0.78rem;
 }
 
@@ -423,7 +421,7 @@
 .selTable th,
 .selTable td {
   padding: 6px 10px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--line-soft);
   text-align: right;
 }
 
@@ -434,9 +432,9 @@
 }
 
 .selTable th {
-  background: #f1f5f9;
+  background: var(--surface-sunken);
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .selDelta {
@@ -446,33 +444,33 @@
 
 .selEmpty {
   margin: 0;
-  color: #64748b;
+  color: var(--subtle);
 }
 
 .docPanel {
   margin: 0 14px 18px;
   padding: 14px 16px 18px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
 }
 
 .docHeader {
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .docHeader h3 {
   margin: 0 0 4px;
   font-size: 1rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .docSubtitle {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--subtle);
 }
 
 .docGrid {
@@ -482,20 +480,20 @@
 }
 
 .docCard {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
   border-radius: 5px;
   padding: 10px 12px 12px;
   font-size: 0.83rem;
   line-height: 1.5;
-  color: #1f2937;
+  color: var(--ink-2);
 }
 
 .docCard h4 {
   margin: 0 0 6px;
   font-size: 0.86rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .docCard p {
@@ -512,15 +510,15 @@
 }
 
 .docCard code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.78rem;
-  background: #eef2f7;
+  background: var(--surface-sunken);
   padding: 1px 4px;
   border-radius: 3px;
 }
 
 .docFormula {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   background: #0f172a;
   color: #f1f5f9;
@@ -531,12 +529,12 @@
 }
 
 .docCardConfirm {
-  background: #fff7ed;
-  border-color: #fdba74;
+  background: var(--warning-soft);
+  border-color: var(--warning-line);
 }
 
 .docCardConfirm h4 {
-  color: #9a3412;
+  color: var(--warning-ink);
 }
 
 .docChecklist {
@@ -551,7 +549,7 @@
   align-items: baseline;
   gap: 6px;
   padding: 4px 0;
-  border-bottom: 1px dashed #fed7aa;
+  border-bottom: 1px dashed var(--warning-line);
 }
 
 .docChecklist li:last-child {
@@ -561,16 +559,17 @@
 .docFillBlank {
   flex: 1;
   min-width: 120px;
-  background: #ffffff;
-  border: 1px dashed #fb923c;
-  color: #9a3412;
+  background: var(--surface);
+  border: 1px dashed var(--warning);
+  color: var(--warning-ink);
   letter-spacing: 0.1em;
 }
 
 .docNote {
   font-size: 0.78rem;
-  color: #7c2d12;
-  background: #ffedd5;
+  color: var(--warning-ink);
+  background: var(--surface);
+  border: 1px solid var(--warning-line);
   padding: 6px 8px;
   border-radius: 4px;
   margin: 4px 0 0;
@@ -586,16 +585,16 @@
   font: inherit;
   font-size: 0.82rem;
   padding: 4px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--surface-muted);
+  color: var(--ink);
   text-decoration: none;
   cursor: pointer;
 }
 
 .titleButton:hover {
-  background: #e2e8f0;
+  background: var(--line-soft);
 }
 
 @media print {
@@ -605,7 +604,7 @@
     display: none !important;
   }
   .page {
-    background: #ffffff;
+    background: var(--surface);
   }
   .waveformDetails[open] summary {
     display: none;

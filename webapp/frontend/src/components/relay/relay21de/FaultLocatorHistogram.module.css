@@ -1,18 +1,18 @@
 .wrap {
   margin-top: 18px;
   padding-top: 18px;
-  border-top: 1px solid #dcfce7;
+  border-top: 1px solid var(--line-soft);
 }
 
 .title {
   font-weight: 700;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .caption {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--subtle);
   margin: 4px 0 12px;
   line-height: 1.5;
 }
@@ -29,7 +29,7 @@
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  color: #334155;
+  color: var(--ink-2);
   cursor: pointer;
 }
 
@@ -42,7 +42,7 @@
 
 .rfNote {
   font-size: 0.74rem;
-  color: #94a3b8;
+  color: var(--subtle);
   margin: 10px 0 0;
   font-style: italic;
 }

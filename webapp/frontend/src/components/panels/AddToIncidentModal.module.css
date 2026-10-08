@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9,7 +9,7 @@
 }
 
 .modal {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 24px;
   width: 440px;
@@ -35,8 +35,8 @@
   flex: 1;
   padding: 8px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 600;
@@ -48,9 +48,9 @@
 }
 
 .activeTab {
-  border-color: #2563eb !important;
-  color: #2563eb;
-  background: #eff6ff !important;
+  border-color: var(--brand) !important;
+  color: var(--brand);
+  background: var(--brand-soft) !important;
 }
 
 .field {
@@ -59,7 +59,7 @@
   gap: 6px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .field input,
@@ -67,20 +67,20 @@
 .field textarea {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   font-weight: 400;
   font-family: inherit;
 }
 
 .hint {
   font-size: 0.82rem;
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .error {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger-ink);
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 0.82rem;
@@ -96,8 +96,8 @@
 .actions a {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   cursor: pointer;
   text-decoration: none;
   color: inherit;
@@ -105,15 +105,15 @@
 }
 
 .primaryButton {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
-  color: white !important;
+  background: var(--brand) !important;
+  border-color: var(--brand) !important;
+  color: var(--on-accent) !important;
 }
 
 .warnButton {
-  background: #d97706 !important;
-  border-color: #d97706 !important;
-  color: white !important;
+  background: var(--warning) !important;
+  border-color: var(--warning) !important;
+  color: var(--on-accent) !important;
 }
 
 .successBlock p {

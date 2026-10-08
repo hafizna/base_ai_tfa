@@ -1,9 +1,9 @@
 .empty {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.85rem;
   padding: 16px;
   text-align: center;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--line-strong);
   border-radius: 10px;
 }
 
@@ -14,13 +14,13 @@
 }
 
 .card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: white;
+  background: var(--surface);
 }
 
 .cardHeader {
@@ -38,8 +38,8 @@
 .relationBadge {
   font-size: 0.68rem;
   font-weight: 700;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--brand-soft);
+  color: var(--brand);
   padding: 3px 8px;
   border-radius: 999px;
   text-transform: uppercase;
@@ -47,7 +47,7 @@
 
 .confidenceBadge {
   font-size: 0.7rem;
-  color: #6b7280;
+  color: var(--subtle);
   margin-left: auto;
 }
 
@@ -67,25 +67,25 @@
   font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .metaGrid dd {
   margin: 0;
   font-size: 0.85rem;
-  color: #111827;
+  color: var(--ink);
   font-weight: 600;
 }
 
 .section {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--line-soft);
   padding-top: 10px;
 }
 
 .sectionLabel {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--subtle);
   text-transform: uppercase;
 }
 
@@ -99,26 +99,26 @@
   margin-top: 10px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #1d4ed8;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
   border-radius: 6px;
   padding: 5px 10px;
   cursor: pointer;
 }
 
 .waveformToggle:hover {
-  background: #dbeafe;
+  background: var(--brand-soft);
 }
 
 .waveformPanel {
   margin-top: 10px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--line-soft);
   padding-top: 10px;
 }
 
 .factBlock {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--line-soft);
   padding-top: 10px;
   display: flex;
   flex-direction: column;
@@ -128,26 +128,26 @@
 .factLabel {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--subtle);
   text-transform: uppercase;
 }
 
 .factLabelHypothesis {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #a855f7;
+  color: var(--ai);
   text-transform: uppercase;
 }
 
 .factBlock p {
   margin: 0;
   font-size: 0.82rem;
-  color: #374151;
+  color: var(--ink-2);
   word-break: break-word;
 }
 
 .mutedNote {
-  color: #9ca3af !important;
+  color: var(--subtle) !important;
   font-style: italic;
 }
 
@@ -164,12 +164,12 @@
 .scopeTag {
   margin-left: 8px;
   font-size: 0.62rem;
-  color: #a855f7;
-  background: #faf5ff;
+  color: var(--ai);
+  background: var(--ai-soft);
   padding: 1px 6px;
   border-radius: 999px;
 }
 
 .missingList {
-  color: #92400e;
+  color: var(--warning-ink);
 }

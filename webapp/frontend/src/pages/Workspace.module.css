@@ -1,13 +1,13 @@
 .page {
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
 }
 
 .header {
-  background: #fff;
-  border-bottom: 1.5px solid #e2e8f0;
+  background: var(--surface);
+  border-bottom: 1.5px solid var(--line-soft);
   padding: 12px 24px;
   display: flex;
   align-items: center;
@@ -25,7 +25,7 @@
 .homeBtn {
   background: none;
   border: none;
-  color: #3b82f6;
+  color: var(--brand);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0;
@@ -38,8 +38,8 @@
 
 .relayBadge {
   display: inline-block;
-  background: #eff6ff;
-  color: #3b82f6;
+  background: var(--brand-soft);
+  color: var(--brand);
   font-size: 0.78rem;
   font-weight: 600;
   padding: 3px 10px;
@@ -50,13 +50,13 @@
 .stationName {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--ink-2);
   margin-right: 8px;
 }
 
 .deviceId {
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--subtle);
 }
 
 .headerRight {
@@ -67,16 +67,16 @@
 
 .meta {
   font-size: 0.78rem;
-  color: #64748b;
-  background: #f1f5f9;
+  color: var(--subtle);
+  background: var(--surface-sunken);
   padding: 3px 10px;
   border-radius: 99px;
 }
 
 .printBtn {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #0f172a;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
   border-radius: 999px;
   padding: 7px 14px;
   font-size: 0.8rem;
@@ -86,14 +86,14 @@
 }
 
 .printBtn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: var(--surface-muted);
+  border-color: var(--line-strong);
 }
 
 .downloadPdfBtn {
-  border: 1px solid #2563eb;
-  background: #2563eb;
-  color: #fff;
+  border: 1px solid var(--brand);
+  background: var(--brand);
+  color: var(--on-accent);
   border-radius: 999px;
   padding: 7px 16px;
   font-size: 0.8rem;
@@ -103,13 +103,13 @@
 }
 
 .downloadPdfBtn:hover:not(:disabled) {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: var(--brand-hover);
+  border-color: var(--brand);
 }
 
 .downloadPdfBtn:disabled {
-  background: #93c5fd;
-  border-color: #93c5fd;
+  background: var(--brand-line);
+  border-color: var(--brand-line);
   cursor: progress;
   opacity: 0.8;
 }
@@ -146,7 +146,7 @@
 .loadingState {
   padding: 48px 0;
   text-align: center;
-  color: #64748b;
+  color: var(--subtle);
   font-size: 0.95rem;
 }
 
@@ -161,16 +161,16 @@
 
 .pendingNote {
   font-size: 0.85rem;
-  color: #64748b;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  color: var(--subtle);
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 12px 16px;
 }
 
 .placeholderCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
   border-radius: 18px;
   padding: 24px;
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
@@ -179,12 +179,12 @@
 .placeholderTitle {
   font-size: 1rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink);
   margin-bottom: 12px;
 }
 
 .placeholderText {
-  color: #64748b;
+  color: var(--subtle);
   font-size: 0.92rem;
   line-height: 1.6;
   margin: 12px 0 0;
@@ -197,19 +197,19 @@
 }
 
 .summaryItem {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
   border-radius: 14px;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: #1e293b;
+  color: var(--ink-2);
 }
 
 .summaryLabel {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -231,7 +231,7 @@
 
 @media print {
   .page {
-    background: #fff;
+    background: var(--surface);
   }
 
   .header {
@@ -255,26 +255,26 @@
     gap: 16px;
     padding: 0 0 12px;
     margin-bottom: 14px;
-    border-bottom: 1px solid #cbd5e1;
+    border-bottom: 1px solid var(--line-strong);
     break-inside: avoid;
   }
 
   .printReportHeader h1 {
     margin: 3px 0 4px;
     font-size: 20px;
-    color: #0f172a;
+    color: var(--ink);
   }
 
   .printReportHeader p {
     margin: 0;
-    color: #475569;
+    color: var(--muted);
     font-size: 11px;
   }
 
   .printKicker {
     font-size: 9px;
     font-weight: 800;
-    color: #2563eb;
+    color: var(--brand);
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
@@ -293,14 +293,14 @@
   .printReportHeader dt {
     font-size: 8px;
     font-weight: 800;
-    color: #64748b;
+    color: var(--subtle);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
   .printReportHeader dd {
     margin: 1px 0 0;
-    color: #0f172a;
+    color: var(--ink);
     font-size: 10px;
     overflow-wrap: anywhere;
   }

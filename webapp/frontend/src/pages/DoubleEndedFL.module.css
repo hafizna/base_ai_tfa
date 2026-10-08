@@ -29,17 +29,17 @@
 
 .subtitle {
   font-size: 0.9rem;
-  color: #64748b;
+  color: var(--subtle);
   margin: 0 0 24px;
   line-height: 1.5;
 }
 
 .step {
-  border: 1px solid var(--line, #e2e8f0);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 18px 22px;
   margin-bottom: 18px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .stepHeader {
@@ -56,8 +56,8 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--brand-deep, #1f6feb);
-  color: #fff;
+  background: var(--brand-deep);
+  color: var(--on-accent);
   font-size: 0.8rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -72,9 +72,9 @@
   margin-left: auto;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #16a34a;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid var(--success-line);
   border-radius: 6px;
   padding: 2px 8px;
 }
@@ -92,7 +92,7 @@
 }
 
 .terminalCard {
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--line-strong);
   border-radius: 10px;
   padding: 14px;
 }
@@ -100,38 +100,38 @@
 .terminalLabel {
   font-weight: 700;
   font-size: 0.85rem;
-  color: #334155;
+  color: var(--ink-2);
   margin-bottom: 8px;
 }
 
 .dropzone {
-  border: 1.5px dashed #cbd5e1;
+  border: 1.5px dashed var(--line-strong);
   border-radius: 8px;
   padding: 18px 12px;
   text-align: center;
   cursor: pointer;
-  background: #f8fafc;
+  background: var(--surface-muted);
   transition: border-color 0.15s, background 0.15s;
 }
 
 .dropzone:hover {
-  border-color: var(--brand-deep, #1f6feb);
+  border-color: var(--brand-deep);
 }
 
 .dropzoneOver {
-  border-color: #f59e0b;
-  background: #fffbeb;
+  border-color: var(--brand);
+  background: var(--brand-soft);
 }
 
 .dropzoneFilled {
-  border-color: #16a34a;
-  background: #f0fdf4;
+  border-color: var(--success);
+  background: var(--success-soft);
 }
 
 .dropLabel {
   display: block;
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--subtle);
   margin-bottom: 4px;
 }
 
@@ -139,14 +139,14 @@
   display: block;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ink);
   word-break: break-all;
 }
 
 .dropHint {
   display: block;
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--subtle);
 }
 
 .fieldRow {
@@ -166,13 +166,13 @@
 
 .field label {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--subtle);
   font-weight: 600;
 }
 
 .field input,
 .field select {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 0.85rem;
@@ -184,7 +184,7 @@
   gap: 8px;
   margin-top: 10px;
   font-size: 0.8rem;
-  color: #334155;
+  color: var(--ink-2);
 }
 
 .syncPlot {
@@ -200,18 +200,18 @@
 }
 
 .shiftBadge {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--brand-ink);
 }
 
 .estimateHint {
   font-size: 0.76rem;
-  color: #94a3b8;
+  color: var(--subtle);
 }
 
 .loopCandidateLink {
@@ -220,14 +220,14 @@
   padding: 0;
   font-size: 0.76rem;
   font-weight: 700;
-  color: var(--brand-deep, #1f6feb);
+  color: var(--brand-deep);
   text-decoration: underline;
   cursor: pointer;
 }
 
 .button {
-  background: var(--brand-deep, #1f6feb);
-  color: #fff;
+  background: var(--brand-deep);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 9px 18px;
@@ -237,14 +237,14 @@
 }
 
 .button:disabled {
-  background: #cbd5e1;
+  background: var(--line-strong);
   cursor: not-allowed;
 }
 
 .buttonSecondary {
-  background: #fff;
-  color: var(--brand-deep, #1f6feb);
-  border: 1px solid var(--brand-deep, #1f6feb);
+  background: var(--surface);
+  color: var(--brand-deep);
+  border: 1px solid var(--brand-deep);
   border-radius: 8px;
   padding: 9px 18px;
   font-weight: 700;
@@ -253,9 +253,9 @@
 }
 
 .error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 0.83rem;
@@ -263,8 +263,8 @@
 }
 
 .resultCard {
-  border: 1px solid #bbf7d0;
-  background: #f0fdf4;
+  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: 12px;
   padding: 20px 24px;
 }
@@ -277,15 +277,15 @@
 }
 
 .resultStat {
-  background: #fff;
-  border: 1px solid #dcfce7;
+  background: var(--surface-muted);
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 10px 12px;
 }
 
 .resultStatLabel {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--subtle);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -294,7 +294,7 @@
 .resultStatValue {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #14532d;
+  color: var(--ink);
   margin-top: 2px;
 }
 
@@ -302,13 +302,13 @@
   margin: 12px 0 0;
   padding-left: 18px;
   font-size: 0.8rem;
-  color: #92400e;
+  color: var(--warning-ink);
 }
 
 .unreliableBanner {
-  background: #fef2f2;
-  border: 1.5px solid #fca5a5;
-  color: #991b1b;
+  background: var(--danger-soft);
+  border: 1.5px solid var(--danger-line);
+  color: var(--danger-ink);
   border-radius: 8px;
   padding: 12px 16px;
   font-size: 0.83rem;
