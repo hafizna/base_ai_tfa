@@ -388,9 +388,10 @@ class LineSelection:
         }
 
 
-def _cycle_rms_envelope(samples: Any, n: int) -> np.ndarray:
+def cycle_rms_envelope(samples: Any, n: int) -> np.ndarray:
     """One-cycle sliding RMS with each window's mean removed, so a CT/ADC DC
-    offset on an idle channel does not read as current."""
+    offset on an idle channel does not read as current. Element ``i`` covers
+    samples ``[i, i + n)``."""
     x = np.asarray(samples if samples is not None else [], dtype=float)
     if n < 2 or len(x) < n:
         return np.zeros(0)
@@ -412,7 +413,7 @@ def _samples_per_cycle(time: Any, frequency: Optional[float]) -> int:
 def _line_current_stats(group: _LineGroup, n: int) -> tuple[float, float, float, float]:
     prefault = peak = final = superimposed = 0.0
     for channel in group.currents.values():
-        env = _cycle_rms_envelope(_attr(channel, "samples"), n)
+        env = cycle_rms_envelope(_attr(channel, "samples"), n)
         if len(env) == 0:
             continue
         prefault = max(prefault, float(env[0]))
@@ -429,7 +430,7 @@ def _line_voltage_level(group: _LineGroup, n: int) -> float:
     line reads ~0 before its breaker closes."""
     level = 0.0
     for channel in group.voltages.values():
-        env = _cycle_rms_envelope(_attr(channel, "samples"), n)
+        env = cycle_rms_envelope(_attr(channel, "samples"), n)
         if len(env):
             level = max(level, float(np.max(env)))
     return level

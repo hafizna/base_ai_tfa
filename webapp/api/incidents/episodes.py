@@ -8,8 +8,10 @@ the pairwise ``RecordRelationship`` classifications already produced by
     two adjacent records into the SAME episode (they describe one electrical
     event/protection sequence, captured by one or more records).
   - ``OVERLAPPING_CAPTURE`` also merges (same event window, partial overlap).
-  - ``NEW_FAULT_EPISODE``, ``REPEATED_FAULT``, ``POSSIBLE_EVOLVING_FAULT``,
-    ``UNRELATED``, and ``UNCERTAIN`` start a new episode.
+  - ``REFAULT_AFTER_RECLOSE``, ``NEW_FAULT_EPISODE``, ``REPEATED_FAULT``,
+    ``POSSIBLE_EVOLVING_FAULT``, ``UNRELATED``, and ``UNCERTAIN`` start a new
+    episode. A re-fault after a reclose is a new fault inception (its own
+    cause evidence), even though it belongs to the same incident sequence.
 
 This means duplicate captures are never counted as separate episodes (spec
 section 8/10), while a possibly-evolving fault still gets its own episode
@@ -45,7 +47,12 @@ def _fault_type_from_phases(phases: list[str]) -> Optional[str]:
 def _reclose_outcome(record: IncidentRecord) -> Optional[str]:
     snapshot = record.canonical_snapshot or {}
     observed = snapshot.get("observed_facts") or {}
-    events = [e for e in (observed.get("reclose_events") or []) if isinstance(e, dict)]
+    # Same rule as relationships._reclose_events: an unverified waveform-only
+    # "current came back" reading is not evidence of a reclose.
+    events = [
+        e for e in (observed.get("reclose_events") or [])
+        if isinstance(e, dict) and e.get("cb_open_verified", True) is not False
+    ]
     if not events:
         return None
     success = events[-1].get("success")
@@ -90,13 +97,18 @@ def group_episodes(
 
     groups: list[list[IncidentRecord]] = []
     relationship_to_previous_group: list[Optional[str]] = []
+    # The relationship that opened each group, and the merge relationships
+    # inside it — read below for dead time / refault timing / outcome fixes.
+    boundary_relationships: list[Optional[RecordRelationship]] = []
+    internal_relationships: list[list[RecordRelationship]] = []
     current_group: list[IncidentRecord] = []
-    pending_relationship_label: Optional[str] = None
+    current_internal: list[RecordRelationship] = []
 
     for i, record in enumerate(ordered):
         if not current_group:
             current_group = [record]
             relationship_to_previous_group.append(None)
+            boundary_relationships.append(None)
             continue
 
         prev_record = ordered[i - 1]
@@ -105,13 +117,19 @@ def group_episodes(
 
         if rel_type in _MERGE_TYPES:
             current_group.append(record)
+            if rel is not None:
+                current_internal.append(rel)
         else:
             groups.append(current_group)
+            internal_relationships.append(current_internal)
             current_group = [record]
+            current_internal = []
             relationship_to_previous_group.append(rel_type)
+            boundary_relationships.append(rel)
 
     if current_group:
         groups.append(current_group)
+        internal_relationships.append(current_internal)
 
     episodes: list[FaultEpisode] = []
     for idx, group in enumerate(groups):
@@ -135,6 +153,22 @@ def group_episodes(
 
         reclose_outcomes = [o for o in (_reclose_outcome(r) for r in group) if o is not None]
         reclose_outcome = reclose_outcomes[-1] if reclose_outcomes else None
+        internal_metrics = [rel.metrics for rel in internal_relationships[idx] if isinstance(rel.metrics, dict)]
+        if any(m.get("reclose_outcome_correction") == "failed" for m in internal_metrics):
+            # The next record shows the fault already present as the breaker
+            # closed: whatever that reclose looked like on its own, it failed.
+            reclose_outcome = "failed"
+        dead_times = [m["dead_time_s"] for m in internal_metrics if m.get("dead_time_s") is not None]
+        sequence_facts: dict = {}
+        if dead_times:
+            sequence_facts["reclose_dead_time_s"] = dead_times[-1]
+        opened_by = boundary_relationships[idx]
+        if opened_by is not None and opened_by.relationship_type == "REFAULT_AFTER_RECLOSE":
+            sequence_facts["seconds_after_previous_reclose"] = (opened_by.metrics or {}).get("seconds_after_reclose")
+        closed_by = boundary_relationships[idx + 1] if idx + 1 < len(boundary_relationships) else None
+        if closed_by is not None and closed_by.relationship_type == "REFAULT_AFTER_RECLOSE":
+            # This episode's reclose succeeded but did not hold.
+            sequence_facts["refault_after_reclose_s"] = (closed_by.metrics or {}).get("seconds_after_reclose")
 
         local_cause_hypotheses = []
         for r in group:
@@ -172,9 +206,17 @@ def group_episodes(
         event_classes = {(r.canonical_snapshot or {}).get("protection_interpretation", {}).get("event_class") for r in group}
         missing_evidence = []
         if len(group) > 1:
+            sequential = any(rel.relationship_type == "RECLOSE_SEQUENCE" for rel in internal_relationships[idx])
             missing_evidence.append({
                 "type": "MULTIPLE_RECORDS_ONE_EPISODE",
-                "description": f"This episode is backed by {len(group)} records ({', '.join(member_ids)}); treat as one electrical event captured redundantly, not independent evidence.",
+                "description": (
+                    f"This episode spans {len(group)} records ({', '.join(member_ids)}): the fault and its "
+                    "trip/reclose sequence captured in separate files. Only the record holding the fault "
+                    "inception is cause evidence."
+                    if sequential else
+                    f"This episode is backed by {len(group)} records ({', '.join(member_ids)}); treat as one "
+                    "electrical event captured redundantly, not independent evidence."
+                ),
             })
         if not any(_record_time_iso(r) for r in group):
             missing_evidence.append({"type": "NO_ABSOLUTE_TIME", "description": "No member record has an absolute timestamp for this episode."})
@@ -225,6 +267,7 @@ def group_episodes(
                 "member_record_ids": member_ids,
                 "faulted_phases": all_phases,
                 "reclose_outcome": reclose_outcome,
+                **sequence_facts,
             },
             interpretation={
                 "event_classes": sorted(c for c in event_classes if c),

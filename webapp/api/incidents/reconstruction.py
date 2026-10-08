@@ -288,13 +288,20 @@ def _apply_reclose_outcome_cross_validation(
     roles = _evidence_roles(records, relationships, record_order)
     order_index = {rid: i for i, rid in enumerate(record_order)}
     ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, 10**9))
+    rel_by_pair = {(r.left_record_id, r.right_record_id): r for r in relationships}
 
     # Map each inception record -> the reclose outcome captured by the
     # nearest following aftermath record(s) attached to it (same walk
-    # _evidence_roles used to assign roles in the first place).
+    # _evidence_roles used to assign roles in the first place). A reclose
+    # that succeeded but was followed by a REFAULT_AFTER_RECLOSE did not hold:
+    # recorded as "refault_after_reclose", which is what the cause has to
+    # explain.
     reclose_outcome_by_inception: dict[str, str] = {}
     current_inception_id: Optional[str] = None
-    for record in ordered:
+    for i, record in enumerate(ordered):
+        rel = rel_by_pair.get((ordered[i - 1].incident_record_id, record.incident_record_id)) if i else None
+        if rel is not None and rel.relationship_type == "REFAULT_AFTER_RECLOSE" and current_inception_id is not None:
+            reclose_outcome_by_inception[current_inception_id] = "refault_after_reclose"
         role = roles.get(record.incident_record_id, "inception")
         if role == "inception":
             current_inception_id = record.incident_record_id
@@ -302,6 +309,8 @@ def _apply_reclose_outcome_cross_validation(
         if current_inception_id is None:
             continue
         outcome = _record_reclose_outcome(record)
+        if rel is not None and (rel.metrics or {}).get("reclose_outcome_correction") == "failed":
+            outcome = "failed"
         if outcome is not None:
             # Last aftermath record's outcome wins if there are several
             # (e.g. a failed then successful second attempt).
@@ -317,11 +326,14 @@ def _apply_reclose_outcome_cross_validation(
             continue
 
         reclose_outcome = reclose_outcome_by_inception.get(entry["incident_record_id"])
-        if reclose_outcome not in ("successful", "failed"):
+        if reclose_outcome not in ("successful", "failed", "refault_after_reclose"):
             continue  # no reclose evidence to cross-validate against
 
+        # A re-fault seconds after a successful reclose behaves like a
+        # persisting cause: the transient reading is the one it contradicts.
+        held = reclose_outcome == "successful"
         expected_success = fault_type == "transient"
-        matches = (reclose_outcome == "successful") == expected_success
+        matches = held == expected_success
 
         cap_name = "reclose_outcome_consistency" if matches else "reclose_outcome_conflict"
         delta = _RECLOSE_MATCH_BONUS if matches else -_RECLOSE_MISMATCH_PENALTY
@@ -329,11 +341,15 @@ def _apply_reclose_outcome_cross_validation(
         if new_confidence == confidence:
             continue
 
+        outcome_txt = (
+            "the line faulted again shortly after a successful reclose"
+            if reclose_outcome == "refault_after_reclose" else f"reclose outcome '{reclose_outcome}'"
+        )
         reason = (
-            f"Episode reclose outcome '{reclose_outcome}' is "
+            f"Episode {outcome_txt} — "
             f"{'consistent with' if matches else 'inconsistent with'} a "
-            f"{fault_type} cause ({cause}) — "
-            f"{'transient causes are expected to self-clear (reclose succeeds)' if fault_type == 'transient' else 'permanent causes are expected to persist through reclose (reclose fails)'}."
+            f"{fault_type} cause ({cause}): "
+            f"{'transient causes are expected to self-clear and stay cleared' if fault_type == 'transient' else 'permanent causes are expected to persist through reclose'}."
         )
         entry.setdefault("applied_caps", []).append({
             "name": cap_name, "before": confidence, "after": new_confidence, "reason": reason,
@@ -383,6 +399,24 @@ def _protection_sequence_interpretation(episodes: list[FaultEpisode], relationsh
     relation_types = [e.relationship_to_previous for e in episodes[1:]]
     last = episodes[-1]
 
+    refaults = [e for e in episodes[1:] if e.relationship_to_previous == "REFAULT_AFTER_RECLOSE"]
+    if refaults:
+        delays = [(e.observed_facts or {}).get("seconds_after_previous_reclose") for e in refaults]
+        delay_txt = ", ".join(f"{d:.1f} s" for d in delays if isinstance(d, (int, float))) or "seconds"
+        if last.reclose_outcome == "successful":
+            final_txt = "The last fault was reclosed successfully."
+        elif last.reclose_outcome == "failed":
+            final_txt = "The reclose after the last fault failed."
+        else:
+            final_txt = "No reclose of the last fault was captured in the attached records (the line may have locked out)."
+        return {
+            "event_class": "RECLOSE_THEN_REFAULT",
+            "summary": (
+                f"A fault was cleared and the line reclosed successfully, but it faulted again {delay_txt} after "
+                f"the reclose — the reclose did not hold. {final_txt}"
+            ),
+        }
+
     if any(t == "POSSIBLE_EVOLVING_FAULT" for t in relation_types):
         if last.reclose_outcome == "failed":
             return {
@@ -429,7 +463,55 @@ def _incident_hypotheses(episodes: list[FaultEpisode], relationships: list[Recor
             "evidence_against": [e for e in evidence_against if e],
         })
     hypotheses.extend(_pattern_based_cause_signals(episodes))
+    hypotheses.extend(_refault_after_reclose_signals(episodes))
     return hypotheses
+
+
+def _refault_after_reclose_signals(episodes: list[FaultEpisode]) -> list[dict[str, Any]]:
+    """A fault that comes back seconds after a SUCCESSFUL reclose: the line was
+    healthy when re-energized, then faulted again — so whatever caused the
+    first fault did not go away at the trip. That is the textbook signature
+    of something still near the conductor (vegetation, a foreign object, a
+    sagging conductor), and the reading a single-record classifier cannot
+    make: on the 21/08/2023 Bringin-Mojosongo #2 tree fault, each fault
+    record on its own read as lightning. Same phases strengthen it (a fixed
+    contact point reproduces the same fault); a second independent strike in
+    the same storm stays possible and is stated, not ruled out."""
+    signals: list[dict[str, Any]] = []
+    for i in range(1, len(episodes)):
+        prev, cur = episodes[i - 1], episodes[i]
+        if cur.relationship_to_previous != "REFAULT_AFTER_RECLOSE":
+            continue
+        seconds = (cur.observed_facts or {}).get("seconds_after_previous_reclose")
+        prev_phases, cur_phases = set(prev.faulted_phases or []), set(cur.faulted_phases or [])
+        same = bool(prev_phases) and prev_phases == cur_phases
+        when = f"{seconds:.1f} s" if isinstance(seconds, (int, float)) else "seconds"
+        evidence_against = [
+            "A second, independent lightning strike within seconds cannot be excluded from COMTRADE evidence "
+            "alone — lightning-detection data, or both faults locating to the same point on the line, would settle it.",
+        ]
+        if prev_phases and cur_phases and not same:
+            evidence_against.append(
+                f"The faulted phases differ ({'-'.join(sorted(prev_phases))} then {'-'.join(sorted(cur_phases))})."
+            )
+        signals.append({
+            "hypothesis": "REFAULT_AFTER_SUCCESSFUL_RECLOSE",
+            "mechanism_signal": "CONSISTENT_WITH_PERSISTENT_PHYSICAL_CONTACT",
+            "confidence": 0.6 if same else 0.45,
+            "episode_indices": [prev.episode_index, cur.episode_index],
+            "evidence_for": [
+                f"The line faulted again {when} after a successful reclose"
+                + (f", on the same phases ({'-'.join(sorted(cur_phases))})." if same else "."),
+            ],
+            "evidence_against": evidence_against,
+            "description": (
+                "The line was re-energized healthy and faulted again within seconds, so the cause of the first "
+                "fault did not go away when the breaker tripped. That is more consistent with something still near "
+                "the conductor (e.g. vegetation or a foreign object) than with a single lightning transient, which "
+                "leaves nothing behind once the arc is extinguished. Not a confirmed cause."
+            ),
+        })
+    return signals
 
 
 # --- Pattern-based mechanism signals -----------------------------------------

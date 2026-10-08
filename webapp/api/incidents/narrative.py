@@ -25,6 +25,7 @@ _RELATIONSHIP_PHRASES = {
     "OVERLAPPING_CAPTURE": "overlaps the previous record's capture window",
     "CONTINUATION": "continues directly from the previous record's fault/reclose sequence",
     "RECLOSE_SEQUENCE": "captures the breaker reclose sequence following the previous episode",
+    "REFAULT_AFTER_RECLOSE": "is a new fault shortly after the previous episode's successful reclose — the reclose did not hold",
     "NEW_FAULT_EPISODE": "is a separate fault episode",
     "REPEATED_FAULT": "is a repeated fault with a similar signature to the previous episode",
     "POSSIBLE_EVOLVING_FAULT": "may represent the previous fault evolving into a different signature",
@@ -40,17 +41,35 @@ def _phase_text(phases: list[str]) -> str:
 
 
 def _episode_sentence(episode: FaultEpisode, index: int) -> str:
+    facts = episode.observed_facts or {}
+    reclose_txt = ""
+    dead_time = facts.get("reclose_dead_time_s")
+    after_dead_time = f" after a {dead_time:.1f} s dead time" if isinstance(dead_time, (int, float)) else ""
+    if episode.reclose_outcome == "successful":
+        reclose_txt = f" Reclose was successful{after_dead_time}."
+    elif episode.reclose_outcome == "failed":
+        reclose_txt = f" Reclose failed{after_dead_time}."
+
+    if not episode.faulted_phases and (episode.interpretation or {}).get("event_classes") == ["RECLOSE_CAPTURE"]:
+        # Only a reclose record, with no fault record linked before it.
+        return (
+            f"Episode {index + 1} captures only a breaker reclose; the fault that tripped the line is not among "
+            f"the attached records.{reclose_txt}"
+        )
+
     phase_txt = _phase_text(episode.faulted_phases)
     fault_type_txt = _PHASE_LABELS.get(episode.fault_type or "", "")
     duration_txt = f", lasting {episode.duration_ms:.0f} ms" if episode.duration_ms else ""
-    reclose_txt = ""
-    if episode.reclose_outcome == "successful":
-        reclose_txt = " Reclose was successful."
-    elif episode.reclose_outcome == "failed":
-        reclose_txt = " Reclose failed."
 
     relation_txt = ""
-    if episode.relationship_to_previous:
+    if episode.relationship_to_previous == "REFAULT_AFTER_RECLOSE" and isinstance(
+        facts.get("seconds_after_previous_reclose"), (int, float)
+    ):
+        relation_txt = (
+            f" This episode is a new fault {facts['seconds_after_previous_reclose']:.1f} s after the previous "
+            "episode's successful reclose — the reclose did not hold."
+        )
+    elif episode.relationship_to_previous:
         phrase = _RELATIONSHIP_PHRASES.get(episode.relationship_to_previous, "has an unspecified relationship to the previous episode")
         relation_txt = f" This episode {phrase}."
 
@@ -68,6 +87,7 @@ _MECHANISM_LABELS = {
     "CONSISTENT_WITH_INTERMITTENT_CONTACT_OR_REPEATED_STRIKES": "an intermittent physical contact (or repeated independent strikes)",
     "CONSISTENT_WITH_SUSTAINED_PHYSICAL_OBSTRUCTION": "a sustained physical obstruction",
     "CONSISTENT_WITH_TRANSIENT_STRIKE_OR_SWITCHING": "a single transient strike or switching event",
+    "CONSISTENT_WITH_PERSISTENT_PHYSICAL_CONTACT": "something still near the conductor after the trip (e.g. vegetation or a foreign object)",
 }
 
 # Pattern hypotheses whose mechanism_signal points toward a persistent
@@ -78,6 +98,7 @@ _PHYSICAL_CAUSE_PATTERN_TYPES = {
     "ESCALATING_PHASE_INVOLVEMENT",
     "RECURRING_SAME_SIGNATURE",
     "FAILED_RECLOSE_INDICATES_PERMANENT_FAULT",
+    "REFAULT_AFTER_SUCCESSFUL_RECLOSE",
 }
 
 # Per-record cause labels (core/ml_predict vocabulary) that the above pattern
@@ -158,7 +179,15 @@ def build_narrative(
     if len(episodes) > 1:
         evolving = [h for h in incident_hypotheses if h.get("hypothesis") == "POSSIBLE_EVOLVING_FAULT"]
         repeated_only = [e for e in episodes if e.relationship_to_previous == "REPEATED_FAULT"]
-        if evolving:
+        refaulted = [e for e in episodes if e.relationship_to_previous == "REFAULT_AFTER_RECLOSE"]
+        if refaulted:
+            lines.append(
+                "The line was reclosed successfully but faulted again within seconds, so the cause of the first "
+                "fault did not go away at the trip. A fault that comes back this quickly is more consistent with "
+                "something still near the conductor than with a one-off transient — a pattern-based reading, not a "
+                "confirmed conclusion."
+            )
+        elif evolving:
             lines.append(
                 "The sequence is consistent with a repeated fault that may have evolved into a different or "
                 "more severe condition. This is a possibility raised by the pattern of evidence, not a confirmed conclusion."

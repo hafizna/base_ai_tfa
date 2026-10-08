@@ -38,6 +38,9 @@ export interface AIFaultResult {
   overall_confidence: number;
   /** True when the no-fault gate fired: record triggered but no fault present. */
   no_fault?: boolean;
+  /** "reclose_capture": record starts in breaker dead time and only holds the reclose of an earlier fault. */
+  record_kind?: string | null;
+  reclose_outcome?: "successful" | "failed" | null;
   evidence: Array<string | AIEvidenceItem>;
   tier1?: AITier1Info | null;
   raw_probabilities?: Record<string, number> | null;
@@ -102,6 +105,7 @@ export default function AIFaultResultView({
   apiTrace,
 }: Props) {
   const topCause = result.cause_ranking[0];
+  const recloseCapture = result.record_kind === "reclose_capture";
   const noFault = result.no_fault === true || result.fault_type === "none";
   const isPermanent = result.fault_type === "permanent";
   const confidence = clampPct(result.overall_confidence);
@@ -112,7 +116,28 @@ export default function AIFaultResultView({
 
   return (
     <div className={styles.aiResultLayout}>
-      {noFault ? (
+      {recloseCapture ? (
+        <section
+          className={styles.aiVerdictStrip}
+          data-reclose-capture="true"
+          style={{ borderLeft: "4px solid #2563eb" }}
+        >
+          <div className={styles.aiVerdictMain}>
+            <span className={styles.aiEyebrow}>Status</span>
+            <div className={styles.aiVerdictTitle} style={{ color: "#2563eb" }}>
+              Rekaman reclose
+              {result.reclose_outcome === "successful" ? " (berhasil)" : result.reclose_outcome === "failed" ? " (gagal)" : ""}
+            </div>
+            <div className={styles.aiVerdictMeta}>
+              <span>
+                Rekaman dimulai saat CB terbuka (dead time) — gangguannya ada di rekaman sebelumnya.
+                Klasifikasi penyebab dijalankan pada rekaman gangguan itu, bukan di sini; lampirkan
+                keduanya dalam satu insiden untuk melihat urutan trip → dead time → reclose.
+              </span>
+            </div>
+          </div>
+        </section>
+      ) : noFault ? (
         <section
           className={styles.aiVerdictStrip}
           data-no-fault="true"

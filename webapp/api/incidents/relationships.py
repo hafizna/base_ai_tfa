@@ -39,6 +39,21 @@ CONTINUATION_GAP_MS = 2000.0           # record starts within this long of previ
 RECLOSE_GAP_MS = 5000.0                # generous window after a reclose attempt
 REPEATED_FAULT_MAX_GAP_S = 3600.0      # up to 1 hour still considered "repeated" rather than unrelated
 SAME_PHASE_SET_BONUS = 0.15
+# A reclose captured in its own file (the DFR re-triggers when the breaker
+# closes, so the record starts in dead time) is linked to the fault record
+# before it when the dead time between them is plausible. Auto-reclose dead
+# times are well under a minute; longer gaps are still the same line being
+# re-energized, but read as a likely manual close.
+MAX_RECLOSE_DEAD_TIME_S = 3600.0
+AUTO_RECLOSE_DEAD_TIME_MAX_S = 60.0
+# A new fault this soon after a successful reclose means the reclose did not
+# hold — well inside the reclaim window of typical auto-reclose schemes.
+REFAULT_AFTER_RECLOSE_MAX_S = 60.0
+# A fault starting this close to the reclose instant was already there when
+# the breaker closed: a failed reclose (switch-on-to-fault), not a new fault.
+RECLOSE_ONTO_FAULT_MAX_S = 0.5
+
+_NO_INCEPTION_METHODS = {"dead_time_recording", "trigger_fallback", "no_fault_evidence", "insufficient_data"}
 
 
 def _load_line_payload(analysis_id: str) -> Optional[dict]:
@@ -83,14 +98,70 @@ def _clearing_s(record: IncidentRecord) -> Optional[float]:
 
 
 def _reclose_events(record: IncidentRecord) -> list[dict]:
+    """Reclose events backed by evidence the breaker really was open: status
+    channels, a record that starts in dead time, or a waveform reading with a
+    verified V-and-I-both-zero window. A waveform-only "current came back"
+    reading (``cb_open_verified`` False) is also what a self-clearing fault or
+    a remote-end clearing misread produces, so it is not used to link records
+    or to report a reclose outcome."""
     snapshot = record.canonical_snapshot or {}
     observed = snapshot.get("observed_facts") or {}
-    return [e for e in (observed.get("reclose_events") or []) if isinstance(e, dict)]
+    return [
+        e for e in (observed.get("reclose_events") or [])
+        if isinstance(e, dict) and e.get("cb_open_verified", True) is not False
+    ]
 
 
 def _reclose_outcome(record: IncidentRecord) -> Optional[bool]:
     events = _reclose_events(record)
     return events[-1].get("success") if events else None
+
+
+def _window(record: IncidentRecord) -> dict:
+    return (record.canonical_snapshot or {}).get("event_window") or {}
+
+
+def _is_reclose_capture(record: IncidentRecord) -> bool:
+    """Record starts during breaker dead time: it holds the reclose of a fault
+    recorded earlier, not a fault of its own."""
+    return _window(record).get("method") == "dead_time_recording"
+
+
+def _has_fault_inception(record: IncidentRecord) -> bool:
+    window = _window(record)
+    return (
+        window.get("inception_time_ms") is not None
+        and window.get("method") not in _NO_INCEPTION_METHODS
+        and not _is_no_fault(record)
+    )
+
+
+def _abs_at(record: IncidentRecord, t_s: Optional[float]) -> Optional[datetime]:
+    """Wall-clock time of an instant on the record's own time axis (seconds;
+    the axis starts at the first sample, the trigger sits at
+    ``trigger_offset_s`` on it)."""
+    if t_s is None:
+        return None
+    window = _window(record)
+    start = _parse_iso(record.record_start_iso)
+    if start is not None:
+        return start + timedelta(seconds=float(t_s) - float(window.get("record_start_ms") or 0.0) / 1000.0)
+    trigger = _parse_iso(record.trigger_time_iso)
+    if trigger is not None:
+        offset_s = record.trigger_offset_s
+        if offset_s is None:
+            offset_s = float(window.get("trigger_time_ms") or 0.0) / 1000.0
+        return trigger + timedelta(seconds=float(t_s) - float(offset_s))
+    return None
+
+
+def _seconds_between(earlier: Optional[datetime], later: Optional[datetime]) -> Optional[float]:
+    if earlier is None or later is None:
+        return None
+    try:
+        return (later - earlier).total_seconds()
+    except TypeError:  # one timestamp timezone-aware, the other naive
+        return None
 
 
 def _event_class(record: IncidentRecord) -> Optional[str]:
@@ -239,11 +310,15 @@ def classify_pair(
     alignment: AlignmentAssessment,
     new_id_fn,
     incident_id: str,
+    prior_fault: Optional[IncidentRecord] = None,
 ) -> RecordRelationship:
     """Classify the relationship between two attached incident records.
 
     ``left``/``right`` are assumed already in chronological (or best-known)
-    order per ``alignment.record_order``.
+    order per ``alignment.record_order``. ``prior_fault`` is the latest
+    record before ``right`` that contains a fault inception (``left`` itself,
+    or an earlier one when ``left`` only captured a reclose) — what a new
+    fault's phases are compared against.
     """
     evidence_for: list[dict] = []
     evidence_against: list[dict] = []
@@ -298,6 +373,84 @@ def classify_pair(
         if corr is not None:
             evidence_against.append({"type": "MODERATE_WAVEFORM_CORRELATION", "value": corr, "description": "Overlap present but correlation below the duplicate threshold."})
         return _build(new_id_fn, incident_id, left, right, "OVERLAPPING_CAPTURE", 0.55, evidence_for, evidence_against, assumptions, warnings, metrics)
+
+    # --- RECLOSE_SEQUENCE, reclose in its own record: the DFR re-triggered
+    # when the breaker closed, so the right record starts in dead time and
+    # holds only the reclose of the fault the left record tripped for. Checked
+    # before the no-fault rule — a line re-energized from the far end can
+    # show no current step at this end, yet it is part of the sequence.
+    if _is_reclose_capture(right) and _has_fault_inception(left):
+        reclose = (_reclose_events(right) or [{}])[-1]
+        left_window = _window(left)
+        trip_ms = left_window.get("clearing_time_ms")
+        if trip_ms is None:
+            trip_ms = left_window.get("inception_time_ms")
+        dead_time_s = _seconds_between(
+            _abs_at(left, trip_ms / 1000.0 if trip_ms is not None else None),
+            _abs_at(right, reclose.get("time")),
+        )
+        capture_evidence = [{
+            "type": "RIGHT_RECORD_STARTS_IN_DEAD_TIME",
+            "description": "The right record starts with the breaker open and captures its reclose; the fault itself is in the left record.",
+        }]
+        if reclose.get("success") is not None:
+            capture_evidence.append({"type": "RECLOSE_OUTCOME", "value": "successful" if reclose["success"] else "failed"})
+        if dead_time_s is None and gap_s is None:
+            evidence_for.extend(capture_evidence)
+            assumptions.append("No absolute time: linked by record order and by the right record starting with the breaker open.")
+            return _build(new_id_fn, incident_id, left, right, "RECLOSE_SEQUENCE", 0.5, evidence_for, evidence_against, assumptions, warnings, metrics)
+        if dead_time_s is not None and 0.0 < dead_time_s <= MAX_RECLOSE_DEAD_TIME_S:
+            metrics["dead_time_s"] = round(dead_time_s, 3)
+            evidence_for.extend(capture_evidence)
+            evidence_for.append({"type": "DEAD_TIME_S", "value": round(dead_time_s, 3)})
+            confidence = 0.85
+            if dead_time_s > AUTO_RECLOSE_DEAD_TIME_MAX_S:
+                assumptions.append(
+                    f"A {dead_time_s:.0f} s dead time is longer than a typical auto-reclose; this is more likely "
+                    "a manual re-energization of the line."
+                )
+                confidence = 0.6
+            return _build(new_id_fn, incident_id, left, right, "RECLOSE_SEQUENCE", confidence, evidence_for, evidence_against, assumptions, warnings, metrics)
+        # Implausible dead time (negative / too long): let the rules below decide.
+
+    # --- Fault after a successful reclose (left captured the reclose, either
+    # inside its own fault record or as a dead-time record).
+    left_reclose = _reclose_events(left)
+    if (
+        left_reclose
+        and left_reclose[-1].get("success") is True
+        and _has_fault_inception(right)
+        and not _is_reclose_capture(right)
+    ):
+        since_reclose_s = _seconds_between(
+            _abs_at(left, left_reclose[-1].get("time")),
+            _abs_at(right, (_window(right).get("inception_time_ms") or 0.0) / 1000.0),
+        )
+        if since_reclose_s is not None and 0.0 <= since_reclose_s <= RECLOSE_ONTO_FAULT_MAX_S:
+            # The fault was still there when the breaker closed: one fault,
+            # a failed reclose — not a second fault.
+            metrics["seconds_after_reclose"] = round(since_reclose_s, 3)
+            metrics["reclose_outcome_correction"] = "failed"
+            evidence_for.append({
+                "type": "FAULT_PRESENT_AT_RECLOSE", "value": round(since_reclose_s, 3),
+                "description": "Fault current appears as the breaker closes: the reclose closed onto the still-present fault.",
+            })
+            return _build(new_id_fn, incident_id, left, right, "RECLOSE_SEQUENCE", 0.75, evidence_for, evidence_against, assumptions, warnings, metrics)
+        if since_reclose_s is not None and RECLOSE_ONTO_FAULT_MAX_S < since_reclose_s <= REFAULT_AFTER_RECLOSE_MAX_S:
+            metrics["seconds_after_reclose"] = round(since_reclose_s, 3)
+            evidence_for.append({
+                "type": "NEW_FAULT_AFTER_SUCCESSFUL_RECLOSE", "value": round(since_reclose_s, 3),
+                "description": f"The line faulted again {since_reclose_s:.1f} s after a successful reclose — the reclose did not hold.",
+            })
+            reference_phases = left_phases or (_phases(prior_fault) if prior_fault is not None else set())
+            if reference_phases and right_phases:
+                if reference_phases == right_phases:
+                    evidence_for.append({"type": "SAME_FAULTED_PHASES_AS_RECLOSED_FAULT", "value": sorted(right_phases)})
+                elif reference_phases < right_phases:
+                    evidence_for.append({"type": "FAULT_PHASE_PROGRESSED", "from": sorted(reference_phases), "to": sorted(right_phases)})
+                else:
+                    evidence_against.append({"type": "DIFFERENT_FAULTED_PHASES", "previous": sorted(reference_phases), "current": sorted(right_phases)})
+            return _build(new_id_fn, incident_id, left, right, "REFAULT_AFTER_RECLOSE", 0.8, evidence_for, evidence_against, assumptions, warnings, metrics)
 
     if left_no_fault or right_no_fault:
         evidence_against.append({"type": "NO_FAULT_RECORD_IN_PAIR", "description": "One record has no fault signature (no-fault trigger); no meaningful electrical relationship to classify."})
@@ -416,7 +569,10 @@ def build_relationships(
     ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, r.sequence_index))
 
     relationships: list[RecordRelationship] = []
+    prior_fault: Optional[IncidentRecord] = None
     for i in range(len(ordered) - 1):
         left, right = ordered[i], ordered[i + 1]
-        relationships.append(classify_pair(left, right, alignment, new_id_fn, incident_id))
+        if _has_fault_inception(left):
+            prior_fault = left
+        relationships.append(classify_pair(left, right, alignment, new_id_fn, incident_id, prior_fault=prior_fault))
     return relationships

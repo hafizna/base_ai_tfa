@@ -10,7 +10,7 @@ import numpy as np
 import logging
 import re
 
-from .line_selection import scope_record
+from .line_selection import cycle_rms_envelope, scope_record
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +175,15 @@ def detect_fault(record) -> Optional[FaultEvent]:
     if _recording_starts_in_dead_time(record):
         logger.debug("Recording started in CB dead time — fault preceded this file")
         return _build_dead_time_event(record)
+    # Same situation on a DFR whose breaker status isn't wired (or never
+    # asserts): the line itself shows it — line-side voltage AND current ~0 at
+    # the start, then the line re-energizes. Without this, the energization
+    # inrush reads as a brand-new three-phase "fault" (seen on the GI
+    # Mojosongo Qualitrol record of the 21/08/2023 reclose).
+    energized_idx = _energization_after_dead_start(record)
+    if energized_idx is not None:
+        logger.debug("Recording starts with the line de-energized — treating as a reclose capture")
+        return _build_dead_time_event(record, energized_idx=energized_idx)
 
     # Status-channel candidate (trip/pickup based)
     fault = _detect_from_status_channels(record)
@@ -279,6 +288,18 @@ def _extract_phase_from_name(name_upper: str) -> Optional[str]:
     return None
 
 
+_CB_OPEN_KW = ['CB OPEN', 'POLE DEAD', 'ANY POLE', 'ALL POLE', '52B', 'CB1.52B']
+_CB_EXCL_KW = ['ALARM', 'TEST', 'BLOCK']
+
+
+def _cb_open_status_channels(record):
+    for ch in record.status_channels:
+        nu = _normalize_status_name(ch.name)
+        if any(e in nu for e in _CB_EXCL_KW) or not any(k in nu for k in _CB_OPEN_KW):
+            continue
+        yield ch
+
+
 def _recording_starts_in_dead_time(record) -> bool:
     """
     Returns True if the CB was already open when the recording started.
@@ -289,15 +310,7 @@ def _recording_starts_in_dead_time(record) -> bool:
     the very first sample and has no rising edge (only a falling edge later
     when the breaker recloses).
     """
-    CB_OPEN_KW = ['CB OPEN', 'POLE DEAD', 'ANY POLE', 'ALL POLE', '52B', 'CB1.52B']
-    EXCL_KW    = ['ALARM', 'TEST', 'BLOCK']
-
-    for ch in record.status_channels:
-        nu = _normalize_status_name(ch.name)
-        if any(e in nu for e in EXCL_KW):
-            continue
-        if not any(k in nu for k in CB_OPEN_KW):
-            continue
+    for ch in _cb_open_status_channels(record):
         if len(ch.samples) < 10:
             continue
         # High from start AND has at least one falling edge (CB eventually reclosed)
@@ -308,48 +321,166 @@ def _recording_starts_in_dead_time(record) -> bool:
     return False
 
 
-def _build_dead_time_event(record) -> Optional[FaultEvent]:
-    """
-    Build a minimal FaultEvent for a dead-time recording.
-    Duration is unknown (fault happened before this file).
-    Reclose time is taken from when CB-open signal drops.
-    """
-    CB_OPEN_KW = ['CB OPEN', 'POLE DEAD', 'ANY POLE', 'ALL POLE', '52B', 'CB1.52B']
-    EXCL_KW    = ['ALARM', 'TEST', 'BLOCK']
+def _samples_per_cycle(record) -> int:
+    if len(record.time) < 2 or record.time[1] <= record.time[0]:
+        return 0
+    freq = float(getattr(record, "frequency", None) or 50.0)
+    return max(4, int(round(1.0 / (float(record.time[1] - record.time[0]) * freq))))
 
-    reclose_time = None
-    for ch in record.status_channels:
-        nu = _normalize_status_name(ch.name)
-        if any(e in nu for e in EXCL_KW):
-            continue
-        if not any(k in nu for k in CB_OPEN_KW):
-            continue
-        diff = np.diff(ch.samples)
-        falls = np.where(diff < 0)[0]
-        if len(falls):
-            t = record.time[falls[0] + 1] if falls[0] + 1 < len(record.time) else record.time[-1]
-            if reclose_time is None or t < reclose_time:
-                reclose_time = t
 
-    # Also check AR success channel
-    AR_SUCCESS_KW = ['AR SUCC', 'SUCC_RCLS', 'RECLOSE SUCC', '.79.SUCC']
-    for ch in record.status_channels:
-        nu = _normalize_status_name(ch.name)
-        if any(k in nu for k in AR_SUCCESS_KW) and ch.samples.sum() > 0:
-            diff = np.diff(ch.samples)
-            rises = np.where(diff > 0)[0]
-            if len(rises):
-                t = record.time[rises[0] + 1]
-                if reclose_time is None or t < reclose_time:
-                    reclose_time = t
+def _line_phase_channels(record):
+    tag = _detect_active_line_tag_from_currents(record)
+    volts = [_pick_voltage_channel(record, name, tag) for name in ('VA', 'VB', 'VC')]
+    amps = [_pick_current_channel(record, name, tag) for name in ('IA', 'IB', 'IC')]
+    return volts, amps
+
+
+def _energization_after_dead_start(record) -> Optional[int]:
+    """Sample index at which a line that is de-energized at the start of the
+    record (line-side voltage AND current ~0) becomes energized, or None.
+
+    The breaker-status counterpart is ``_recording_starts_in_dead_time``;
+    this one needs no status at all. Deliberately strict so an ordinary fault
+    record can never match: every phase voltage must start below 10% of the
+    level the line later settles at (a record that starts in load, or in a
+    fault that still has voltage on a healthy phase, fails this), and the
+    current at the start must not exceed what flows once energized (a record
+    that starts inside a close-in three-phase fault — voltage ~0 but fault
+    current — fails this). Requires all three phase voltages and currents.
+    Returns the index of the first pole energizing (mid-window estimate,
+    within half a cycle), which is the reclose instant used for dead time.
+    """
+    n = _samples_per_cycle(record)
+    volts, amps = _line_phase_channels(record)
+    if n == 0 or any(ch is None for ch in volts + amps):
+        return None
+    v_env = [cycle_rms_envelope(ch.samples, n) for ch in volts]
+    i_env = [cycle_rms_envelope(ch.samples, n) for ch in amps]
+    if any(len(env) < 4 * n for env in v_env + i_env):
+        return None
+
+    v_all = np.vstack(v_env)
+    v_on = float(np.percentile(v_all.min(axis=0), 90))  # level once every phase is live
+    if v_on <= 0.0 or float(v_all[:, 0].max()) > 0.10 * v_on:
+        return None
+    first_live = np.where(v_all.max(axis=0) >= 0.5 * v_on)[0]
+    if len(first_live) == 0 or first_live[0] < n:
+        return None  # needs at least one dead cycle before the line comes alive
+    window_idx = int(first_live[0])
+
+    i_all = np.vstack(i_env)
+    settled = min(window_idx + 3 * n, i_all.shape[1] - 1)
+    i_after = float(np.median(i_all.max(axis=0)[settled:]))
+    i_start = float(i_all[:, 0].max())
+    if i_start > max(3.0 * i_after, 0.01 * float(i_all.max())):
+        return None
+
+    # The line must come alive HEALTHY: balanced positive-sequence voltage
+    # once settled. A voltage step into a fault (unbalanced; strong negative
+    # sequence) is a fault inception, not an energization — even when the
+    # pre-step voltage happens to be small next to it. Closing onto a fault
+    # therefore falls through to normal fault detection on records without
+    # breaker status (with status, _recording_starts_in_dead_time catches it
+    # and _reclose_outcome_after reports the failure).
+    if settled + n > len(record.time):
+        return None
+    kernel = np.exp(-2j * np.pi * np.arange(n) / n)
+    va, vb, vc = (complex(np.dot(np.asarray(ch.samples[settled:settled + n], dtype=float), kernel)) for ch in volts)
+    a = np.exp(2j * np.pi / 3)
+    v1 = abs(va + a * vb + a * a * vc)
+    v2 = abs(va + a * a * vb + a * vc)
+    if v1 <= 0.0 or v2 > 0.2 * v1:
+        return None
+    return min(window_idx + n // 2, len(record.time) - 1)
+
+
+def _reclose_outcome_after(record, reclose_idx: int, default: Optional[bool]) -> Optional[bool]:
+    """Did the reclose at ``reclose_idx`` hold for the rest of the record?
+
+    False when a breaker-open status asserts again, or — after a 3-cycle
+    settling window that lets energization inrush decay — the line voltage
+    collapses below 60% of its settled level, or the current surges above 3x
+    its settled level while the voltage also dips below 90% (a fault drags
+    the voltage down; the local breaker closing onto a line already charged
+    from the far end takes current from ~0 to load with no voltage dip).
+    ``default`` (True for a status-confirmed close, None for a waveform-only
+    one) when the record ends before that can be judged or no analog
+    evidence contradicts it.
+    """
+    n = _samples_per_cycle(record)
+    hold = max(n, 1)
+    for ch in _cb_open_status_channels(record):
+        samples = np.asarray(ch.samples, dtype=int)
+        rises = np.where(np.diff(samples) > 0)[0] + 1
+        # A breaker that really re-opened stays open for at least a cycle; a
+        # blip of a few ms right after the close is auxiliary-contact bounce
+        # (seen on a real successful reclose: CB OPEN 1->0->1->0 within 5 ms).
+        if any(np.all(samples[r:r + hold] == 1) for r in rises[rises > reclose_idx]):
+            return False
+
+    settle = reclose_idx + 3 * n
+    if n == 0 or settle >= len(record.time) - 2 * n:
+        return default
+    volts, amps = _line_phase_channels(record)
+    if any(ch is None for ch in volts):
+        return default
+    v_min = np.vstack([cycle_rms_envelope(ch.samples, n) for ch in volts]).min(axis=0)
+    v_settled = float(np.median(v_min[settle:settle + n]))
+    if v_settled <= 0.0:
+        return default
+    if np.any(v_min[settle:] < 0.6 * v_settled):
+        return False
+    if all(ch is not None for ch in amps):
+        i_max = np.vstack([cycle_rms_envelope(ch.samples, n) for ch in amps]).max(axis=0)
+        i_settled = float(np.median(i_max[settle:settle + n]))
+        surge = i_max[settle:] > 3.0 * i_settled
+        if i_settled > 0.0 and np.any(surge & (v_min[settle:len(i_max)] < 0.9 * v_settled)):
+            return False
+    return True if default is None else default
+
+
+def _build_dead_time_event(record, energized_idx: Optional[int] = None) -> Optional[FaultEvent]:
+    """
+    Build a minimal FaultEvent for a dead-time recording (a "reclose
+    capture"): the fault happened before this file, so its duration is
+    unknown. The reclose instant is where the CB-open signal drops (or an AR
+    success signal rises) — or, for a DFR without breaker status, where the
+    line voltage returns (``energized_idx``). Its outcome is judged from the
+    rest of the record rather than assumed successful.
+    """
+    reclose_idx = energized_idx
+    source = "waveform" if energized_idx is not None else "status"
+    if reclose_idx is None:
+        for ch in _cb_open_status_channels(record):
+            falls = np.where(np.diff(ch.samples) < 0)[0]
+            if len(falls) and (reclose_idx is None or falls[0] + 1 < reclose_idx):
+                reclose_idx = int(falls[0] + 1)
+
+        # Also check AR success channel
+        AR_SUCCESS_KW = ['AR SUCC', 'SUCC_RCLS', 'RECLOSE SUCC', '.79.SUCC']
+        for ch in record.status_channels:
+            nu = _normalize_status_name(ch.name)
+            if any(k in nu for k in AR_SUCCESS_KW) and ch.samples.sum() > 0:
+                rises = np.where(np.diff(ch.samples) > 0)[0]
+                if len(rises) and (reclose_idx is None or rises[0] + 1 < reclose_idx):
+                    reclose_idx = int(rises[0] + 1)
 
     # Use t=0 as nominal inception (fault was before recording)
     inception_time = record.time[0]
 
-    # Reclose successful if CB-open dropped (CB closed again)
     reclose_events = []
-    if reclose_time is not None:
-        reclose_events = [{'time': reclose_time, 'success': True}]
+    if reclose_idx is not None:
+        reclose_idx = min(reclose_idx, len(record.time) - 1)
+        reclose_events = [{
+            'time': record.time[reclose_idx],
+            'success': _reclose_outcome_after(record, reclose_idx, default=True if source == "status" else None),
+            # The whole pre-reclose part of this record IS the open-breaker
+            # dead time (that's how it was recognised), so the reclose is
+            # verified; the dead time itself started before the file.
+            'cb_open_verified': True,
+            'dead_time_ms': None,
+            'source': source,
+        }]
 
     return FaultEvent(
         inception_idx=0,
@@ -358,7 +489,7 @@ def _build_dead_time_event(record) -> Optional[FaultEvent]:
         clearing_time=None,
         duration_ms=0.0,        # genuinely unknown — fault not in this recording
         detection_method="dead_time_recording",
-        confidence=0.6,
+        confidence=0.6 if source == "status" else 0.55,
         faulted_phases=[],
         reclose_events=reclose_events,
     )
