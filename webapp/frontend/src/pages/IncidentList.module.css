@@ -18,7 +18,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent, #d97706);
+  color: var(--accent);
   margin-bottom: 8px;
 }
 
@@ -29,14 +29,14 @@
 }
 
 .subtitle {
-  color: #6b7280;
+  color: var(--subtle);
   max-width: 620px;
   margin: 0;
 }
 
 .primaryButton {
-  background: var(--accent, #d97706);
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 10px 18px;
@@ -61,21 +61,21 @@
   flex-direction: column;
   gap: 4px;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--subtle);
   font-weight: 600;
 }
 
 .filterField select {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   min-width: 180px;
 }
 
 .error {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger-ink);
   padding: 12px 16px;
   border-radius: 10px;
   margin-bottom: 16px;
@@ -84,8 +84,8 @@
 .empty {
   padding: 48px;
   text-align: center;
-  color: #9ca3af;
-  border: 1px dashed #d1d5db;
+  color: var(--subtle);
+  border: 1px dashed var(--line-strong);
   border-radius: 12px;
 }
 
@@ -97,10 +97,10 @@
 
 .card {
   text-align: left;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   padding: 16px;
-  background: white;
+  background: var(--surface);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -109,7 +109,7 @@
 }
 
 .card:hover {
-  border-color: var(--accent, #d97706);
+  border-color: var(--accent);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
@@ -130,39 +130,39 @@
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-sunken);
+  color: var(--muted);
   white-space: nowrap;
 }
 
 .status_OPEN {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .status_UNDER_REVIEW {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-soft);
+  color: var(--warning-ink);
 }
 
 .status_CONFIRMED {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .status_CLOSED {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--line-soft);
+  color: var(--ink-2);
 }
 
 .status_ARCHIVED {
-  background: #f3f4f6;
-  color: #9ca3af;
+  background: var(--surface-sunken);
+  color: var(--subtle);
 }
 
 .cardMeta {
   font-size: 0.82rem;
-  color: #6b7280;
+  color: var(--subtle);
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
@@ -170,13 +170,13 @@
 
 .cardTime {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -184,7 +184,7 @@
 }
 
 .modal {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 24px;
   width: 420px;
@@ -205,13 +205,13 @@
   gap: 6px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .modalField input {
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   font-weight: 400;
 }
 
@@ -224,7 +224,7 @@
 .modalActions button {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   cursor: pointer;
 }

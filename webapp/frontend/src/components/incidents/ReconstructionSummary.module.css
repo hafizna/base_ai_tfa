@@ -5,13 +5,13 @@
 }
 
 .tile {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 10px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: white;
+  background: var(--surface);
 }
 
 .tileLabel {
@@ -19,43 +19,43 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .tileValue {
   font-size: 1rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
 }
 
 .tone_good .tileValue,
 .tone_good.tile {
-  color: #15803d;
+  color: var(--success);
 }
 
 .tone_good.tile {
-  border-color: #86efac;
-  background: #f0fdf4;
+  border-color: var(--success-line);
+  background: var(--success-soft);
 }
 
 .tone_good .tileValue {
-  color: #15803d;
+  color: var(--success);
 }
 
 .tone_neutral.tile {
-  border-color: #93c5fd;
-  background: #eff6ff;
+  border-color: var(--brand-line);
+  background: var(--brand-soft);
 }
 
 .tone_neutral .tileValue {
-  color: #1d4ed8;
+  color: var(--brand);
 }
 
 .tone_warn.tile {
-  border-color: #fdba74;
-  background: #fff7ed;
+  border-color: var(--warning-line);
+  background: var(--warning-soft);
 }
 
 .tone_warn .tileValue {
-  color: #9a3412;
+  color: var(--warning-ink);
 }

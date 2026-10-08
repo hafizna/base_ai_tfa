@@ -14,8 +14,8 @@
 .scopeTag {
   font-size: 0.66rem;
   font-weight: 700;
-  color: #a855f7;
-  background: #faf5ff;
+  color: var(--ai);
+  background: var(--ai-soft);
   padding: 3px 8px;
   border-radius: 999px;
 }
@@ -28,39 +28,39 @@
 }
 
 .tone_good {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .tone_neutral {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .tone_warn {
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--warning-soft);
+  color: var(--warning-ink);
 }
 
 .rootCause {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--subtle);
   margin-left: auto;
 }
 
 .disclaimer {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--subtle);
   font-style: italic;
   margin: 0;
 }
 
 .empty {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.85rem;
   padding: 16px;
   text-align: center;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--line-strong);
   border-radius: 10px;
 }
 
@@ -78,15 +78,15 @@
   text-align: left;
   font-size: 0.68rem;
   text-transform: uppercase;
-  color: #9ca3af;
+  color: var(--subtle);
   padding: 6px 10px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--line-soft);
   white-space: nowrap;
 }
 
 .table td {
   padding: 8px 10px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--line-soft);
   vertical-align: top;
 }
 
@@ -106,43 +106,43 @@
 }
 
 .roleInception {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .roleAftermath {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-sunken);
+  color: var(--subtle);
 }
 
 .rowReview {
-  background: #fffbeb;
+  background: var(--warning-soft);
 }
 
 .reviewFlag {
   margin-left: 6px;
   font-size: 0.68rem;
   font-weight: 700;
-  color: #b45309;
+  color: var(--warning);
   cursor: help;
 }
 
 .capConsistency {
-  color: #15803d;
+  color: var(--success);
   cursor: help;
 }
 
 .capConflict {
-  color: #b91c1c;
+  color: var(--danger);
   font-weight: 600;
   cursor: help;
 }
 
 .rowSkipped {
-  background: #f9fafb;
+  background: var(--surface-muted);
 }
 
 .skipCell {
-  color: #9ca3af;
+  color: var(--subtle);
   font-style: italic;
 }

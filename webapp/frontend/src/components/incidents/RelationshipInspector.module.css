@@ -5,11 +5,11 @@
 }
 
 .empty {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.85rem;
   padding: 16px;
   text-align: center;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--line-strong);
   border-radius: 10px;
 }
 
@@ -21,19 +21,19 @@
 
 .filterButton,
 .filterActive {
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   border-radius: 999px;
   padding: 5px 12px;
   font-size: 0.78rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--subtle);
 }
 
 .filterActive {
-  border-color: #2563eb;
-  color: #2563eb;
-  background: #eff6ff;
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft);
   font-weight: 600;
 }
 
@@ -44,18 +44,18 @@
 }
 
 .card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: white;
+  background: var(--surface);
 }
 
 .cardUncertain {
-  border-color: #d1d5db;
-  background: #fafafa;
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
 }
 
 .cardHeader {
@@ -75,8 +75,8 @@
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-sunken);
+  color: var(--muted);
   text-transform: uppercase;
 }
 
@@ -124,14 +124,14 @@
 
 .confidence {
   font-size: 0.74rem;
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .overriddenBadge {
   font-size: 0.66rem;
   font-weight: 700;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--danger-soft);
+  color: var(--danger);
   padding: 2px 8px;
   border-radius: 999px;
   margin-left: auto;
@@ -139,7 +139,7 @@
 
 .uncertainNote {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--subtle);
   font-style: italic;
 }
 
@@ -158,12 +158,12 @@
 .evidenceLabel {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--subtle);
   text-transform: uppercase;
 }
 
 .muted {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.8rem;
   margin: 4px 0 0;
 }
@@ -173,8 +173,8 @@
   gap: 14px;
   flex-wrap: wrap;
   font-size: 0.78rem;
-  color: #374151;
-  background: #f9fafb;
+  color: var(--ink-2);
+  background: var(--surface-muted);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -191,22 +191,22 @@
 }
 
 .warnings {
-  color: #9a3412;
+  color: var(--warning-ink);
 }
 
 .overrideProvenance {
   font-size: 0.78rem;
-  color: #6b7280;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--subtle);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
   border-radius: 8px;
   padding: 8px 10px;
 }
 
 .overrideButton {
   align-self: flex-start;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 0.8rem;
@@ -217,7 +217,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--line-soft);
   padding-top: 10px;
 }
 
@@ -227,7 +227,7 @@
   gap: 4px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .overrideForm select,
@@ -235,14 +235,14 @@
 .overrideForm textarea {
   padding: 7px 9px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   font-weight: 400;
   font-family: inherit;
 }
 
 .error {
   font-size: 0.78rem;
-  color: #b91c1c;
+  color: var(--danger);
 }
 
 .overrideActions {
@@ -254,14 +254,14 @@
 .overrideActions button {
   padding: 6px 14px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   cursor: pointer;
   font-size: 0.8rem;
 }
 
 .confirmButton {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
-  color: white !important;
+  background: var(--brand) !important;
+  border-color: var(--brand) !important;
+  color: var(--on-accent) !important;
 }

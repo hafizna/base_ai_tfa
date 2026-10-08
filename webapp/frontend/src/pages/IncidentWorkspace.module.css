@@ -8,7 +8,7 @@
 .backLink {
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--subtle);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0;
@@ -16,19 +16,19 @@
 }
 
 .error {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger-ink);
   padding: 12px 16px;
   border-radius: 10px;
   margin-bottom: 16px;
 }
 
 .headerCard {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 14px;
   padding: 20px;
-  background: white;
+  background: var(--surface);
   margin-bottom: 24px;
   display: flex;
   flex-direction: column;
@@ -53,16 +53,16 @@
 .statusSelect {
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   font-weight: 600;
 }
 
 .archiveButton {
   padding: 8px 14px;
   border-radius: 8px;
-  border: 1px solid #fca5a5;
-  color: #b91c1c;
-  background: white;
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
+  background: var(--surface);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -79,7 +79,7 @@
   gap: 4px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--subtle);
 }
 
 .field input,
@@ -87,9 +87,9 @@
 .field textarea {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   font-weight: 400;
-  color: #111827;
+  color: var(--ink);
   font-size: 0.9rem;
   font-family: inherit;
 }
@@ -117,16 +117,16 @@
 .smallButton {
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid var(--accent, #d97706);
-  color: var(--accent, #d97706);
-  background: white;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: var(--surface);
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 600;
 }
 
 .subsection {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--line-soft);
   padding-top: 16px;
   margin-top: 16px;
 }
@@ -134,14 +134,14 @@
 .subsection h3 {
   font-size: 0.92rem;
   margin: 0 0 10px;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .empty {
   padding: 24px;
   text-align: center;
-  color: #9ca3af;
-  border: 1px dashed #d1d5db;
+  color: var(--subtle);
+  border: 1px dashed var(--line-strong);
   border-radius: 12px;
   font-size: 0.85rem;
 }
@@ -155,10 +155,10 @@
 .recordCard {
   display: flex;
   gap: 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   padding: 14px 16px;
-  background: white;
+  background: var(--surface);
   align-items: flex-start;
 }
 
@@ -171,8 +171,8 @@
 }
 
 .recordOrderControls button {
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   border-radius: 6px;
   width: 24px;
   height: 22px;
@@ -188,7 +188,7 @@
 
 .recordOrderControls span {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--subtle);
   font-weight: 700;
 }
 
@@ -208,7 +208,7 @@
 
 .recordLink {
   font-weight: 700;
-  color: #1f6feb;
+  color: var(--brand);
   text-decoration: none;
 }
 
@@ -219,15 +219,15 @@
 .roleBadge {
   font-size: 0.7rem;
   font-weight: 700;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-sunken);
+  color: var(--muted);
   padding: 2px 8px;
   border-radius: 999px;
 }
 
 .recordMeta {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--subtle);
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
@@ -242,17 +242,17 @@
 
 .warningBadge {
   font-size: 0.72rem;
-  background: #fff7ed;
-  color: #9a3412;
-  border: 1px solid #fdba74;
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+  border: 1px solid var(--warning-line);
   padding: 2px 8px;
   border-radius: 999px;
 }
 
 .detachButton {
-  border: 1px solid #fca5a5;
-  color: #b91c1c;
-  background: white;
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
+  background: var(--surface);
   border-radius: 8px;
   padding: 6px 12px;
   cursor: pointer;
@@ -265,11 +265,11 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 12px;
-  background: #fafafa;
+  background: var(--surface-muted);
 }
 
 .evidenceForm select,
@@ -277,7 +277,7 @@
 .evidenceForm textarea {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   font-family: inherit;
 }
 
@@ -290,8 +290,8 @@
 .modalActions button {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   cursor: pointer;
 }
 
@@ -302,7 +302,7 @@
 }
 
 .evidenceItem {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 10px;
   padding: 10px 14px;
   display: grid;
@@ -319,22 +319,22 @@
 
 .evidenceConfidence {
   font-size: 0.72rem;
-  color: #6b7280;
+  color: var(--subtle);
 }
 
 .evidenceDescription {
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .evidenceSource {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.8rem;
 }
 
 .evidenceItem button {
-  border: 1px solid #fca5a5;
-  color: #b91c1c;
-  background: white;
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
+  background: var(--surface);
   border-radius: 8px;
   padding: 4px 10px;
   cursor: pointer;
@@ -342,7 +342,7 @@
 }
 
 .summaryNote {
-  color: #6b7280;
+  color: var(--subtle);
   font-size: 0.88rem;
   margin: 0 0 12px;
 }
@@ -354,7 +354,7 @@
 }
 
 .summaryGrid > div {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 10px;
   padding: 12px;
   display: flex;
@@ -368,13 +368,13 @@
 
 .summaryGrid span {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .missingList {
   margin: 0;
   padding-left: 20px;
-  color: #92400e;
+  color: var(--warning-ink);
   font-size: 0.85rem;
   display: flex;
   flex-direction: column;

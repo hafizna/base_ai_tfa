@@ -5,11 +5,11 @@
 }
 
 .empty {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.85rem;
   padding: 16px;
   text-align: center;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--line-strong);
   border-radius: 10px;
 }
 
@@ -27,13 +27,13 @@
 }
 
 .scaleToggle button {
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 0.76rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--subtle);
 }
 
 .scaleActive {
@@ -47,7 +47,7 @@
   display: flex;
   gap: 14px;
   font-size: 0.74rem;
-  color: #6b7280;
+  color: var(--subtle);
 }
 
 .legendItem {
@@ -100,7 +100,7 @@
 
 .gapLabel {
   font-size: 0.68rem;
-  color: #6b7280;
+  color: var(--subtle);
   font-weight: 700;
   white-space: nowrap;
   writing-mode: vertical-rl;
@@ -113,7 +113,7 @@
   bottom: -6px;
   left: 50%;
   width: 1px;
-  background: #d1d5db;
+  background: var(--line-strong);
 }
 
 /* Relationship arrow between consecutive episode segments — the visual
@@ -222,9 +222,9 @@
 
 .segment {
   flex-shrink: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 10px;
-  background: white;
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -256,7 +256,7 @@
 .segmentIndex {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .segmentName {
@@ -273,7 +273,7 @@
 .episodeBadge {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #4b5563;
+  color: var(--muted);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -340,7 +340,7 @@
 .detailOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -348,7 +348,7 @@
 }
 
 .detailCard {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 20px;
   width: 360px;
@@ -362,7 +362,7 @@
 
 .detailCard p {
   margin: 0 0 12px;
-  color: #6b7280;
+  color: var(--subtle);
   font-size: 0.85rem;
 }
 
@@ -381,12 +381,12 @@
 }
 
 .detailList dt {
-  color: #9ca3af;
+  color: var(--subtle);
 }
 
 .detailList dd {
   margin: 0;
-  color: #111827;
+  color: var(--ink);
   font-weight: 600;
   text-align: right;
 }
@@ -395,7 +395,7 @@
   width: 100%;
   padding: 8px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   cursor: pointer;
 }

@@ -1,9 +1,7 @@
 .page {
   min-height: 100vh;
   padding: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(241, 245, 249, 0.92)),
-    var(--bg-soft);
+  background: var(--bg);
 }
 
 .header {
@@ -20,7 +18,7 @@
 .jsonTabs button {
   border: 1px solid var(--line-strong);
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--surface);
   color: var(--ink);
   cursor: pointer;
   font-weight: 700;
@@ -34,7 +32,7 @@
 .backBtn:hover,
 .controls button:hover:not(:disabled),
 .jsonTabs button:hover {
-  border-color: rgba(31, 111, 235, 0.45);
+  border-color: var(--brand);
   color: var(--brand-deep);
 }
 
@@ -68,9 +66,9 @@
 
 .headerMeta span {
   padding: 7px 10px;
-  border: 1px solid rgba(31, 111, 235, 0.16);
+  border: 1px solid var(--line);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--surface);
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 700;
@@ -91,8 +89,8 @@
 .controlBand {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 14px 34px rgba(31, 42, 55, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .scenarioPanel {
@@ -102,7 +100,7 @@
 
 .panelTitle {
   margin-bottom: 12px;
-  color: #334155;
+  color: var(--ink-2);
   font-size: 0.76rem;
   font-weight: 850;
   letter-spacing: 0.08em;
@@ -122,7 +120,7 @@
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
   color: var(--ink);
   cursor: pointer;
   text-align: left;
@@ -130,8 +128,8 @@
 
 .scenarioBtn:hover,
 .scenarioBtnActive {
-  border-color: rgba(31, 111, 235, 0.5);
-  background: #f8fbff;
+  border-color: var(--brand);
+  background: var(--brand-soft);
 }
 
 .scenarioBtn span {
@@ -229,14 +227,14 @@
   justify-self: start;
   padding: 5px 9px;
   border-radius: 7px;
-  background: rgba(31, 111, 235, 0.1);
+  background: var(--brand-soft);
   color: var(--brand-deep);
   font-size: 0.74rem;
   font-weight: 850;
 }
 
 .tierPill {
-  background: rgba(220, 38, 38, 0.1);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -267,7 +265,7 @@
 }
 
 .currentStep dt {
-  color: #64748b;
+  color: var(--subtle);
   font-size: 0.72rem;
   font-weight: 850;
   text-transform: uppercase;
@@ -275,7 +273,7 @@
 
 .currentStep dd {
   margin: 0;
-  color: #1e293b;
+  color: var(--ink-2);
   font-size: 0.84rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -290,8 +288,8 @@
 .metrics span {
   padding: 6px 8px;
   border-radius: 7px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--surface-sunken);
+  color: var(--muted);
   font-size: 0.76rem;
   font-weight: 800;
 }
@@ -312,11 +310,11 @@
   border: 1px solid var(--line);
   border-left: 5px solid var(--brand);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .notificationItem span {
-  color: #64748b;
+  color: var(--subtle);
   font-size: 0.7rem;
   font-weight: 850;
   text-transform: uppercase;
@@ -352,19 +350,19 @@
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
   color: var(--ink);
   cursor: pointer;
   text-align: left;
 }
 
 .traceItemSeen {
-  background: #f8fafc;
+  background: var(--surface-muted);
 }
 
 .traceItemActive {
-  border-color: rgba(217, 119, 6, 0.7);
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.12);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
 }
 
 .traceItem span {
@@ -374,7 +372,7 @@
 }
 
 .traceItem strong {
-  color: #0f172a;
+  color: var(--ink);
   font-size: 0.82rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -382,7 +380,7 @@
 
 .traceItem small {
   align-self: end;
-  color: #64748b;
+  color: var(--subtle);
   font-size: 0.72rem;
   font-weight: 750;
   line-height: 1.35;
@@ -406,8 +404,8 @@
 }
 
 .jsonTabActive {
-  border-color: rgba(31, 111, 235, 0.62) !important;
-  background: rgba(31, 111, 235, 0.1) !important;
+  border-color: var(--brand) !important;
+  background: var(--brand-soft) !important;
   color: var(--brand-deep) !important;
 }
 
@@ -430,7 +428,7 @@
 .error {
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--surface);
   color: var(--muted);
   font-size: 0.86rem;
 }
@@ -447,8 +445,8 @@
 .error {
   max-width: 1480px;
   margin: 0 auto 16px;
-  border-color: rgba(220, 38, 38, 0.28);
-  background: rgba(254, 242, 242, 0.82);
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 

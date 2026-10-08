@@ -5,23 +5,23 @@
 }
 
 .dropzone {
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--line-strong);
   border-radius: 12px;
   padding: 28px;
   text-align: center;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--subtle);
   font-size: 0.88rem;
   transition: border-color 0.15s, background 0.15s;
 }
 
 .dropzone:hover {
-  border-color: var(--accent, #d97706);
+  border-color: var(--accent);
 }
 
 .dropzoneActive {
-  border-color: var(--accent, #d97706);
-  background: #fff7ed;
+  border-color: var(--accent);
+  background: var(--warning-soft);
 }
 
 .hiddenInput {
@@ -31,11 +31,11 @@
 .fileCount {
   margin-top: 6px;
   font-weight: 600;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .previewWrap {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line-soft);
   border-radius: 10px;
   padding: 12px 14px;
 }
@@ -43,7 +43,7 @@
 .previewWrap h4 {
   margin: 0 0 8px;
   font-size: 0.82rem;
-  color: #6b7280;
+  color: var(--subtle);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -70,15 +70,15 @@
 .groupBadge {
   font-size: 0.68rem;
   font-weight: 700;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--brand-soft);
+  color: var(--brand);
   padding: 2px 8px;
   border-radius: 999px;
 }
 
 .errorItem {
   font-size: 0.82rem;
-  color: #9a3412;
+  color: var(--danger-ink);
 }
 
 .controlsRow {
@@ -92,22 +92,22 @@
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .warning {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-line);
+  color: var(--warning-ink);
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 0.82rem;
 }
 
 .error {
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #991b1b;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger-ink);
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 0.82rem;
@@ -119,8 +119,8 @@
 }
 
 .uploadButton {
-  background: var(--accent, #d97706);
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 9px 18px;
@@ -134,7 +134,7 @@
 }
 
 .resultWrap {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--line-soft);
   padding-top: 12px;
   display: flex;
   flex-direction: column;
@@ -148,25 +148,25 @@
   display: inline-block;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-sunken);
+  color: var(--muted);
   width: fit-content;
 }
 
 .status_completed {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .status_partial {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-soft);
+  color: var(--warning-ink);
 }
 
 .status_failed,
 .status_aborted_atomic {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .resultItem {
@@ -177,23 +177,23 @@
 }
 
 .resultOk {
-  color: #15803d;
+  color: var(--success);
   font-weight: 600;
 }
 
 .resultMeta {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.72rem;
   font-family: monospace;
 }
 
 .empty {
-  color: #9ca3af;
+  color: var(--subtle);
   font-size: 0.82rem;
 }
 
 .hint {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--subtle);
   font-style: italic;
 }

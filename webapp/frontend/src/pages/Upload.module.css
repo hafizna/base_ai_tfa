@@ -9,26 +9,10 @@
   overflow: hidden;
 }
 
+/* Decorative glow blobs are retired: the theme is flat. */
 .glowTop,
 .glowBottom {
-  position: absolute;
-  width: 360px;
-  height: 360px;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(10px);
-}
-
-.glowTop {
-  top: -120px;
-  left: -90px;
-  background: radial-gradient(circle, rgba(31, 111, 235, 0.18), transparent 72%);
-}
-
-.glowBottom {
-  right: -120px;
-  bottom: -140px;
-  background: radial-gradient(circle, rgba(217, 119, 6, 0.18), transparent 72%);
+  display: none;
 }
 
 .back {
@@ -58,12 +42,9 @@
   max-width: 720px;
   padding: 36px 40px 40px;
   border: 1px solid var(--line);
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(250, 245, 238, 0.9)),
-    var(--surface);
-  box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
 }
 
 .badge {
@@ -72,7 +53,7 @@
   min-height: 34px;
   padding: 0 14px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(31, 111, 235, 0.14), rgba(23, 78, 166, 0.08));
+  background: var(--brand-soft);
   color: var(--brand-deep);
   font-size: 0.8rem;
   font-weight: 800;
@@ -115,38 +96,29 @@
 
 .dropzone {
   min-height: 176px;
-  border: 1.5px solid rgba(26, 63, 108, 0.18);
-  border-radius: 20px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-md);
   padding: 24px 18px;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(243, 247, 252, 0.88)),
-    var(--surface-strong);
+  background: var(--surface-muted);
 }
 
 .dropzone:hover,
 .dropzoneOver {
-  border-color: rgba(31, 111, 235, 0.42);
-  background:
-    linear-gradient(180deg, rgba(246, 250, 255, 0.98), rgba(233, 243, 255, 0.92)),
-    var(--surface-strong);
-  box-shadow: 0 18px 36px rgba(31, 111, 235, 0.14);
-  transform: translateY(-2px);
+  border-color: var(--brand);
+  background: var(--brand-soft);
 }
 
 .dropzoneFilled {
-  border-color: rgba(21, 128, 61, 0.34);
-  background:
-    linear-gradient(180deg, rgba(246, 255, 249, 0.98), rgba(233, 248, 237, 0.92)),
-    var(--surface-strong);
-  box-shadow: 0 18px 36px rgba(21, 128, 61, 0.12);
+  border-color: var(--success);
+  background: var(--success-soft);
 }
 
 .dropzoneWide {
@@ -163,14 +135,14 @@
   line-height: 1;
   font-weight: 800;
   letter-spacing: 0.06em;
-  color: #314865;
-  font-family: "Cascadia Code", Consolas, monospace;
+  color: var(--muted);
+  font-family: var(--font-mono);
 }
 
 .dropHint {
   font-size: 0.82rem;
   line-height: 1.55;
-  color: #6c7785;
+  color: var(--subtle);
 }
 
 .fileName {
@@ -182,33 +154,31 @@
 }
 
 .error {
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  background: linear-gradient(180deg, rgba(255, 245, 245, 0.95), rgba(255, 238, 238, 0.92));
-  color: #b42318;
+  border: 1px solid var(--danger-line);
+  background: var(--danger-soft);
+  color: var(--danger);
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   font-size: 0.9rem;
   line-height: 1.6;
 }
 
 .submit {
   min-height: 56px;
-  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
-  color: #fff;
+  background: var(--brand);
+  color: var(--on-accent);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   padding: 14px 18px;
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
-  box-shadow: 0 18px 36px rgba(23, 78, 166, 0.26);
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
 .submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 22px 40px rgba(23, 78, 166, 0.3);
+  background: var(--brand-hover);
 }
 
 .submit:disabled {
@@ -225,7 +195,6 @@
 
   .card {
     padding: 28px 20px 24px;
-    border-radius: 24px;
   }
 
   .dropRow {
