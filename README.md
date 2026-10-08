@@ -228,6 +228,46 @@ WEB_CONCURRENCY=4 ./start.sh
 # Status warmup expose di GET /api/health → "warmup": {...}.
 ```
 
+### Deploy update ke produksi
+
+Domain DuckDNS hanya mengarahkan nama ke IP server EC2. Kode dibangun dan
+dijalankan di EC2, jadi "deploy" berarti server menarik `main` lalu
+me-rebuild container. Merge ke GitHub saja tidak cukup, kecuali auto-deploy
+di bawah sudah dipasang.
+
+**Auto-deploy (direkomendasikan): merge ke `main`, lalu tayang otomatis.**
+
+Cron di server mengecek `origin/main` tiap 2 menit. Kalau ada commit baru,
+server akan:
+1. pull,
+2. rebuild container,
+3. buang image lama,
+4. cek `/api/health`.
+
+Cara ini *pull-based*: key SSH tidak perlu disimpan di GitHub, dan server
+tidak butuh akses masuk. Pasang sekali di server (lewat SSH atau AWS Console
+→ EC2 → Connect):
+
+```bash
+cd ~/base_ai_tfa
+git pull origin main
+sh scripts/install_auto_deploy.sh
+```
+
+- Log: `tail -f ~/auto_deploy.log`. Log hanya terisi saat ada deploy.
+- Rebuild tanpa commit baru: `FORCE=1 sh scripts/auto_deploy.sh`
+- Matikan auto-deploy: `sh scripts/install_auto_deploy.sh --remove`
+
+**Manual dari laptop (Git Bash):**
+
+```bash
+./deploy.sh                                  # SSH ke EC2: pull main + rebuild + health check
+EC2_HOST=ubuntu@<ip-atau-domain> ./deploy.sh # kalau IP EC2 berubah
+```
+
+`deploy.sh` dan auto-deploy memakai lock yang sama, jadi keduanya tidak
+pernah build bersamaan.
+
 ### Retensi data training dari production
 Production Docker Compose menyimpan upload mentah ke folder host `training-data/`
 ketika `TRAINING_RETENTION_ENABLED=1` (default di `docker-compose.prod.yml`).

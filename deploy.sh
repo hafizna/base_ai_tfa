@@ -18,6 +18,10 @@ echo "==> Deploying to ${EC2_HOST}:${REMOTE_DIR}"
 
 ssh -i "${EC2_KEY}" "${EC2_HOST}" "set -eu
   cd '${REMOTE_DIR}'
+  # Same lock as scripts/auto_deploy.sh, so a cron deploy and this one never build at once.
+  exec 9>/tmp/base_ai_tfa_deploy.lock
+  echo '--- waiting for any running auto-deploy ---'
+  flock 9
   echo '--- git pull ---'
   git fetch origin
   git status --short --branch
