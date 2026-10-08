@@ -40,6 +40,7 @@ from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
 from .fault_detection import detect_fault_presence, _is_operate_status  # noqa: E402
 from core.event_analysis import build_event_window  # noqa: E402
 from core.fault_detector import _extract_line_tag  # noqa: E402
+from core.line_selection import scope_payload, scope_payload_with_selection  # noqa: E402
 
 _MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "fault_classifier.pkl"
 _CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calibrator.pkl"
@@ -717,6 +718,7 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
 
 def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
     """Build the 17-feature dict from a stored COMTRADE session payload."""
+    payload = scope_payload(payload)  # multi-line DFR record -> its disturbed line only
     channels = payload.get("analog_channels", [])
     time = np.array(payload.get("time", []), dtype=float)
     freq = float(payload.get("frequency", 50.0))
@@ -1258,6 +1260,12 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
 
     model_bundle = _load_model()
     meta = _model_metadata(model_bundle)
+
+    # A DFR recording two lines in one file is classified on its disturbed
+    # line only; the provenance says which line that was and why.
+    payload, line_selection = scope_payload_with_selection(payload)
+    if line_selection is not None:
+        meta = {**meta, "analyzed_line": line_selection.selected, "line_selection": line_selection.to_dict()}
 
     # ------------------------------------------------------------------
     # Tier 0 — no-fault gate (physics precondition before any classification)

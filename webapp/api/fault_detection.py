@@ -17,6 +17,8 @@ from typing import Optional
 
 import numpy as np
 
+from core.line_selection import scope_payload
+
 # Thresholds are unit-free (ratios), so they hold for primary OR secondary
 # scaling. A genuine fault shows at least one of these.
 CURRENT_STEP_RATIO = 2.0       # peak / prefault-RMS on the most-active phase
@@ -109,6 +111,7 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
     sag, or sequence unbalance) ⇒ is_fault=True. Only when none is present do we
     return no-fault.
     """
+    payload = scope_payload(payload)  # multi-line DFR record -> its disturbed line only
     channels = payload.get("analog_channels", [])
     status = payload.get("status_channels", [])
     time = np.asarray(payload.get("time", []), dtype=float)

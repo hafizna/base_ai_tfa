@@ -10,6 +10,8 @@ import numpy as np
 import logging
 import re
 
+from .line_selection import scope_record
+
 logger = logging.getLogger(__name__)
 
 
@@ -160,6 +162,12 @@ def detect_fault(record) -> Optional[FaultEvent]:
     Returns:
         FaultEvent or None if no fault detected
     """
+
+    # A DFR recording two lines in one file is analysed on its disturbed line
+    # only — the other line's analog AND status channels are dropped, so an
+    # out-of-service neighbour's "CB OPEN" or noise can't leak into timing,
+    # phases or reclose detection below. No-op for single-line records.
+    record = scope_record(record)
 
     # Detect dead-time recordings: CB was already open when recording started.
     # In this case the fault occurred before this recording — no fault current present.

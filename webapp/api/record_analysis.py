@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from core.event_analysis import EventWindow, build_event_window
+from core.line_selection import scope_payload_with_selection
 from .fault_detection import detect_fault_presence
 
 
@@ -169,7 +170,11 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
     """
     event_window = build_event_window(payload)
     source_metadata = _source_metadata(payload)
-    data_quality = _data_quality(payload, event_window)
+    # Which line this record is analysed on when one DFR file carries several
+    # lines; the timing/gate/AI below all run on that line only.
+    line_payload, line_selection = scope_payload_with_selection(payload)
+    data_quality = _data_quality(line_payload, event_window)
+    data_quality["multi_line_record"] = line_selection is not None
 
     det = detect_fault_presence(payload)
     no_fault = det.no_fault
@@ -178,6 +183,7 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         "timing_source": event_window.method if event_window else "insufficient_data",
         "timing_confidence": round(event_window.confidence, 3) if event_window else 0.0,
         "no_fault_gate_reasons": det.reasons,
+        "line_selection": line_selection.to_dict() if line_selection else None,
         "schema_version": "stage0",
     }
 
@@ -218,6 +224,12 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         }
 
     missing_evidence = _missing_evidence(payload, data_quality, event_window)
+    if line_selection is not None and line_selection.requires_review:
+        missing_evidence.append({
+            "type": "MULTI_LINE_DISTURBANCE",
+            "description": line_selection.summary,
+            "requires_review": True,
+        })
 
     return RecordAnalysis(
         record_id=analysis_id,
