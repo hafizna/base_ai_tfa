@@ -14,6 +14,8 @@ import logging
 import re
 from scipy.fft import fft, fftfreq
 
+from .line_selection import scope_record
+
 logger = logging.getLogger(__name__)
 
 
@@ -128,6 +130,8 @@ def extract_distance_features(record, fault, protection) -> Optional[DistanceFea
     """
 
     try:
+        # Multi-line DFR record -> only the disturbed line (core.line_selection).
+        record = scope_record(record)
         inception_idx = fault.inception_idx
         active_line_tag = (
             _detect_operated_line_tag_from_status(record, inception_idx)
@@ -304,6 +308,7 @@ def extract_differential_features(record, fault, protection) -> Optional[Differe
     """
 
     try:
+        record = scope_record(record)
         inception_idx = fault.inception_idx
         active_line_tag = (
             _detect_operated_line_tag_from_status(record, inception_idx)

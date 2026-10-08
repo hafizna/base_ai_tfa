@@ -54,6 +54,7 @@ from reportlab.platypus import (
 
 from ..storage import load_analysis
 from ..fault_detection import detect_fault_presence
+from core.line_selection import scope_payload
 from .relay_21 import _compute_electrical_params, _compute_fault_classification
 from .relay_87l import _compute_diff_restraint
 from .relay_87t import _compute_87t
@@ -1602,6 +1603,9 @@ def _build_chart_block(styles: dict, kicker: str, chart: ChartImage, max_height_
 # ---------------------------------------------------------------------------
 
 def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes:
+    # A DFR recording two lines in one file is reported on its disturbed line:
+    # waveform/binary diagrams, electrical summary and classification alike.
+    payload = scope_payload(payload)
     relay_type = request.relay_type.upper() if request.relay_type else "21"
     is_tws = relay_type == "TWS_FL" or payload.get("source_type") == "tws_cdb"
     is_line_distance = relay_type in ("21", "LINE")

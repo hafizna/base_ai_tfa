@@ -28,6 +28,7 @@ from typing import Any, Optional
 
 import numpy as np
 
+from core.line_selection import scope_payload
 from ..storage import load_analysis
 from .models import FaultEpisode, IncidentRecord, RecordRelationship
 
@@ -36,6 +37,14 @@ from .models import FaultEpisode, IncidentRecord, RecordRelationship
 # actual-scale blank stretch that would dwarf the fault waveforms either
 # side of it.
 LONG_GAP_DISPLAY_THRESHOLD_S = 2.0
+
+
+def _load_line_payload(analysis_id: str) -> Optional[dict]:
+    """Stored payload restricted to the record's disturbed line — channels are
+    keyed by canonical name below, so a DFR file carrying two lines would
+    otherwise show whichever line's IA/VA happened to be listed last."""
+    payload = load_analysis(analysis_id)
+    return scope_payload(payload) if payload is not None else None
 
 
 def _parse_iso(value: Optional[str]) -> Optional[datetime]:
@@ -106,7 +115,7 @@ def build_joined_waveform(
     warnings: list[dict[str, Any]] = []
     payloads: dict[str, dict] = {}
     for rec in ordered:
-        payload = load_analysis(rec.analysis_id)
+        payload = _load_line_payload(rec.analysis_id)
         if payload is None:
             return {
                 "episode_id": episode.episode_id,
@@ -205,7 +214,7 @@ def build_joined_waveform(
 
 
 def _build_single_record(episode: FaultEpisode, rec: IncidentRecord) -> dict[str, Any]:
-    payload = load_analysis(rec.analysis_id)
+    payload = _load_line_payload(rec.analysis_id)
     if payload is None:
         return {
             "episode_id": episode.episode_id,

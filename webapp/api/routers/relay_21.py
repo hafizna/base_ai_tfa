@@ -22,6 +22,7 @@ from ..ml_predict import run_ml_prediction, extract_ml_features, _digital_sequen
 from ..fault_detection import detect_fault_presence, _is_operate_status
 from core.event_analysis import build_event_window
 from core.fault_detector import _extract_line_tag
+from core.line_selection import scope_payload
 
 router = APIRouter(prefix="/api/analyze/21", tags=["relay-21"])
 
@@ -141,7 +142,15 @@ def _voltage_to_volts_scale(channels: list) -> float:
     return 1.0
 
 
-def _find_phase_voltage(channels, phase: str, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
+def _find_phase_channel(
+    channels, measurement: str, phase: str, preferred_tag: Optional[str] = None,
+) -> Optional[np.ndarray]:
+    """Phase voltage/current channel. An exact canonical-name (VA/IB/...) or
+    phase-field match always wins; the loose name-suffix aliases ("...L2",
+    "...2") are only a fallback for channels the normalizer couldn't name —
+    a suffix digit is usually a LINE number ("VT R MJSNG2" is phase A of line
+    2, not phase B), so letting it compete with exact matches returned the
+    wrong phase on multi-line DFR records."""
     phase = phase.upper()
     aliases = {phase}
     if phase == "A":
@@ -150,16 +159,21 @@ def _find_phase_voltage(channels, phase: str, preferred_tag: Optional[str] = Non
         aliases.update({"L2", "2"})
     elif phase == "C":
         aliases.update({"L3", "3"})
+    canonical_wanted = ("V" if measurement == "voltage" else "I") + phase
 
-    matches = []
+    exact = []
+    loose = []
     for ch in channels:
-        if ch.get("measurement") != "voltage":
+        if ch.get("measurement") != measurement:
             continue
         ch_phase = (ch.get("phase") or "").upper()
         canonical = (ch.get("canonical_name") or "").upper()
         name = (ch.get("name") or "").upper()
-        if ch_phase in aliases or any(canonical.endswith(alias) or name.endswith(alias) for alias in aliases):
-            matches.append(ch)
+        if canonical == canonical_wanted or ch_phase == phase:
+            exact.append(ch)
+        elif ch_phase in aliases or any(canonical.endswith(alias) or name.endswith(alias) for alias in aliases):
+            loose.append(ch)
+    matches = exact or loose
     if not matches:
         return None
     if preferred_tag:
@@ -167,34 +181,14 @@ def _find_phase_voltage(channels, phase: str, preferred_tag: Optional[str] = Non
         if tagged:
             return np.array(tagged[0]["samples"], dtype=float)
     return np.array(matches[0]["samples"], dtype=float)
+
+
+def _find_phase_voltage(channels, phase: str, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
+    return _find_phase_channel(channels, "voltage", phase, preferred_tag)
 
 
 def _find_phase_current(channels, phase: str, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
-    phase = phase.upper()
-    aliases = {phase}
-    if phase == "A":
-        aliases.update({"L1", "1"})
-    elif phase == "B":
-        aliases.update({"L2", "2"})
-    elif phase == "C":
-        aliases.update({"L3", "3"})
-
-    matches = []
-    for ch in channels:
-        if ch.get("measurement") != "current":
-            continue
-        ch_phase = (ch.get("phase") or "").upper()
-        canonical = (ch.get("canonical_name") or "").upper()
-        name = (ch.get("name") or "").upper()
-        if ch_phase in aliases or any(canonical.endswith(alias) or name.endswith(alias) for alias in aliases):
-            matches.append(ch)
-    if not matches:
-        return None
-    if preferred_tag:
-        tagged = [ch for ch in matches if _extract_line_tag(ch.get("name") or "") == preferred_tag]
-        if tagged:
-            return np.array(tagged[0]["samples"], dtype=float)
-    return np.array(matches[0]["samples"], dtype=float)
+    return _find_phase_channel(channels, "current", phase, preferred_tag)
 
 
 def _find_voltage_for_loop(channels, mapping: dict, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:
@@ -366,6 +360,7 @@ def _compute_locus(
     the pre-computed-complex-samples code path, which bypasses windowed DFT
     entirely).
     """
+    comtrade_data = scope_payload(comtrade_data)  # multi-line DFR record -> its disturbed line only
     channels = comtrade_data["analog_channels"]
     time = np.array(comtrade_data["time"])
     mapping = LOOP_CHANNELS.get(loop, LOOP_CHANNELS["ZA"])
@@ -526,6 +521,7 @@ def _compute_locus(
 
 def _extract_features_from_payload(payload: dict) -> dict:
     """Auto-extract fault analysis features from a stored COMTRADE payload."""
+    payload = scope_payload(payload)
     channels = payload.get("analog_channels", [])
     time = np.array(payload.get("time", []))
     freq = float(payload.get("frequency", 50.0))
@@ -620,6 +616,7 @@ def _extract_features_from_payload(payload: dict) -> dict:
 
 def _compute_electrical_params(payload: dict) -> dict:
     """Compute extended electrical parameters for the workspace panel."""
+    payload = scope_payload(payload)
     channels = payload.get("analog_channels", [])
     time = np.array(payload.get("time", []))
     freq = float(payload.get("frequency", 50.0))
@@ -870,6 +867,7 @@ def _evidence_based_fault_phases(payload: dict, row: dict) -> tuple[list[str], b
     channel or computable 3I0) — never raises, never silently guesses past
     what the record actually supports.
     """
+    payload = scope_payload(payload)
     channels = payload.get("analog_channels", [])
     time = np.array(payload.get("time", []))
     freq = float(payload.get("frequency", 50.0))
@@ -992,6 +990,7 @@ def _evidence_based_fault_phases(payload: dict, row: dict) -> tuple[list[str], b
 
 def _compute_fault_classification(payload: dict) -> dict:
     """Derive fault type code, phases, zone, trip and timing for the Jenis Gangguan panel."""
+    payload = scope_payload(payload)
     time = np.array(payload.get("time", []))
     empty = {
         "fault_code": "Unknown",
@@ -1110,7 +1109,10 @@ def _compute_full_soe_events(payload: dict) -> dict:
     Unlike _compute_locus_events (which only keeps protection-relevant
     channels for the impedance overlay), this emits every 0<->1 transition
     across every digital channel — used by the PDF report's SOE table.
+    On a multi-line DFR record only the analysed line's (and common) channels
+    are listed.
     """
+    payload = scope_payload(payload)
     time, inception_idx = _inception_idx_from_payload(payload)
     if len(time) == 0:
         return {"inception_time_ms": None, "events": [], "timing_source": "insufficient_data", "timing_confidence": 0.0}
@@ -1160,6 +1162,7 @@ def _compute_full_soe_events(payload: dict) -> dict:
 
 def _compute_locus_events(payload: dict) -> dict:
     """Curated digital events with timestamps, anchored to fault inception."""
+    payload = scope_payload(payload)
     time, inception_idx = _inception_idx_from_payload(payload)
     if len(time) == 0:
         return {"inception_time_ms": None, "events": [], "timing_source": "insufficient_data", "timing_confidence": 0.0}

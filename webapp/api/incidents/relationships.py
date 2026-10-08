@@ -25,6 +25,7 @@ from typing import Any, Optional
 
 import numpy as np
 
+from core.line_selection import scope_payload
 from ..storage import load_analysis
 from .models import AlignmentAssessment, IncidentRecord, RecordRelationship
 
@@ -38,6 +39,15 @@ CONTINUATION_GAP_MS = 2000.0           # record starts within this long of previ
 RECLOSE_GAP_MS = 5000.0                # generous window after a reclose attempt
 REPEATED_FAULT_MAX_GAP_S = 3600.0      # up to 1 hour still considered "repeated" rather than unrelated
 SAME_PHASE_SET_BONUS = 0.15
+
+
+def _load_line_payload(analysis_id: str) -> Optional[dict]:
+    """Stored payload restricted to the record's disturbed line, so a DFR
+    file carrying two lines is compared on the line that actually faulted
+    (channels are keyed by canonical name below, which would otherwise let
+    one line's IA silently overwrite the other's)."""
+    payload = load_analysis(analysis_id)
+    return scope_payload(payload) if payload is not None else None
 
 
 def _parse_iso(value: Optional[str]) -> Optional[datetime]:
@@ -112,8 +122,8 @@ def _waveform_similarity(left: IncidentRecord, right: IncidentRecord) -> dict[st
         result["reason"] = "missing_absolute_time"
         return result
 
-    left_payload = load_analysis(left.analysis_id)
-    right_payload = load_analysis(right.analysis_id)
+    left_payload = _load_line_payload(left.analysis_id)
+    right_payload = _load_line_payload(right.analysis_id)
     if left_payload is None or right_payload is None:
         result["reason"] = "analysis_expired_or_missing"
         return result
@@ -200,8 +210,8 @@ def _digital_sequence_similarity(left: IncidentRecord, right: IncidentRecord) ->
     cheap proxy for "did the same protection elements operate". Not a
     time-aligned bitwise comparison — that would require the same overlap
     machinery as waveform similarity and Stage 2 keeps this metric coarse."""
-    left_payload = load_analysis(left.analysis_id)
-    right_payload = load_analysis(right.analysis_id)
+    left_payload = _load_line_payload(left.analysis_id)
+    right_payload = _load_line_payload(right.analysis_id)
     if left_payload is None or right_payload is None:
         return None
 

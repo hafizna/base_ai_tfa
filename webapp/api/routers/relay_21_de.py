@@ -59,6 +59,7 @@ from ..schemas import (
 )
 from ..storage import load_analysis
 from core.event_analysis import build_event_window
+from core.line_selection import scope_payload_with_selection
 from .relay_21 import (
     LOOP_CHANNELS,
     _canonical_inception_idx,
@@ -138,6 +139,9 @@ def _build_terminal_context(
     ~65ms/call — the dominant cost) on every single candidate. A sweep of
     ~1000 shift values previously took minutes; with this context reused,
     the same sweep completes in a couple of seconds."""
+    # A terminal record from a DFR wired to two lines is solved on its
+    # disturbed line only; that line's name is reported as the active tag.
+    payload, line_selection = scope_payload_with_selection(payload)
     channels = payload.get("analog_channels", [])
     time = np.array(payload.get("time", []))
     if len(time) < 4:
@@ -151,6 +155,7 @@ def _build_terminal_context(
     win = max(1, int(round(sr / freq)))  # one cycle window, same convention as _compute_locus
 
     active_tag = _detect_active_line_tag(channels)
+    reported_line = line_selection.selected if line_selection is not None else active_tag
 
     # A phase-to-ground voltage drop cannot in general be represented by
     # Z1 * Iphase: the zero-sequence path has a different impedance.  For the
@@ -182,7 +187,7 @@ def _build_terminal_context(
             "inception_idx": inception_idx,
             "clearing_idx": event_window.clearing_idx,
             "timing_source": timing_source,
-            "active_tag": active_tag,
+            "active_tag": reported_line,
             "basis": "negative_sequence",
             "v_phases_scaled": [value * voltage_scale for value in voltages],
             "i_phases": currents,
@@ -229,7 +234,7 @@ def _build_terminal_context(
         "inception_idx": inception_idx,
         "clearing_idx": event_window.clearing_idx,
         "timing_source": timing_source,
-        "active_tag": active_tag,
+        "active_tag": reported_line,
         "basis": "phase_loop",
         "v_scaled": v * voltage_scale,
         "i": i,

@@ -53,6 +53,7 @@ from core.feature_extractor import (
     _calculate_symmetrical_magnitudes,
     _determine_fault_type,
 )
+from core.line_selection import scope_record
 
 nan = float("nan")
 
@@ -446,6 +447,7 @@ def extract_87l_features(record, fault, protection) -> Optional["DifferentialLin
         DifferentialLineFeatures or None if extraction fails
     """
     try:
+        record = scope_record(record)
         inception_idx = fault.inception_idx
         active_line_tag = (
             _detect_operated_line_tag_from_status(record, inception_idx)
