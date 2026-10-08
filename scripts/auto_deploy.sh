@@ -31,6 +31,9 @@ main() {
   git merge --ff-only --quiet "$target"
   docker compose -f docker-compose.prod.yml up -d --build
   docker image prune -f >/dev/null || true
+  # Keep a week of build cache so routine rebuilds stay fast; drop the rest
+  # (it had grown to 3.5 GB on the 18 GB disk).
+  docker builder prune -f --filter until=168h >/dev/null || true
 
   for _ in $(seq 1 24); do
     if curl -sf http://127.0.0.1:8000/api/health >/dev/null; then

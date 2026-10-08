@@ -255,6 +255,9 @@ sh scripts/install_auto_deploy.sh
 ```
 
 - Log: `tail -f ~/auto_deploy.log`. Log hanya terisi saat ada deploy.
+- Setiap deploy membuang image lama dan build cache yang tidak dipakai lebih
+  dari 7 hari. Log container dibatasi 3 × 10 MB (`docker-compose.prod.yml`),
+  jadi disk tidak terus penuh.
 - Rebuild tanpa commit baru: `FORCE=1 sh scripts/auto_deploy.sh`
 - Matikan auto-deploy: `sh scripts/install_auto_deploy.sh --remove`
 
