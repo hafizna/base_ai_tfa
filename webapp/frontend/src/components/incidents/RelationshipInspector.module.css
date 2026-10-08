@@ -106,6 +106,11 @@
   color: #a21caf;
 }
 
+.type_REFAULT_AFTER_RECLOSE {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
 .type_NEW_FAULT_EPISODE {
   background: #dcfce7;
   color: #15803d;

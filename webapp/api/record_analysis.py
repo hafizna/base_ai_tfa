@@ -132,7 +132,18 @@ def _missing_evidence(payload: dict, data_quality: dict, event_window: Optional[
             "type": "DETECTED_INCEPTION",
             "description": "Canonical inception could not be detected; only the CFG trigger time is available.",
         })
-    if event_window is not None and event_window.clearing_time_ms is None and event_window.inception_time_ms is not None:
+    if event_window is not None and event_window.method == "dead_time_recording":
+        # A reclose capture has no fault in it: fault clearing and the
+        # protection operation that tripped the line belong to the earlier
+        # record, so the fault-record checks below don't apply.
+        missing.append({
+            "type": "PRECEDING_FAULT_RECORD",
+            "description": (
+                "This recording starts during breaker dead time — attach the record of the fault that "
+                "tripped the line to the same incident so the trip, dead time and reclose are read as one sequence."
+            ),
+        })
+    elif event_window is not None and event_window.clearing_time_ms is None and event_window.inception_time_ms is not None:
         missing.append({
             "type": "CLEARING_EVIDENCE",
             "description": "Fault clearing time could not be determined from available evidence.",
@@ -142,6 +153,7 @@ def _missing_evidence(payload: dict, data_quality: dict, event_window: Optional[
         and not data_quality["protection_operated"]
         and event_window is not None
         and event_window.inception_time_ms is not None
+        and event_window.method != "dead_time_recording"
     ):
         missing.append({
             "type": "NO_PROTECTION_OPERATION",
@@ -196,7 +208,20 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
     protection_interpretation: dict[str, Any] = {}
     fault_episodes: list[dict[str, Any]] = []
 
-    if no_fault:
+    if event_window and event_window.method == "dead_time_recording":
+        # Checked before the no-fault gate: a line re-energized from the far
+        # end with this breaker still open carries no current step, yet it is
+        # part of a protection sequence, not a spurious trigger.
+        last_reclose = (event_window.reclose_events or [{}])[-1]
+        outcome = {True: "successful", False: "failed"}.get(last_reclose.get("success"), "outcome not determinable")
+        protection_interpretation = {
+            "event_class": "RECLOSE_CAPTURE",
+            "summary": (
+                f"Recording starts during breaker dead time and captures the reclose ({outcome}); "
+                "the fault itself was recorded before this file."
+            ),
+        }
+    elif no_fault:
         protection_interpretation = {
             "event_class": "NO_FAULT_TRIGGER",
             "summary": "Recording triggered without protection operating and without a fault signature.",

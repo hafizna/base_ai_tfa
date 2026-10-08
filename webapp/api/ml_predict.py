@@ -1227,6 +1227,49 @@ def _no_fault_gate(payload: dict) -> Optional[dict]:
     }
 
 
+def _reclose_capture_gate(payload: dict) -> Optional[dict]:
+    """A record that starts during breaker dead time holds no fault — only the
+    reclose of a fault recorded in an earlier file. Classifying it would
+    read energization inrush as a fault signature (seen on the 21/08/2023
+    Bringin-Mojosongo reclose record, which scored 92% for a cause). The
+    cause belongs to the inception record; in an incident this record is the
+    aftermath of it (webapp.api.incidents.relationships)."""
+    window = build_event_window(payload)
+    if window.method != "dead_time_recording":
+        return None
+    events = window.reclose_events or []
+    success = events[-1].get("success") if events else None
+    outcome_txt = {True: "berhasil", False: "gagal"}.get(success, "hasilnya tidak dapat dipastikan dari rekaman ini")
+    evidence = [
+        _ev(
+            f"Rekaman dimulai saat CB terbuka (dead time) dan menangkap reclose ({outcome_txt}); "
+            "gangguannya terjadi sebelum rekaman ini dimulai.",
+            "verdict", weight=0.95, kind="physics",
+        ),
+        _ev(
+            "Klasifikasi penyebab tidak dijalankan pada rekaman reclose — arus energize/inrush bukan "
+            "gangguan. Penyebab dianalisa dari rekaman yang memuat awal gangguan; lampirkan keduanya "
+            "dalam satu insiden agar urutan trip → dead time → reclose terbaca utuh.",
+            "notable", kind="physics",
+        ),
+    ]
+    return {
+        "fault_type": "none",
+        "cause_ranking": [],
+        "overall_confidence": 0.0,
+        "evidence": evidence,
+        "no_fault": True,
+        "record_kind": "reclose_capture",
+        "reclose_outcome": {True: "successful", False: "failed"}.get(success),
+        "skip_reason": "reclose_capture",
+        "tier1": {"fired": False},
+        "raw_probabilities": None,
+        "calibrated_probabilities": None,
+        "applied_caps": [],
+        "feature_vector_used": None,
+    }
+
+
 def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     """Run the LightGBM fault classifier on a session payload.
 
@@ -1270,7 +1313,7 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     # ------------------------------------------------------------------
     # Tier 0 — no-fault gate (physics precondition before any classification)
     # ------------------------------------------------------------------
-    gate = _no_fault_gate(payload)
+    gate = _reclose_capture_gate(payload) or _no_fault_gate(payload)
     if gate is not None:
         gate["meta"] = meta
         return gate

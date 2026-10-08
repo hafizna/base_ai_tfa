@@ -33,6 +33,7 @@ const RELATIONSHIP_ARROW_LABEL: Record<string, string> = {
   OVERLAPPING_CAPTURE: "overlap",
   CONTINUATION: "continues",
   RECLOSE_SEQUENCE: "reclose seq.",
+  REFAULT_AFTER_RECLOSE: "refault after reclose",
   NEW_FAULT_EPISODE: "new fault",
   REPEATED_FAULT: "repeated",
   POSSIBLE_EVOLVING_FAULT: "may be evolving",

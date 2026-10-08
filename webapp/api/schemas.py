@@ -228,6 +228,11 @@ class AIFaultResult(BaseModel):
     # True when the no-fault gate fired: record was triggered (e.g. FD pickup)
     # but no protection operated and no fault signature is present.
     no_fault: bool = False
+    # "reclose_capture" when the record starts during breaker dead time and
+    # only captures the reclose of an earlier fault (no cause classification).
+    record_kind: Optional[str] = None
+    reclose_outcome: Optional[str] = None
+    skip_reason: Optional[str] = None
     # Evidence can be plain strings (legacy responses) or structured items
     # {text, severity, weight, kind}. UI handles both shapes.
     evidence: List[Any]

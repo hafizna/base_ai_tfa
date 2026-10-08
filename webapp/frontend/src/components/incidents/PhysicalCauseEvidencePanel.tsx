@@ -72,7 +72,9 @@ export default function PhysicalCauseEvidencePanel({ physicalCauseEvidence, epis
                       <td colSpan={6} className={styles.skipCell}>
                         No AI cause reading — {r.skip_reason === "unsupported_protection_type"
                           ? "this record's protection type has no line-fault classifier support (e.g. transformer differential)."
-                          : r.skip_reason}
+                          : r.skip_reason === "reclose_capture"
+                            ? "this record starts in breaker dead time and only captures the reclose; the cause is read from the record holding the fault inception."
+                            : r.skip_reason}
                       </td>
                     </tr>
                   );
