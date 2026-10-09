@@ -63,11 +63,14 @@ describe("incident story — Bringin reclose then re-fault", () => {
   it("lays out fault, reclose, re-fault and the final state in order", () => {
     const [fault1, reclose, fault2, after] = cards(story.sequence);
     expect(fault1).toMatchObject({ title: "Gangguan #1", time: "15:15:03,738", headline: "Fasa S-T · ±6,4 kA", recordName: "ZQ6D" });
-    expect(fault1.bullets).toEqual(["Trip 3-pole +45 ms · Z1", "Gangguan padam setelah 65 ms"]);
+    // 77 ms: the last current zero on phases S and T. The 65 ms this used to
+    // show was the trip contact's pulse width.
+    expect(fault1.bullets).toEqual(["Trip 3-pole +45 ms · Z1", "Gangguan padam setelah 77 ms"]);
     expect(reclose).toMatchObject({ title: "Reclose successful", time: "15:15:08,834", headline: "Line bertegangan kembali", recordName: "ZQ6E" });
     expect(reclose.bullets).toEqual(["Voltage 83 kV, load ±470 A", "No fault current"]);
     expect(fault2).toMatchObject({ title: "Gangguan #2", time: "15:15:14,564", headline: "Fasa S-T · ±6,0 kA", emphasis: true });
     expect(fault2.bullets).toContain("Fasa sama dengan gangguan #1");
+    expect(fault2.bullets).toContain("Gangguan padam setelah 78 ms");
     expect(after).toMatchObject({ kind: "after", headline: "Tidak ada reclose berikutnya terekam" });
     expect(connectors(story.sequence)).toEqual([
       { kind: "dead_time", label: "Dead time 5,0 s", detail: "CB open" },
@@ -125,6 +128,7 @@ describe("incident story — Cibatu teleprotection-aided trip", () => {
     const [fault, reclose, after] = cards(story.sequence);
     expect(fault.headline).toBe("Fasa R-N · ±12,0 kA");
     expect(fault.bullets[0]).toBe("Trip pole R +37 ms · Z2 + carrier receive (teleprotection-aided)");
+    expect(fault.bullets).toContain("Gangguan padam setelah 82 ms");
     expect(reclose).toMatchObject({ title: "Reclose successful", headline: "CB menutup kembali" });
     expect(reclose.bullets).toContain("Single-pole reclose");
     expect(after.headline).toBe("Line kembali beroperasi");

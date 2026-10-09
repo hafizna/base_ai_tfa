@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from core.analog_trace import trace_payload
 from core.event_analysis import EventWindow, build_event_window
 from core.line_selection import scope_payload_with_selection
 from .fault_detection import detect_fault_presence
@@ -40,6 +41,7 @@ class RecordAnalysis:
     fault_episodes: list[dict[str, Any]] = field(default_factory=list)
     protection_operations: list[dict[str, Any]] = field(default_factory=list)
     electrical_measurements: dict[str, Any] = field(default_factory=dict)
+    analog_trace: dict[str, Any] = field(default_factory=dict)
     cause_hypotheses: list[dict[str, Any]] = field(default_factory=list)
     missing_evidence: list[dict[str, Any]] = field(default_factory=list)
     provenance: dict[str, Any] = field(default_factory=dict)
@@ -58,6 +60,7 @@ class RecordAnalysis:
             "fault_episodes": self.fault_episodes,
             "protection_operations": self.protection_operations,
             "electrical_measurements": self.electrical_measurements,
+            "analog_trace": self.analog_trace,
             "observed_facts": self.observed_facts,
             "protection_interpretation": self.protection_interpretation,
             "cause_hypotheses": self.cause_hypotheses,
@@ -174,6 +177,11 @@ def _missing_evidence(payload: dict, data_quality: dict, event_window: Optional[
     return missing
 
 
+def _analog_trace(line_payload: dict) -> dict[str, Any]:
+    trace = trace_payload(line_payload)
+    return trace.to_dict() if trace is not None else {}
+
+
 def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
     """Build the canonical :class:`RecordAnalysis` for a stored COMTRADE payload.
 
@@ -266,6 +274,7 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         # Measured facts on the analysed line, for the incident story.
         protection_operations=protection_operations(line_payload, event_window),
         electrical_measurements=electrical_measurements(line_payload, event_window),
+        analog_trace=_analog_trace(line_payload),
         cause_hypotheses=[],
         missing_evidence=missing_evidence,
         provenance=provenance,

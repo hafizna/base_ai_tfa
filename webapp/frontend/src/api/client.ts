@@ -224,6 +224,62 @@ export interface ProtectionOperation {
   off_ms: number[];
 }
 
+/** A change in one phase's analog signals (core/analog_trace.py), in ms on the record's time axis. */
+export interface AnalogTraceEvent {
+  t_ms: number;
+  phase: "A" | "B" | "C";
+  kind:
+    | "disturbance_start"
+    | "energization_start"
+    | "current_ceased"
+    | "current_back_to_load"
+    | "current_return"
+    | "current_rise"
+    | "voltage_lost"
+    | "voltage_return";
+  value: number | null;
+}
+
+/** A stretch where one phase's current and voltage stay in one class. */
+export interface AnalogTraceSpan {
+  current: "none" | "load" | "high";
+  voltage: "dead" | "sag" | "normal" | null;
+  start_ms: number;
+  end_ms: number;
+  current_rms: number;
+  voltage_pu: number | null;
+}
+
+export interface AnalogTraceSummary {
+  starts_dead: boolean;
+  fault_start_ms: number | null;
+  /** The last current zero of the fault's phases. */
+  fault_clearing_ms: number | null;
+  /** Fault clearing time: fault start to the last current zero (Grid Code CCA1 2.2). */
+  fct_ms: number | null;
+  high_current_phases: string[];
+  sagged_phases: string[];
+  ceased: Record<string, number>;
+  zero_current_pattern: "three_together" | "single_phase" | "two_phase" | "staggered" | null;
+  zero_spans: Array<{ phase: string; start_ms: number; end_ms: number | null }>;
+  current_returns: Record<string, number>;
+  voltage_returns: Record<string, number>;
+  dead_time_ms: Record<string, number>;
+  energization_ms: number | null;
+  refault_ms: number | null;
+  disturbances: Array<Record<string, unknown>>;
+}
+
+/** What each phase's current and voltage did through a record (core/analog_trace.py). */
+export interface AnalogTrace {
+  cycle_ms: number;
+  reference: Record<string, unknown>;
+  phases: Record<string, AnalogTraceSpan[]>;
+  events: AnalogTraceEvent[];
+  summary: AnalogTraceSummary;
+  warnings: string[];
+}
+
 export interface CanonicalRecordAnalysis {
   record_id: string;
   source_metadata: Record<string, unknown>;
@@ -233,6 +289,7 @@ export interface CanonicalRecordAnalysis {
   // Empty in snapshots taken before these facts existed.
   protection_operations: ProtectionOperation[];
   electrical_measurements: ElectricalMeasurements;
+  analog_trace?: Partial<AnalogTrace>;
   observed_facts: Record<string, unknown>;
   protection_interpretation: Record<string, unknown>;
   cause_hypotheses: Array<Record<string, unknown>>;
