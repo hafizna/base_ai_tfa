@@ -37,6 +37,7 @@ from .models import (
 )
 from .reconstruction import run_reconstruction as _run_reconstruction
 from .joined_waveform import build_joined_waveform as _build_joined_waveform
+from .time_axis import TimeAxis, build_time_axis, same_station, station_of
 
 
 class IncidentServiceError(Exception):
@@ -492,17 +493,20 @@ def _reclose_outcome(record: IncidentRecord) -> Optional[str]:
     return None
 
 
-def _record_order_warning(records: list[IncidentRecord]) -> Optional[dict[str, Any]]:
+def _record_order_warning(records: list[IncidentRecord], axis: TimeAxis) -> Optional[dict[str, Any]]:
     manually_ordered = [r for r in records if r.manual_order is not None]
     if len(manually_ordered) < 2:
         return None
 
-    timed = [(r, r.trigger_time_iso or r.record_start_iso) for r in manually_ordered if (r.trigger_time_iso or r.record_start_iso)]
+    timed = [(r, axis.trigger(r)) for r in manually_ordered if axis.trigger(r) is not None]
     if len(timed) < 2:
         return None
 
     manual_sorted = sorted(manually_ordered, key=lambda r: r.manual_order)
-    time_sorted = sorted(timed, key=lambda pair: pair[1])
+    try:
+        time_sorted = sorted(timed, key=lambda pair: pair[1])
+    except TypeError:  # one timestamp timezone-aware, the other naive
+        time_sorted = sorted(timed, key=lambda pair: str(pair[1]))
     manual_ids = [r.incident_record_id for r in manual_sorted if r.incident_record_id in {t[0].incident_record_id for t in timed}]
     time_ids = [pair[0].incident_record_id for pair in time_sorted]
 
@@ -519,12 +523,20 @@ def _recompute_derived(incident: Incident, records: list[IncidentRecord]) -> Non
     """Stage 1 summary: defensive facts only — no relationship inference."""
     included = [r for r in records if r.inclusion_status != "EXCLUDED"]
 
-    records_with_time = [r for r in included if r.trigger_time_iso or r.record_start_iso]
-    times = sorted(r.trigger_time_iso or r.record_start_iso for r in records_with_time)
+    # Record triggers on the incident time axis (recorder clocks lined up on
+    # a shared fault), so a remote end stamped in another time zone does not
+    # move the incident's start or end.
+    axis = build_time_axis(included, home_station=incident.station_name)
+    records_with_time =[r for r in included if r.trigger_time_iso or r.record_start_iso]
+    times = [t for t in (axis.trigger(r) for r in included) if t is not None]
+    try:
+        times.sort()
+    except TypeError:  # one timestamp timezone-aware, the other naive
+        times.sort(key=str)
     if times and not incident.incident_start_iso:
-        incident.incident_start_iso = times[0]
+        incident.incident_start_iso = times[0].isoformat()
     if times and not incident.incident_end_iso:
-        incident.incident_end_iso = times[-1]
+        incident.incident_end_iso = times[-1].isoformat()
 
     protection_types = sorted({r.protection_type for r in included if r.protection_type})
     faulted_phase_sets = [
@@ -575,9 +587,13 @@ def _recompute_derived(incident: Incident, records: list[IncidentRecord]) -> Non
         missing.append({"type": "BAY_NAME_UNDETERMINED", "description": "Bay name has not been set for this incident."})
     if records_with_time != included:
         missing.append({"type": "RECORDS_MISSING_ABSOLUTE_TIME", "description": "One or more attached records lack an absolute timestamp."})
-    if not any(r.attachment_role == "REMOTE_END" for r in included) and len(included) > 0:
+    # A record from another substation is the far end's, whatever role it was attached with.
+    from_far_end = incident.station_name and any(
+        station_of(r) and not same_station(station_of(r), incident.station_name) for r in included
+    )
+    if not any(r.attachment_role == "REMOTE_END" for r in included) and not from_far_end and len(included) > 0:
         missing.append({"type": "REMOTE_END_UNAVAILABLE", "description": "No remote-end record is attached."})
-    order_warning = _record_order_warning(included)
+    order_warning = _record_order_warning(included, axis)
     if order_warning:
         missing.append({"type": "RECORD_ORDER_REQUIRES_REVIEW", "description": order_warning["description"]})
 
@@ -682,16 +698,18 @@ def get_joined_waveform(incident_id: str, episode_id: str) -> dict[str, Any]:
     """Build the joined, incident-relative waveform view for one episode's
     member records — see joined_waveform.build_joined_waveform for the
     trust/gap-precision rules. Read/derive-only: never persisted, always
-    recomputed from the current episode + relationship state."""
-    get_incident(incident_id)
+    recomputed from the current episode and the records' placement on the
+    incident time axis (built from every attached record, as reconstruction
+    does)."""
+    incident = get_incident(incident_id)
     episodes = {e.episode_id: e for e in incident_storage.list_episodes(incident_id)}
     episode = episodes.get(episode_id)
     if episode is None:
         raise IncidentServiceError(f"Episode '{episode_id}' not found on incident '{incident_id}'.", status_code=404)
 
-    records_by_id = {r.incident_record_id: r for r in incident_storage.list_incident_records(incident_id)}
-    relationships = incident_storage.list_relationships(incident_id)
-    return _build_joined_waveform(episode, records_by_id, relationships)
+    records = incident_storage.list_incident_records(incident_id)
+    axis = build_time_axis(records, home_station=incident.station_name)
+    return _build_joined_waveform(episode, {r.incident_record_id: r for r in records}, axis)
 
 
 def override_relationship(

@@ -10,34 +10,20 @@ facts already computed into incident-relative timeline events.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 from .models import AlignmentAssessment, IncidentRecord, IncidentTimelineEvent
+from .time_axis import TimeAxis, build_time_axis
 
 
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except Exception:
-        return None
-
-
-def _incident_anchor(records: list[IncidentRecord], alignment: AlignmentAssessment) -> Optional[datetime]:
-    """The zero point for ``relative_incident_ms``. Only meaningful when at
-    least one record has a trusted absolute timestamp."""
+def _incident_anchor(axis: TimeAxis, alignment: AlignmentAssessment) -> Optional[datetime]:
+    """The zero point for ``relative_incident_ms``: the first sample of the
+    earliest record on the incident time axis. Only meaningful when at least
+    one record has a trusted absolute timestamp."""
     if alignment.status in ("UNTRUSTED", "INSUFFICIENT_DATA"):
         return None
-    times = [t for t in (_parse_iso(r.trigger_time_iso or r.record_start_iso) for r in records) if t is not None]
-    if not times:
-        return None
-    return min(times)
-
-
-def _record_absolute_start(record: IncidentRecord) -> Optional[datetime]:
-    return _parse_iso(record.trigger_time_iso) or _parse_iso(record.record_start_iso)
+    return axis.zero
 
 
 def _new_event(
@@ -80,6 +66,7 @@ def build_timeline(
     records: list[IncidentRecord],
     alignment: AlignmentAssessment,
     new_id_fn,
+    axis: Optional[TimeAxis] = None,
 ) -> list[IncidentTimelineEvent]:
     """Build the canonical timeline for an incident.
 
@@ -87,7 +74,8 @@ def build_timeline(
     directly) so this module stays a pure function of its inputs and is easy
     to unit test deterministically.
     """
-    anchor = _incident_anchor(records, alignment)
+    axis = axis or build_time_axis(records)
+    anchor = _incident_anchor(axis, alignment)
     events: list[IncidentTimelineEvent] = []
 
     order_index = {rid: i for i, rid in enumerate(alignment.record_order)}
@@ -104,13 +92,11 @@ def build_timeline(
             "timing_source": window.get("method") or window.get("timing_source"),
         }
 
-        abs_start = _record_absolute_start(record)
+        abs_start = axis.start(record)
         record_start_ms = window.get("record_start_ms", 0.0) or 0.0
 
-        def to_abs(ms: Optional[float]) -> Optional[datetime]:
-            if ms is None or abs_start is None:
-                return None
-            return abs_start + timedelta(milliseconds=(ms - (window.get("trigger_time_ms") or 0.0)))
+        def to_abs(ms: Optional[float], record: IncidentRecord = record) -> Optional[datetime]:
+            return axis.absolute(record, ms / 1000.0) if ms is not None else None
 
         events.append(_new_event(
             new_id_fn, incident_id,
@@ -132,7 +118,7 @@ def build_timeline(
                 new_id_fn, incident_id,
                 incident_record_id=record.incident_record_id,
                 event_type="RECORD_TRIGGER",
-                absolute_time=abs_start,
+                absolute_time=axis.trigger(record),
                 anchor=anchor,
                 record_ms=trigger_ms,
                 source="canonical_event_window",
@@ -210,9 +196,12 @@ def build_timeline(
                 provenance=provenance,
             ))
 
-    # Gaps between consecutive records (chronological, not episode-based).
+    # Gaps between consecutive records (chronological, not episode-based): the
+    # stretch with no samples, from one record's last sample to the next
+    # one's first, when the record lengths are known.
     for gap in alignment.pairwise_gaps_ms:
-        if gap.get("gap_ms", 0) <= 0:
+        gap_ms = gap.get("data_gap_ms", gap.get("gap_ms", 0))
+        if gap_ms is None or gap_ms <= 0:
             continue
         events.append(_new_event(
             new_id_fn, incident_id,
@@ -222,7 +211,7 @@ def build_timeline(
             anchor=anchor,
             record_ms=None,
             source="alignment_assessment",
-            label=f"Gap of {gap['gap_ms'] / 1000.0:.1f}s between records",
+            label=f"Gap of {gap_ms / 1000.0:.1f}s between records",
             details=gap,
             confidence=1.0 if gap.get("precise") else 0.4,
             provenance={"kind": "inter_record_gap"},

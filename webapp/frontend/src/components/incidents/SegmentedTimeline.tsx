@@ -31,6 +31,7 @@ function markerLabel(eventType: string): string {
 const RELATIONSHIP_ARROW_LABEL: Record<string, string> = {
   DUPLICATE_TRIGGER: "duplicate",
   OVERLAPPING_CAPTURE: "overlap",
+  REMOTE_END_CAPTURE: "other end",
   CONTINUATION: "continues",
   RECLOSE_SEQUENCE: "reclose seq.",
   REFAULT_AFTER_RECLOSE: "refault after reclose",

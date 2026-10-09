@@ -1,0 +1,5627 @@
+{
+ "incident": {
+  "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+  "title": "two_ended fixture",
+  "status": "DRAFT",
+  "station_name": "GI BRINGIN",
+  "bay_name": null,
+  "asset_id": null,
+  "asset_name": null,
+  "asset_type": null,
+  "voltage_level_kv": null,
+  "protection_family": null,
+  "incident_start_iso": "2023-08-21T15:15:03.729687",
+  "incident_end_iso": "2023-08-21T15:15:03.729687",
+  "clock_assessment": "UNKNOWN",
+  "clock_assessment_reason": null,
+  "record_ids": [
+   "aa493201841e4cc4a2192e2fe5faa1ee",
+   "8ee30ae8bcc44dc1972160d9e7b70059",
+   "30478964cf7f44c184f36ea6fa653dd9",
+   "a61016829d734511a21c080161d7a439",
+   "e9b0da5623d14626936e1c8a7a64cd05",
+   "b8ee0d431749459f9eb0801b56576716"
+  ],
+  "evidence_ids": [],
+  "observed_summary": {
+   "record_count": 6,
+   "records_with_absolute_time": 6,
+   "records_without_absolute_time": 0,
+   "protection_types": [
+    "21"
+   ],
+   "faulted_phase_sets": [
+    [
+     "B",
+     "C"
+    ],
+    [],
+    [
+     "B",
+     "C"
+    ],
+    [
+     "B",
+     "C"
+    ],
+    [],
+    [
+     "A",
+     "B",
+     "C"
+    ]
+   ],
+   "reclose_outcomes": [
+    null,
+    "successful",
+    null,
+    "successful",
+    "successful",
+    "successful"
+   ],
+   "cause_hypotheses_per_record": [
+    {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    },
+    {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    },
+    {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    },
+    {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    },
+    {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    },
+    {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    }
+   ]
+  },
+  "incident_interpretation": {
+   "summary": "Multiple records are attached. Automated inter-record reconstruction has not yet been performed.",
+   "scope": "INCIDENT_RECORD_COLLECTION_SUMMARY"
+  },
+  "incident_hypotheses": [],
+  "missing_evidence": [
+   {
+    "type": "BAY_NAME_UNDETERMINED",
+    "description": "Bay name has not been set for this incident."
+   }
+  ],
+  "operator_notes": null,
+  "created_at": "2026-10-09T21:46:23.913639+00:00",
+  "updated_at": "2026-10-09T21:47:14.101037+00:00",
+  "schema_version": "stage2",
+  "records": [
+   {
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+    "source_filename": "ZQ6D.cfg",
+    "station_name": "GI BRINGIN",
+    "bay_name": null,
+    "relay_id": "Bay Mojosongo 1-2",
+    "relay_model": null,
+    "protection_type": "21",
+    "record_start_iso": "2023-08-21T15:15:03.619791",
+    "trigger_time_iso": "2023-08-21T15:15:03.729687",
+    "trigger_offset_s": 0.109896,
+    "sequence_index": 0,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "source_metadata": {
+      "duration_s": 3.009896,
+      "station_name": "GI BRINGIN",
+      "rec_dev_id": "Bay Mojosongo 1-2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 28896,
+      "trigger_time_s": 0.109896,
+      "start_time_iso": "2023-08-21T15:15:03.619791",
+      "trigger_time_iso": "2023-08-21T15:15:03.729687",
+      "trigger_offset_s": 0.109896,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 10,
+      "status_channel_count": 21,
+      "parser_warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling"
+      ],
+      "timing_warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling"
+      ],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 109.89599999999999,
+      "inception_idx": 1138,
+      "inception_time_ms": 118.5416653752327,
+      "clearing_idx": 2193,
+      "clearing_time_ms": 228.43749821186066,
+      "fault_duration_ms": 64.79166448116302,
+      "method": "status_waveform_aligned",
+      "timing_source": "status_waveform_aligned",
+      "confidence": 0.9,
+      "faulted_phases": [
+       "B",
+       "C"
+      ],
+      "reclose_events": [],
+      "warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling"
+      ]
+     },
+     "fault_episodes": [
+      {
+       "episode_index": 0,
+       "inception_time_ms": 118.5416653752327,
+       "clearing_time_ms": 228.43749821186066,
+       "fault_duration_ms": 64.79166448116302,
+       "faulted_phases": [
+        "B",
+        "C"
+       ],
+       "detection_method": "status_waveform_aligned",
+       "confidence": 0.9,
+       "reclose_events": []
+      }
+     ],
+     "protection_operations": [
+      {
+       "name": "TRIP R MJSNG2",
+       "role": "trip",
+       "zone": null,
+       "phase": "A",
+       "initially_on": false,
+       "on_ms": [
+        163.646,
+        163.958
+       ],
+       "off_ms": [
+        163.854,
+        228.437
+       ]
+      },
+      {
+       "name": "TRIP T MJSNG2",
+       "role": "trip",
+       "zone": null,
+       "phase": "C",
+       "initially_on": false,
+       "on_ms": [
+        164.167,
+        164.687
+       ],
+       "off_ms": [
+        164.479,
+        228.333
+       ]
+      },
+      {
+       "name": "TRIP S MJSNG2",
+       "role": "trip",
+       "zone": null,
+       "phase": "B",
+       "initially_on": false,
+       "on_ms": [
+        166.354,
+        166.979
+       ],
+       "off_ms": [
+        166.667,
+        228.333
+       ]
+      },
+      {
+       "name": "TRIP Z1 MJSNG2",
+       "role": "trip",
+       "zone": 1,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        166.667,
+        167.187
+       ],
+       "off_ms": [
+        166.979,
+        225.104
+       ]
+      },
+      {
+       "name": "CB OPEN MJSNG2",
+       "role": "breaker",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        230.937,
+        231.354
+       ],
+       "off_ms": [
+        231.146
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "prefault": {
+       "current_rms": {
+        "A": 426.224,
+        "B": 443.11,
+        "C": 439.731
+       },
+       "voltage_rms": {
+        "A": 87.371,
+        "B": 82.685,
+        "C": 84.288
+       }
+      },
+      "fault": {
+       "current_peak": {
+        "A": 1028.55,
+        "B": 9156.48,
+        "C": 8906.853
+       },
+       "current_rms_max": {
+        "A": 683.561,
+        "B": 6430.388,
+        "C": 5895.463
+       },
+       "voltage_rms_min": {
+        "A": 8.237,
+        "B": 1.322,
+        "C": 1.66
+       }
+      },
+      "after_clearing": {
+       "current_rms": {
+        "A": 0.874,
+        "B": 4.892,
+        "C": 12.241
+       },
+       "voltage_rms": {
+        "A": 2.467,
+        "B": 1.379,
+        "C": 1.81
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 422.5,
+        "B": 415.4,
+        "C": 419.2
+       },
+       "nominal_voltage": {
+        "A": 87.382,
+        "B": 82.709,
+        "C": 84.402
+       },
+       "none_threshold": 41.9,
+       "high_threshold": 1257.6
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 189.9,
+         "current_rms": 424.9,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "none",
+         "voltage": "normal",
+         "start_ms": 199.9,
+         "end_ms": 199.9,
+         "current_rms": 3.9,
+         "voltage_pu": 0.888
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 209.9,
+         "end_ms": 219.9,
+         "current_rms": 1.3,
+         "voltage_pu": 0.259
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 229.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.2,
+         "voltage_pu": 0.021
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 427.7,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 129.9,
+         "end_ms": 209.9,
+         "current_rms": 5527.0,
+         "voltage_pu": 0.657
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 219.9,
+         "end_ms": 239.9,
+         "current_rms": 91.6,
+         "voltage_pu": 0.02
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 249.9,
+         "end_ms": 3009.9,
+         "current_rms": 1.8,
+         "voltage_pu": 0.013
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 427.3,
+         "voltage_pu": 0.999
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 129.9,
+         "end_ms": 209.9,
+         "current_rms": 5140.3,
+         "voltage_pu": 0.632
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 219.9,
+         "end_ms": 229.9,
+         "current_rms": 56.8,
+         "voltage_pu": 0.015
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 239.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.4,
+         "voltage_pu": 0.018
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 118.6,
+        "phase": "B",
+        "kind": "disturbance_start",
+        "value": 5970.3
+       },
+       {
+        "t_ms": 118.6,
+        "phase": "C",
+        "kind": "disturbance_start",
+        "value": 5433.4
+       },
+       {
+        "t_ms": 177.9,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 679.3
+       },
+       {
+        "t_ms": 194.9,
+        "phase": "B",
+        "kind": "current_ceased",
+        "value": 5970.3
+       },
+       {
+        "t_ms": 195.1,
+        "phase": "C",
+        "kind": "current_ceased",
+        "value": 5433.4
+       },
+       {
+        "t_ms": 209.9,
+        "phase": "B",
+        "kind": "voltage_lost",
+        "value": 0.002
+       },
+       {
+        "t_ms": 209.9,
+        "phase": "C",
+        "kind": "voltage_lost",
+        "value": 0.006
+       },
+       {
+        "t_ms": 219.9,
+        "phase": "A",
+        "kind": "voltage_lost",
+        "value": 0.04
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 118.6,
+       "fault_clearing_ms": 195.1,
+       "fct_ms": 76.5,
+       "high_current_phases": [
+        "B",
+        "C"
+       ],
+       "sagged_phases": [
+        "B",
+        "C"
+       ],
+       "ceased": {
+        "A": 177.9,
+        "B": 194.9,
+        "C": 195.1
+       },
+       "zero_current_pattern": "three_together",
+       "zero_spans": [
+        {
+         "phase": "A",
+         "start_ms": 177.9,
+         "end_ms": null
+        },
+        {
+         "phase": "B",
+         "start_ms": 194.9,
+         "end_ms": null
+        },
+        {
+         "phase": "C",
+         "start_ms": 195.1,
+         "end_ms": null
+        }
+       ],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 118.6,
+         "end_ms": 209.9,
+         "high_current_phases": [
+          "B",
+          "C"
+         ],
+         "sagged_phases": [
+          "B",
+          "C"
+         ],
+         "ceased": {
+          "A": 177.9,
+          "B": 194.9,
+          "C": 195.1
+         },
+         "back_to_load": {},
+         "clearing_ms": 195.1
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "observed_facts": {
+      "faulted_phases": [
+       "B",
+       "C"
+      ],
+      "reclose_attempted": false,
+      "reclose_events": []
+     },
+     "protection_interpretation": {
+      "event_class": "FAULT_EVENT",
+      "summary": "Fault detected from available waveform/status evidence."
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "status_waveform_aligned",
+      "timing_confidence": 0.9,
+      "no_fault_gate_reasons": [
+       "kanal proteksi beroperasi (TRIP/Op)",
+       "lonjakan arus 22.02\u00d7 prefault",
+       "voltage sag 99.0%",
+       "ketidakseimbangan urutan (I0/I1 5.8%, I2/I1 94.5%)"
+      ],
+      "line_selection": {
+       "selected_line": "MJSNG2",
+       "method": "status_protection",
+       "flags": [],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing MJSNG2, selected because its own protection operated (trip/operate status channels). Other lines \u2014 MJSNG1: de-energized / out of service.",
+       "lines": [
+        {
+         "line": "MJSNG1",
+         "state": "DE_ENERGIZED",
+         "prefault_current_a": 3.4,
+         "peak_current_a": 6.3,
+         "final_current_a": 2.5,
+         "superimposed_current_a": 2.9,
+         "current_interrupted": false,
+         "status_channel_count": 11,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": true
+        },
+        {
+         "line": "MJSNG2",
+         "state": "SELECTED",
+         "prefault_current_a": 422.6,
+         "peak_current_a": 6430.4,
+         "final_current_a": 1.9,
+         "superimposed_current_a": 6015.3,
+         "current_interrupted": true,
+         "status_channel_count": 11,
+         "protection_operations": [
+          "TRIP R MJSNG2",
+          "TRIP S MJSNG2",
+          "TRIP T MJSNG2",
+          "TRIP Z1 MJSNG2"
+         ],
+         "breaker_operations": [
+          "CB OPEN MJSNG2"
+         ],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [],
+    "created_at": "2026-10-09T21:46:27.685704+00:00"
+   },
+   {
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+    "source_filename": "ZQ6E.cfg",
+    "station_name": "GI BRINGIN",
+    "bay_name": null,
+    "relay_id": "Bay Mojosongo 1-2",
+    "relay_model": null,
+    "protection_type": "21",
+    "record_start_iso": "2023-08-21T15:15:08.699791",
+    "trigger_time_iso": "2023-08-21T15:15:08.833854",
+    "trigger_offset_s": 0.134063,
+    "sequence_index": 1,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "source_metadata": {
+      "duration_s": 2.239896,
+      "station_name": "GI BRINGIN",
+      "rec_dev_id": "Bay Mojosongo 1-2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 21504,
+      "trigger_time_s": 0.134063,
+      "start_time_iso": "2023-08-21T15:15:08.699791",
+      "trigger_time_iso": "2023-08-21T15:15:08.833854",
+      "trigger_offset_s": 0.134063,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 10,
+      "status_channel_count": 21,
+      "parser_warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling"
+      ],
+      "timing_warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling",
+       "Recording started during CB dead time - fault preceded this file; clearing time and duration are not measurable from this record",
+       "Fault clearing evidence not available - duration left unset rather than guessed"
+      ],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 134.063,
+      "inception_idx": 0,
+      "inception_time_ms": 0.0,
+      "clearing_idx": null,
+      "clearing_time_ms": null,
+      "fault_duration_ms": null,
+      "method": "dead_time_recording",
+      "timing_source": "dead_time_recording",
+      "confidence": 0.6,
+      "faulted_phases": [],
+      "reclose_events": [
+       {
+        "time": 0.13468749821186066,
+        "success": true,
+        "cb_open_verified": true,
+        "dead_time_ms": null,
+        "source": "status"
+       }
+      ],
+      "warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling",
+       "Recording started during CB dead time - fault preceded this file; clearing time and duration are not measurable from this record",
+       "Fault clearing evidence not available - duration left unset rather than guessed"
+      ]
+     },
+     "fault_episodes": [],
+     "protection_operations": [
+      {
+       "name": "CB OPEN MJSNG2",
+       "role": "breaker",
+       "zone": null,
+       "phase": null,
+       "initially_on": true,
+       "on_ms": [],
+       "off_ms": [
+        134.687
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "after_reclose": {
+       "current_rms": {
+        "A": 422.088,
+        "B": 530.279,
+        "C": 447.954
+       },
+       "voltage_rms": {
+        "A": 86.196,
+        "B": 81.531,
+        "C": 82.219
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 274.2,
+        "B": 258.9,
+        "C": 261.2
+       },
+       "nominal_voltage": {
+        "A": 87.682,
+        "B": 83.435,
+        "C": 84.977
+       },
+       "none_threshold": 26.1,
+       "high_threshold": 783.7
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 19.9,
+         "end_ms": 139.9,
+         "current_rms": 0.2,
+         "voltage_pu": 0.002
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 149.9,
+         "end_ms": 159.9,
+         "current_rms": 342.5,
+         "voltage_pu": 0.423
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 169.9,
+         "end_ms": 2239.9,
+         "current_rms": 274.2,
+         "voltage_pu": 1.0
+        }
+       ],
+       "B": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 19.9,
+         "end_ms": 149.9,
+         "current_rms": 1.8,
+         "voltage_pu": 0.002
+        },
+        {
+         "current": "high",
+         "voltage": "dead",
+         "start_ms": 159.9,
+         "end_ms": 159.9,
+         "current_rms": 858.0,
+         "voltage_pu": 0.458
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 169.9,
+         "end_ms": 179.9,
+         "current_rms": 985.7,
+         "voltage_pu": 0.936
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 189.9,
+         "end_ms": 2239.9,
+         "current_rms": 258.9,
+         "voltage_pu": 1.0
+        }
+       ],
+       "C": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 19.9,
+         "end_ms": 139.9,
+         "current_rms": 0.4,
+         "voltage_pu": 0.002
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 149.9,
+         "end_ms": 149.9,
+         "current_rms": 278.7,
+         "voltage_pu": 0.234
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 159.9,
+         "end_ms": 159.9,
+         "current_rms": 1071.1,
+         "voltage_pu": 0.668
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 169.9,
+         "end_ms": 169.9,
+         "current_rms": 1210.9,
+         "voltage_pu": 0.918
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 179.9,
+         "end_ms": 2239.9,
+         "current_rms": 261.2,
+         "voltage_pu": 1.0
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 139.9,
+        "phase": "A",
+        "kind": "voltage_return",
+        "value": 0.964
+       },
+       {
+        "t_ms": 139.9,
+        "phase": "C",
+        "kind": "voltage_return",
+        "value": 0.936
+       },
+       {
+        "t_ms": 145.7,
+        "phase": "A",
+        "kind": "energization_start",
+        "value": 521.3
+       },
+       {
+        "t_ms": 145.7,
+        "phase": "B",
+        "kind": "energization_start",
+        "value": 858.0
+       },
+       {
+        "t_ms": 145.7,
+        "phase": "C",
+        "kind": "energization_start",
+        "value": 1071.1
+       },
+       {
+        "t_ms": 146.9,
+        "phase": "A",
+        "kind": "current_return",
+        "value": 494.1
+       },
+       {
+        "t_ms": 146.9,
+        "phase": "C",
+        "kind": "current_return",
+        "value": 886.7
+       },
+       {
+        "t_ms": 147.0,
+        "phase": "B",
+        "kind": "current_return",
+        "value": 821.0
+       },
+       {
+        "t_ms": 159.9,
+        "phase": "B",
+        "kind": "voltage_return",
+        "value": 0.969
+       },
+       {
+        "t_ms": 169.9,
+        "phase": "C",
+        "kind": "current_back_to_load",
+        "value": 608.3
+       },
+       {
+        "t_ms": 179.9,
+        "phase": "B",
+        "kind": "current_back_to_load",
+        "value": 751.2
+       }
+      ],
+      "summary": {
+       "starts_dead": true,
+       "fault_start_ms": null,
+       "fault_clearing_ms": null,
+       "fct_ms": null,
+       "high_current_phases": [],
+       "sagged_phases": [],
+       "ceased": {},
+       "zero_current_pattern": null,
+       "zero_spans": [],
+       "current_returns": {
+        "A": 146.9,
+        "B": 147.0,
+        "C": 146.9
+       },
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": 145.7,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "energization",
+         "start_ms": 145.7,
+         "end_ms": 159.9,
+         "high_current_phases": [
+          "B",
+          "C"
+         ],
+         "sagged_phases": [
+          "A",
+          "C"
+         ],
+         "ceased": {},
+         "back_to_load": {
+          "B": 179.9,
+          "C": 169.9
+         },
+         "clearing_ms": 179.9
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "observed_facts": {
+      "faulted_phases": [],
+      "reclose_attempted": true,
+      "reclose_events": [
+       {
+        "time": 0.13468749821186066,
+        "success": true,
+        "cb_open_verified": true,
+        "dead_time_ms": null,
+        "source": "status"
+       }
+      ]
+     },
+     "protection_interpretation": {
+      "event_class": "RECLOSE_CAPTURE",
+      "summary": "Recording starts during breaker dead time and captures the reclose (successful); the fault itself was recorded before this file."
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "PRECEDING_FAULT_RECORD",
+       "description": "This recording starts during breaker dead time \u2014 attach the record of the fault that tripped the line to the same incident so the trip, dead time and reclose are read as one sequence."
+      },
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "dead_time_recording",
+      "timing_confidence": 0.6,
+      "no_fault_gate_reasons": [
+       "lonjakan arus 2316.38\u00d7 prefault",
+       "ketidakseimbangan urutan (I0/I1 5.1%, I2/I1 29.5%)"
+      ],
+      "line_selection": {
+       "selected_line": "MJSNG2",
+       "method": "status_breaker",
+       "flags": [],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing MJSNG2, selected because its breaker operated (no protection operation was recorded for any line). Other lines \u2014 MJSNG1: de-energized / out of service.",
+       "lines": [
+        {
+         "line": "MJSNG1",
+         "state": "DE_ENERGIZED",
+         "prefault_current_a": 2.5,
+         "peak_current_a": 4.6,
+         "final_current_a": 3.0,
+         "superimposed_current_a": 2.1,
+         "current_interrupted": false,
+         "status_channel_count": 11,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": true
+        },
+        {
+         "line": "MJSNG2",
+         "state": "SELECTED",
+         "prefault_current_a": 1.9,
+         "peak_current_a": 1283.2,
+         "final_current_a": 290.8,
+         "superimposed_current_a": 1282.7,
+         "current_interrupted": false,
+         "status_channel_count": 11,
+         "protection_operations": [],
+         "breaker_operations": [
+          "CB OPEN MJSNG2"
+         ],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [],
+    "created_at": "2026-10-09T21:46:29.605684+00:00"
+   },
+   {
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+    "source_filename": "ZQ6F.cfg",
+    "station_name": "GI BRINGIN",
+    "bay_name": null,
+    "relay_id": "Bay Mojosongo 1-2",
+    "relay_model": null,
+    "protection_type": "21",
+    "record_start_iso": "2023-08-21T15:15:14.439791",
+    "trigger_time_iso": "2023-08-21T15:15:14.549687",
+    "trigger_offset_s": 0.109896,
+    "sequence_index": 2,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "source_metadata": {
+      "duration_s": 3.009896,
+      "station_name": "GI BRINGIN",
+      "rec_dev_id": "Bay Mojosongo 1-2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 28896,
+      "trigger_time_s": 0.109896,
+      "start_time_iso": "2023-08-21T15:15:14.439791",
+      "trigger_time_iso": "2023-08-21T15:15:14.549687",
+      "trigger_offset_s": 0.109896,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 10,
+      "status_channel_count": 21,
+      "parser_warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling"
+      ],
+      "timing_warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling"
+      ],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 109.89599999999999,
+      "inception_idx": 1195,
+      "inception_time_ms": 124.47916716337204,
+      "clearing_idx": 2231,
+      "clearing_time_ms": 232.39582777023315,
+      "fault_duration_ms": 65.93748927116394,
+      "method": "status_waveform_aligned",
+      "timing_source": "status_waveform_aligned",
+      "confidence": 0.9,
+      "faulted_phases": [
+       "B",
+       "C"
+      ],
+      "reclose_events": [],
+      "warnings": [
+       "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+       "Channel V DC NEG: voltage too low (0.0 kV) - check scaling"
+      ]
+     },
+     "fault_episodes": [
+      {
+       "episode_index": 0,
+       "inception_time_ms": 124.47916716337204,
+       "clearing_time_ms": 232.39582777023315,
+       "fault_duration_ms": 65.93748927116394,
+       "faulted_phases": [
+        "B",
+        "C"
+       ],
+       "detection_method": "status_waveform_aligned",
+       "confidence": 0.9,
+       "reclose_events": []
+      }
+     ],
+     "protection_operations": [
+      {
+       "name": "TRIP R MJSNG2",
+       "role": "trip",
+       "zone": null,
+       "phase": "A",
+       "initially_on": false,
+       "on_ms": [
+        166.458,
+        166.875
+       ],
+       "off_ms": [
+        166.771,
+        232.396
+       ]
+      },
+      {
+       "name": "TRIP T MJSNG2",
+       "role": "trip",
+       "zone": null,
+       "phase": "C",
+       "initially_on": false,
+       "on_ms": [
+        167.396,
+        167.917
+       ],
+       "off_ms": [
+        167.708,
+        232.083
+       ]
+      },
+      {
+       "name": "TRIP S MJSNG2",
+       "role": "trip",
+       "zone": null,
+       "phase": "B",
+       "initially_on": false,
+       "on_ms": [
+        168.542,
+        169.167
+       ],
+       "off_ms": [
+        168.958,
+        232.083
+       ]
+      },
+      {
+       "name": "TRIP Z1 MJSNG2",
+       "role": "trip",
+       "zone": 1,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        169.583,
+        170.0
+       ],
+       "off_ms": [
+        169.896,
+        221.979
+       ]
+      },
+      {
+       "name": "CB OPEN MJSNG2",
+       "role": "breaker",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        232.917,
+        233.333
+       ],
+       "off_ms": [
+        233.125
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "prefault": {
+       "current_rms": {
+        "A": 307.06,
+        "B": 285.149,
+        "C": 295.919
+       },
+       "voltage_rms": {
+        "A": 87.787,
+        "B": 83.253,
+        "C": 84.998
+       }
+      },
+      "fault": {
+       "current_peak": {
+        "A": 493.041,
+        "B": 8877.85,
+        "C": 8400.346
+       },
+       "current_rms_max": {
+        "A": 337.801,
+        "B": 6045.189,
+        "C": 5647.255
+       },
+       "voltage_rms_min": {
+        "A": 13.154,
+        "B": 2.844,
+        "C": 2.796
+       }
+      },
+      "after_clearing": {
+       "current_rms": {
+        "A": 0.492,
+        "B": 6.86,
+        "C": 9.032
+       },
+       "voltage_rms": {
+        "A": 2.244,
+        "B": 1.412,
+        "C": 1.715
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 304.7,
+        "B": 282.1,
+        "C": 292.4
+       },
+       "nominal_voltage": {
+        "A": 87.816,
+        "B": 83.217,
+        "C": 84.976
+       },
+       "none_threshold": 29.2,
+       "high_threshold": 877.3
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 189.9,
+         "current_rms": 305.0,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 199.9,
+         "end_ms": 209.9,
+         "current_rms": 149.9,
+         "voltage_pu": 0.677
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 219.9,
+         "end_ms": 229.9,
+         "current_rms": 0.9,
+         "voltage_pu": 0.194
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 239.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.2,
+         "voltage_pu": 0.021
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 282.4,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 129.9,
+         "end_ms": 129.9,
+         "current_rms": 1668.6,
+         "voltage_pu": 0.888
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 139.9,
+         "end_ms": 209.9,
+         "current_rms": 5674.6,
+         "voltage_pu": 0.669
+        },
+        {
+         "current": "high",
+         "voltage": "dead",
+         "start_ms": 219.9,
+         "end_ms": 219.9,
+         "current_rms": 912.2,
+         "voltage_pu": 0.085
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 229.9,
+         "end_ms": 259.9,
+         "current_rms": 63.9,
+         "voltage_pu": 0.029
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 269.9,
+         "end_ms": 3009.9,
+         "current_rms": 1.8,
+         "voltage_pu": 0.016
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 292.7,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 129.9,
+         "end_ms": 129.9,
+         "current_rms": 1452.7,
+         "voltage_pu": 0.961
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 139.9,
+         "end_ms": 209.9,
+         "current_rms": 5299.5,
+         "voltage_pu": 0.633
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 219.9,
+         "end_ms": 219.9,
+         "current_rms": 693.4,
+         "voltage_pu": 0.249
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 229.9,
+         "end_ms": 239.9,
+         "current_rms": 38.1,
+         "voltage_pu": 0.03
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 249.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.4,
+         "voltage_pu": 0.019
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 124.6,
+        "phase": "B",
+        "kind": "disturbance_start",
+        "value": 5907.9
+       },
+       {
+        "t_ms": 124.6,
+        "phase": "C",
+        "kind": "disturbance_start",
+        "value": 5519.4
+       },
+       {
+        "t_ms": 193.5,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 335.4
+       },
+       {
+        "t_ms": 202.6,
+        "phase": "C",
+        "kind": "current_ceased",
+        "value": 5519.4
+       },
+       {
+        "t_ms": 202.7,
+        "phase": "B",
+        "kind": "current_ceased",
+        "value": 5907.9
+       },
+       {
+        "t_ms": 209.9,
+        "phase": "B",
+        "kind": "voltage_lost",
+        "value": 0.085
+       },
+       {
+        "t_ms": 219.9,
+        "phase": "C",
+        "kind": "voltage_lost",
+        "value": 0.038
+       },
+       {
+        "t_ms": 229.9,
+        "phase": "A",
+        "kind": "voltage_lost",
+        "value": 0.044
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 124.6,
+       "fault_clearing_ms": 202.7,
+       "fct_ms": 78.1,
+       "high_current_phases": [
+        "B",
+        "C"
+       ],
+       "sagged_phases": [
+        "B",
+        "C"
+       ],
+       "ceased": {
+        "A": 193.5,
+        "B": 202.7,
+        "C": 202.6
+       },
+       "zero_current_pattern": "three_together",
+       "zero_spans": [
+        {
+         "phase": "A",
+         "start_ms": 193.5,
+         "end_ms": null
+        },
+        {
+         "phase": "B",
+         "start_ms": 202.7,
+         "end_ms": null
+        },
+        {
+         "phase": "C",
+         "start_ms": 202.6,
+         "end_ms": null
+        }
+       ],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 124.6,
+         "end_ms": 219.9,
+         "high_current_phases": [
+          "B",
+          "C"
+         ],
+         "sagged_phases": [
+          "B",
+          "C"
+         ],
+         "ceased": {
+          "A": 193.5,
+          "B": 202.7,
+          "C": 202.6
+         },
+         "back_to_load": {},
+         "clearing_ms": 202.7
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "observed_facts": {
+      "faulted_phases": [
+       "B",
+       "C"
+      ],
+      "reclose_attempted": false,
+      "reclose_events": []
+     },
+     "protection_interpretation": {
+      "event_class": "FAULT_EVENT",
+      "summary": "Fault detected from available waveform/status evidence."
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "status_waveform_aligned",
+      "timing_confidence": 0.9,
+      "no_fault_gate_reasons": [
+       "kanal proteksi beroperasi (TRIP/Op)",
+       "lonjakan arus 31.12\u00d7 prefault",
+       "voltage sag 98.4%",
+       "ketidakseimbangan urutan (I0/I1 5.5%, I2/I1 101.7%)"
+      ],
+      "line_selection": {
+       "selected_line": "MJSNG2",
+       "method": "status_protection",
+       "flags": [],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing MJSNG2, selected because its own protection operated (trip/operate status channels). Other lines \u2014 MJSNG1: de-energized / out of service.",
+       "lines": [
+        {
+         "line": "MJSNG1",
+         "state": "DE_ENERGIZED",
+         "prefault_current_a": 3.0,
+         "peak_current_a": 5.9,
+         "final_current_a": 2.5,
+         "superimposed_current_a": 2.8,
+         "current_interrupted": false,
+         "status_channel_count": 11,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": true
+        },
+        {
+         "line": "MJSNG2",
+         "state": "SELECTED",
+         "prefault_current_a": 306.8,
+         "peak_current_a": 6045.2,
+         "final_current_a": 1.9,
+         "superimposed_current_a": 5760.6,
+         "current_interrupted": true,
+         "status_channel_count": 11,
+         "protection_operations": [
+          "TRIP R MJSNG2",
+          "TRIP S MJSNG2",
+          "TRIP T MJSNG2",
+          "TRIP Z1 MJSNG2"
+         ],
+         "breaker_operations": [
+          "CB OPEN MJSNG2"
+         ],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [],
+    "created_at": "2026-10-09T21:46:34.367059+00:00"
+   },
+   {
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "analysis_id": "a61016829d734511a21c080161d7a439",
+    "source_filename": "230821,081503670,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg",
+    "station_name": "GI MOJOSONGO",
+    "bay_name": null,
+    "relay_id": "BRINGIN 1-2",
+    "relay_model": null,
+    "protection_type": "21",
+    "record_start_iso": "2023-08-21T08:15:03.670303",
+    "trigger_time_iso": "2023-08-21T08:15:03.770303",
+    "trigger_offset_s": 0.1,
+    "sequence_index": 3,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "a61016829d734511a21c080161d7a439",
+     "source_metadata": {
+      "duration_s": 0.709961,
+      "station_name": "GI MOJOSONGO",
+      "rec_dev_id": "BRINGIN 1-2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 18176,
+      "trigger_time_s": 0.1,
+      "start_time_iso": "2023-08-21T08:15:03.670303",
+      "trigger_time_iso": "2023-08-21T08:15:03.770303",
+      "trigger_offset_s": 0.1,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 11,
+      "status_channel_count": 54,
+      "parser_warnings": [
+       "Channel VR BRINGIN 1: voltage too low (0.6 kV) - check scaling",
+       "Channel VS BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+       "Channel VT BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling"
+      ],
+      "timing_warnings": [
+       "Channel VR BRINGIN 1: voltage too low (0.6 kV) - check scaling",
+       "Channel VS BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+       "Channel VT BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling"
+      ],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 100.0,
+      "inception_idx": 1742,
+      "inception_time_ms": 68.04687529802322,
+      "clearing_idx": 2125,
+      "clearing_time_ms": 83.0078125,
+      "fault_duration_ms": 14.960937201976776,
+      "method": "current_derivative",
+      "timing_source": "current_derivative",
+      "confidence": 0.8,
+      "faulted_phases": [
+       "B",
+       "C"
+      ],
+      "reclose_events": [
+       {
+        "time": 0.17363281548023224,
+        "success": true,
+        "cb_open_verified": false,
+        "dead_time_ms": null,
+        "confidence": 0.35
+       }
+      ],
+      "warnings": [
+       "Channel VR BRINGIN 1: voltage too low (0.6 kV) - check scaling",
+       "Channel VS BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+       "Channel VT BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling"
+      ]
+     },
+     "fault_episodes": [
+      {
+       "episode_index": 0,
+       "inception_time_ms": 68.04687529802322,
+       "clearing_time_ms": 83.0078125,
+       "fault_duration_ms": 14.960937201976776,
+       "faulted_phases": [
+        "B",
+        "C"
+       ],
+       "detection_method": "current_derivative",
+       "confidence": 0.8,
+       "reclose_events": [
+        {
+         "time": 0.17363281548023224,
+         "success": true,
+         "cb_open_verified": false,
+         "dead_time_ms": null,
+         "confidence": 0.35
+        }
+       ]
+      }
+     ],
+     "protection_operations": [
+      {
+       "name": "DIST RECEIVE BRINGIN 2",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        118.203
+       ],
+       "off_ms": [
+        384.18
+       ]
+      },
+      {
+       "name": "DIST SEND BRINGIN 2",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        122.188
+       ],
+       "off_ms": [
+        131.68
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "prefault": {
+       "current_rms": {
+        "A": 417.806,
+        "B": 393.608,
+        "C": 399.762
+       },
+       "voltage_rms": {
+        "A": 84.96,
+        "B": 84.264,
+        "C": 84.311
+       }
+      },
+      "fault": {
+       "current_peak": {
+        "A": 793.742,
+        "B": 963.28,
+        "C": 1602.39
+       },
+       "current_rms_max": {
+        "A": 473.639,
+        "B": 410.927,
+        "C": 818.662
+       },
+       "voltage_rms_min": {
+        "A": 83.862,
+        "B": 49.436,
+        "C": 41.567
+       }
+      },
+      "after_clearing": {
+       "current_rms": {
+        "A": 1.083,
+        "B": 1.682,
+        "C": 1.746
+       },
+       "voltage_rms": {
+        "A": 55.838,
+        "B": 31.699,
+        "C": 28.491
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 416.0,
+        "B": 393.8,
+        "C": 399.6
+       },
+       "nominal_voltage": {
+        "A": 84.972,
+        "B": 84.281,
+        "C": 84.426
+       },
+       "none_threshold": 40.0,
+       "high_threshold": 1198.8
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 140.0,
+         "current_rms": 417.2,
+         "voltage_pu": 0.995
+        },
+        {
+         "current": "none",
+         "voltage": "normal",
+         "start_ms": 150.0,
+         "end_ms": 150.0,
+         "current_rms": 0.5,
+         "voltage_pu": 0.868
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 160.0,
+         "end_ms": 180.0,
+         "current_rms": 0.6,
+         "voltage_pu": 0.308
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 190.0,
+         "end_ms": 710.0,
+         "current_rms": 0.1,
+         "voltage_pu": 0.02
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 70.0,
+         "current_rms": 393.7,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 80.0,
+         "end_ms": 140.0,
+         "current_rms": 137.3,
+         "voltage_pu": 0.504
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 150.0,
+         "end_ms": 160.0,
+         "current_rms": 0.7,
+         "voltage_pu": 0.36
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 170.0,
+         "end_ms": 170.0,
+         "current_rms": 0.7,
+         "voltage_pu": 0.041
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 180.0,
+         "end_ms": 190.0,
+         "current_rms": 43.8,
+         "voltage_pu": 0.033
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 200.0,
+         "end_ms": 710.0,
+         "current_rms": 0.2,
+         "voltage_pu": 0.012
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 70.0,
+         "current_rms": 399.6,
+         "voltage_pu": 0.999
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 80.0,
+         "end_ms": 140.0,
+         "current_rms": 595.8,
+         "voltage_pu": 0.455
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 150.0,
+         "end_ms": 160.0,
+         "current_rms": 1.1,
+         "voltage_pu": 0.326
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 170.0,
+         "end_ms": 710.0,
+         "current_rms": 0.3,
+         "voltage_pu": 0.018
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 68.1,
+        "phase": "B",
+        "kind": "disturbance_start",
+        "value": 348.6
+       },
+       {
+        "t_ms": 68.1,
+        "phase": "C",
+        "kind": "disturbance_start",
+        "value": 858.0
+       },
+       {
+        "t_ms": 127.1,
+        "phase": "C",
+        "kind": "current_ceased",
+        "value": 858.0
+       },
+       {
+        "t_ms": 127.4,
+        "phase": "B",
+        "kind": "current_ceased",
+        "value": 348.6
+       },
+       {
+        "t_ms": 127.5,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 666.4
+       },
+       {
+        "t_ms": 160.0,
+        "phase": "B",
+        "kind": "voltage_lost",
+        "value": 0.041
+       },
+       {
+        "t_ms": 160.0,
+        "phase": "C",
+        "kind": "voltage_lost",
+        "value": 0.035
+       },
+       {
+        "t_ms": 180.0,
+        "phase": "A",
+        "kind": "voltage_lost",
+        "value": 0.077
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 68.1,
+       "fault_clearing_ms": 127.4,
+       "fct_ms": 59.3,
+       "high_current_phases": [],
+       "sagged_phases": [
+        "B",
+        "C"
+       ],
+       "ceased": {
+        "A": 127.5,
+        "B": 127.4,
+        "C": 127.1
+       },
+       "zero_current_pattern": "three_together",
+       "zero_spans": [
+        {
+         "phase": "A",
+         "start_ms": 127.5,
+         "end_ms": null
+        },
+        {
+         "phase": "B",
+         "start_ms": 127.4,
+         "end_ms": null
+        },
+        {
+         "phase": "C",
+         "start_ms": 127.1,
+         "end_ms": null
+        }
+       ],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 68.1,
+         "end_ms": 140.0,
+         "high_current_phases": [],
+         "sagged_phases": [
+          "B",
+          "C"
+         ],
+         "ceased": {
+          "A": 127.5,
+          "B": 127.4,
+          "C": 127.1
+         },
+         "back_to_load": {},
+         "clearing_ms": 127.4
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "observed_facts": {
+      "faulted_phases": [
+       "B",
+       "C"
+      ],
+      "reclose_attempted": true,
+      "reclose_events": [
+       {
+        "time": 0.17363281548023224,
+        "success": true,
+        "cb_open_verified": false,
+        "dead_time_ms": null,
+        "confidence": 0.35
+       }
+      ]
+     },
+     "protection_interpretation": {
+      "event_class": "TRANSIENT_LINE_FAULT",
+      "summary": "Fault detected from available waveform/status evidence."
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "current_derivative",
+      "timing_confidence": 0.8,
+      "no_fault_gate_reasons": [
+       "lonjakan arus 4.15\u00d7 prefault",
+       "voltage sag 98.9%",
+       "ketidakseimbangan urutan (I0/I1 214.5%, I2/I1 92.4%)"
+      ],
+      "line_selection": {
+       "selected_line": "BRINGIN 2",
+       "method": "current_interruption",
+       "flags": [],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing BRINGIN 2, selected because its load current was interrupted (breaker opened) while the other line kept carrying current. Other lines \u2014 BRINGIN 1: no significant disturbance.",
+       "lines": [
+        {
+         "line": "BRINGIN 1",
+         "state": "QUIET",
+         "prefault_current_a": 0.9,
+         "peak_current_a": 8.2,
+         "final_current_a": 1.0,
+         "superimposed_current_a": 7.3,
+         "current_interrupted": false,
+         "status_channel_count": 10,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        },
+        {
+         "line": "BRINGIN 2",
+         "state": "SELECTED",
+         "prefault_current_a": 416.0,
+         "peak_current_a": 974.3,
+         "final_current_a": 1.0,
+         "superimposed_current_a": 574.4,
+         "current_interrupted": true,
+         "status_channel_count": 10,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [
+          "DIST SEND BRINGIN 2",
+          "DIST RECEIVE BRINGIN 2"
+         ],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [
+     {
+      "type": "STATION_MISMATCH",
+      "incident_station": "GI BRINGIN",
+      "record_station": "GI MOJOSONGO",
+      "requires_review": true,
+      "overridden": true
+     }
+    ],
+    "created_at": "2026-10-09T21:46:36.613293+00:00"
+   },
+   {
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+    "source_filename": "230821,081508780,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg",
+    "station_name": "GI MOJOSONGO",
+    "bay_name": null,
+    "relay_id": "BRINGIN 1-2",
+    "relay_model": null,
+    "protection_type": "21",
+    "record_start_iso": "2023-08-21T08:15:08.780301",
+    "trigger_time_iso": "2023-08-21T08:15:08.880301",
+    "trigger_offset_s": 0.1,
+    "sequence_index": 4,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "source_metadata": {
+      "duration_s": 0.599961,
+      "station_name": "GI MOJOSONGO",
+      "rec_dev_id": "BRINGIN 1-2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 15360,
+      "trigger_time_s": 0.1,
+      "start_time_iso": "2023-08-21T08:15:08.780301",
+      "trigger_time_iso": "2023-08-21T08:15:08.880301",
+      "trigger_offset_s": 0.1,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": false,
+      "current_only": false,
+      "analog_channel_count": 11,
+      "status_channel_count": 54,
+      "parser_warnings": [
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling"
+      ],
+      "timing_warnings": [
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling",
+       "Recording started during CB dead time - fault preceded this file; clearing time and duration are not measurable from this record",
+       "Fault clearing evidence not available - duration left unset rather than guessed"
+      ],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 100.0,
+      "inception_idx": 0,
+      "inception_time_ms": 0.0,
+      "clearing_idx": null,
+      "clearing_time_ms": null,
+      "fault_duration_ms": null,
+      "method": "dead_time_recording",
+      "timing_source": "dead_time_recording",
+      "confidence": 0.55,
+      "faulted_phases": [],
+      "reclose_events": [
+       {
+        "time": 0.0641796886920929,
+        "success": true,
+        "cb_open_verified": true,
+        "dead_time_ms": null,
+        "source": "waveform"
+       }
+      ],
+      "warnings": [
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling",
+       "Recording started during CB dead time - fault preceded this file; clearing time and duration are not measurable from this record",
+       "Fault clearing evidence not available - duration left unset rather than guessed"
+      ]
+     },
+     "fault_episodes": [],
+     "protection_operations": [],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "after_reclose": {
+       "current_rms": {
+        "A": 414.21,
+        "B": 498.222,
+        "C": 392.917
+       },
+       "voltage_rms": {
+        "A": 84.194,
+        "B": 80.003,
+        "C": 81.031
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 282.2,
+        "B": 276.5,
+        "C": 253.0
+       },
+       "nominal_voltage": {
+        "A": 86.054,
+        "B": 84.892,
+        "C": 85.467
+       },
+       "none_threshold": 27.7,
+       "high_threshold": 829.5
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 20.0,
+         "end_ms": 60.0,
+         "current_rms": 0.1,
+         "voltage_pu": 0.0
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 70.0,
+         "end_ms": 80.0,
+         "current_rms": 367.5,
+         "voltage_pu": 0.38
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 90.0,
+         "end_ms": 600.0,
+         "current_rms": 282.2,
+         "voltage_pu": 1.0
+        }
+       ],
+       "B": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 20.0,
+         "end_ms": 70.0,
+         "current_rms": 0.1,
+         "voltage_pu": 0.0
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 80.0,
+         "end_ms": 90.0,
+         "current_rms": 1032.5,
+         "voltage_pu": 0.582
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 100.0,
+         "end_ms": 600.0,
+         "current_rms": 273.6,
+         "voltage_pu": 1.001
+        }
+       ],
+       "C": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 20.0,
+         "end_ms": 60.0,
+         "current_rms": 0.1,
+         "voltage_pu": 0.0
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 70.0,
+         "end_ms": 70.0,
+         "current_rms": 327.3,
+         "voltage_pu": 0.181
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 80.0,
+         "end_ms": 80.0,
+         "current_rms": 1120.3,
+         "voltage_pu": 0.564
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 90.0,
+         "end_ms": 90.0,
+         "current_rms": 1115.0,
+         "voltage_pu": 0.865
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 100.0,
+         "end_ms": 600.0,
+         "current_rms": 252.3,
+         "voltage_pu": 1.001
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 60.0,
+        "phase": "A",
+        "kind": "voltage_return",
+        "value": 0.965
+       },
+       {
+        "t_ms": 60.0,
+        "phase": "C",
+        "kind": "voltage_return",
+        "value": 0.879
+       },
+       {
+        "t_ms": 65.3,
+        "phase": "A",
+        "kind": "energization_start",
+        "value": 553.8
+       },
+       {
+        "t_ms": 65.3,
+        "phase": "B",
+        "kind": "energization_start",
+        "value": 1096.4
+       },
+       {
+        "t_ms": 65.3,
+        "phase": "C",
+        "kind": "energization_start",
+        "value": 1120.3
+       },
+       {
+        "t_ms": 66.3,
+        "phase": "A",
+        "kind": "current_return",
+        "value": 494.5
+       },
+       {
+        "t_ms": 66.4,
+        "phase": "C",
+        "kind": "current_return",
+        "value": 901.6
+       },
+       {
+        "t_ms": 70.0,
+        "phase": "B",
+        "kind": "voltage_return",
+        "value": 0.859
+       },
+       {
+        "t_ms": 70.5,
+        "phase": "B",
+        "kind": "current_return",
+        "value": 866.8
+       },
+       {
+        "t_ms": 90.0,
+        "phase": "B",
+        "kind": "current_back_to_load",
+        "value": 765.1
+       },
+       {
+        "t_ms": 90.0,
+        "phase": "C",
+        "kind": "current_back_to_load",
+        "value": 617.3
+       }
+      ],
+      "summary": {
+       "starts_dead": true,
+       "fault_start_ms": null,
+       "fault_clearing_ms": null,
+       "fct_ms": null,
+       "high_current_phases": [],
+       "sagged_phases": [],
+       "ceased": {},
+       "zero_current_pattern": null,
+       "zero_spans": [],
+       "current_returns": {
+        "A": 66.3,
+        "B": 70.5,
+        "C": 66.4
+       },
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": 65.3,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "energization",
+         "start_ms": 65.3,
+         "end_ms": 90.0,
+         "high_current_phases": [
+          "B",
+          "C"
+         ],
+         "sagged_phases": [
+          "A",
+          "B",
+          "C"
+         ],
+         "ceased": {},
+         "back_to_load": {
+          "B": 90.0,
+          "C": 90.0
+         },
+         "clearing_ms": 90.0
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "observed_facts": {
+      "faulted_phases": [],
+      "reclose_attempted": true,
+      "reclose_events": [
+       {
+        "time": 0.0641796886920929,
+        "success": true,
+        "cb_open_verified": true,
+        "dead_time_ms": null,
+        "source": "waveform"
+       }
+      ]
+     },
+     "protection_interpretation": {
+      "event_class": "RECLOSE_CAPTURE",
+      "summary": "Recording starts during breaker dead time and captures the reclose (successful); the fault itself was recorded before this file."
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "PRECEDING_FAULT_RECORD",
+       "description": "This recording starts during breaker dead time \u2014 attach the record of the fault that tripped the line to the same incident so the trip, dead time and reclose are read as one sequence."
+      },
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "dead_time_recording",
+      "timing_confidence": 0.55,
+      "no_fault_gate_reasons": [
+       "lonjakan arus 3625.66\u00d7 prefault",
+       "voltage sag 55.3%",
+       "ketidakseimbangan urutan (I0/I1 8.0%, I2/I1 26.4%)"
+      ],
+      "line_selection": {
+       "selected_line": "BRINGIN 2",
+       "method": "superimposed_current",
+       "flags": [],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing BRINGIN 2, selected because largest superimposed (fault minus prefault) current \u2014 no line-specific operation evidence. Other lines \u2014 BRINGIN 1: de-energized / out of service.",
+       "lines": [
+        {
+         "line": "BRINGIN 1",
+         "state": "DE_ENERGIZED",
+         "prefault_current_a": 0.9,
+         "peak_current_a": 1.3,
+         "final_current_a": 1.0,
+         "superimposed_current_a": 0.5,
+         "current_interrupted": false,
+         "status_channel_count": 10,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        },
+        {
+         "line": "BRINGIN 2",
+         "state": "SELECTED",
+         "prefault_current_a": 1.0,
+         "peak_current_a": 1246.1,
+         "final_current_a": 273.7,
+         "superimposed_current_a": 1245.2,
+         "current_interrupted": false,
+         "status_channel_count": 10,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [
+     {
+      "type": "STATION_MISMATCH",
+      "incident_station": "GI BRINGIN",
+      "record_station": "GI MOJOSONGO",
+      "requires_review": true,
+      "overridden": true
+     }
+    ],
+    "created_at": "2026-10-09T21:46:38.414197+00:00"
+   },
+   {
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+    "source_filename": "230821,081514490,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg",
+    "station_name": "GI MOJOSONGO",
+    "bay_name": null,
+    "relay_id": "BRINGIN 1-2",
+    "relay_model": null,
+    "protection_type": "21",
+    "record_start_iso": "2023-08-21T08:15:14.490306",
+    "trigger_time_iso": "2023-08-21T08:15:14.590306",
+    "trigger_offset_s": 0.1,
+    "sequence_index": 5,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "b8ee0d431749459f9eb0801b56576716",
+     "source_metadata": {
+      "duration_s": 0.709961,
+      "station_name": "GI MOJOSONGO",
+      "rec_dev_id": "BRINGIN 1-2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 18176,
+      "trigger_time_s": 0.1,
+      "start_time_iso": "2023-08-21T08:15:14.490306",
+      "trigger_time_iso": "2023-08-21T08:15:14.590306",
+      "trigger_offset_s": 0.1,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 11,
+      "status_channel_count": 54,
+      "parser_warnings": [
+       "Channel VR BRINGIN 1: voltage too low (0.9 kV) - check scaling",
+       "Channel VS BRINGIN 1: voltage too low (0.4 kV) - check scaling",
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling"
+      ],
+      "timing_warnings": [
+       "Channel VR BRINGIN 1: voltage too low (0.9 kV) - check scaling",
+       "Channel VS BRINGIN 1: voltage too low (0.4 kV) - check scaling",
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling"
+      ],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 100.0,
+      "inception_idx": 1894,
+      "inception_time_ms": 73.98437708616257,
+      "clearing_idx": 2150,
+      "clearing_time_ms": 83.984375,
+      "fault_duration_ms": 9.999997913837433,
+      "method": "current_derivative",
+      "timing_source": "current_derivative",
+      "confidence": 0.8,
+      "faulted_phases": [
+       "A",
+       "B",
+       "C"
+      ],
+      "reclose_events": [
+       {
+        "time": 0.08601562678813934,
+        "success": true,
+        "cb_open_verified": false,
+        "dead_time_ms": null,
+        "confidence": 0.35
+       }
+      ],
+      "warnings": [
+       "Channel VR BRINGIN 1: voltage too low (0.9 kV) - check scaling",
+       "Channel VS BRINGIN 1: voltage too low (0.4 kV) - check scaling",
+       "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+       "Channel A - CH13: voltage too low (0.0 kV) - check scaling"
+      ]
+     },
+     "fault_episodes": [
+      {
+       "episode_index": 0,
+       "inception_time_ms": 73.98437708616257,
+       "clearing_time_ms": 83.984375,
+       "fault_duration_ms": 9.999997913837433,
+       "faulted_phases": [
+        "A",
+        "B",
+        "C"
+       ],
+       "detection_method": "current_derivative",
+       "confidence": 0.8,
+       "reclose_events": [
+        {
+         "time": 0.08601562678813934,
+         "success": true,
+         "cb_open_verified": false,
+         "dead_time_ms": null,
+         "confidence": 0.35
+        }
+       ]
+      }
+     ],
+     "protection_operations": [
+      {
+       "name": "DIST RECEIVE BRINGIN 2",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        120.664
+       ],
+       "off_ms": [
+        384.18
+       ]
+      },
+      {
+       "name": "DIST SEND BRINGIN 2",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        132.695
+       ],
+       "off_ms": [
+        159.18
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "prefault": {
+       "current_rms": {
+        "A": 299.666,
+        "B": 274.571,
+        "C": 286.696
+       },
+       "voltage_rms": {
+        "A": 86.27,
+        "B": 85.802,
+        "C": 86.187
+       }
+      },
+      "fault": {
+       "current_peak": {
+        "A": 469.578,
+        "B": 1636.613,
+        "C": 1776.472
+       },
+       "current_rms_max": {
+        "A": 313.065,
+        "B": 513.248,
+        "C": 563.336
+       },
+       "voltage_rms_min": {
+        "A": 86.197,
+        "B": 49.447,
+        "C": 46.322
+       }
+      },
+      "after_clearing": {
+       "current_rms": {
+        "A": 180.329,
+        "B": 231.605,
+        "C": 250.22
+       },
+       "voltage_rms": {
+        "A": 74.259,
+        "B": 40.357,
+        "C": 39.038
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 297.6,
+        "B": 272.2,
+        "C": 283.8
+       },
+       "nominal_voltage": {
+        "A": 86.28,
+        "B": 85.752,
+        "C": 86.166
+       },
+       "none_threshold": 28.4,
+       "high_threshold": 851.5
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 150.0,
+         "current_rms": 298.0,
+         "voltage_pu": 0.994
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 160.0,
+         "end_ms": 160.0,
+         "current_rms": 56.4,
+         "voltage_pu": 0.477
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 170.0,
+         "end_ms": 180.0,
+         "current_rms": 2.3,
+         "voltage_pu": 0.271
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 190.0,
+         "end_ms": 710.0,
+         "current_rms": 0.1,
+         "voltage_pu": 0.02
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 70.0,
+         "current_rms": 272.3,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 80.0,
+         "end_ms": 170.0,
+         "current_rms": 152.7,
+         "voltage_pu": 0.498
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 180.0,
+         "end_ms": 200.0,
+         "current_rms": 0.3,
+         "voltage_pu": 0.02
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 210.0,
+         "end_ms": 220.0,
+         "current_rms": 47.9,
+         "voltage_pu": 0.017
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 230.0,
+         "end_ms": 710.0,
+         "current_rms": 0.1,
+         "voltage_pu": 0.014
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 80.0,
+         "current_rms": 283.8,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 90.0,
+         "end_ms": 170.0,
+         "current_rms": 201.8,
+         "voltage_pu": 0.481
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 180.0,
+         "end_ms": 710.0,
+         "current_rms": 0.1,
+         "voltage_pu": 0.018
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 74.1,
+        "phase": "B",
+        "kind": "disturbance_start",
+        "value": 211.2
+       },
+       {
+        "t_ms": 74.1,
+        "phase": "C",
+        "kind": "disturbance_start",
+        "value": 264.8
+       },
+       {
+        "t_ms": 152.9,
+        "phase": "C",
+        "kind": "current_ceased",
+        "value": 264.8
+       },
+       {
+        "t_ms": 153.0,
+        "phase": "B",
+        "kind": "current_ceased",
+        "value": 211.2
+       },
+       {
+        "t_ms": 154.0,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 326.3
+       },
+       {
+        "t_ms": 170.0,
+        "phase": "B",
+        "kind": "voltage_lost",
+        "value": 0.063
+       },
+       {
+        "t_ms": 170.0,
+        "phase": "C",
+        "kind": "voltage_lost",
+        "value": 0.06
+       },
+       {
+        "t_ms": 180.0,
+        "phase": "A",
+        "kind": "voltage_lost",
+        "value": 0.131
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 74.1,
+       "fault_clearing_ms": 153.0,
+       "fct_ms": 78.9,
+       "high_current_phases": [],
+       "sagged_phases": [
+        "B",
+        "C"
+       ],
+       "ceased": {
+        "A": 154.0,
+        "B": 153.0,
+        "C": 152.9
+       },
+       "zero_current_pattern": "three_together",
+       "zero_spans": [
+        {
+         "phase": "A",
+         "start_ms": 154.0,
+         "end_ms": null
+        },
+        {
+         "phase": "B",
+         "start_ms": 153.0,
+         "end_ms": null
+        },
+        {
+         "phase": "C",
+         "start_ms": 152.9,
+         "end_ms": null
+        }
+       ],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 74.1,
+         "end_ms": 170.0,
+         "high_current_phases": [],
+         "sagged_phases": [
+          "B",
+          "C"
+         ],
+         "ceased": {
+          "A": 154.0,
+          "B": 153.0,
+          "C": 152.9
+         },
+         "back_to_load": {},
+         "clearing_ms": 153.0
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "observed_facts": {
+      "faulted_phases": [
+       "A",
+       "B",
+       "C"
+      ],
+      "reclose_attempted": true,
+      "reclose_events": [
+       {
+        "time": 0.08601562678813934,
+        "success": true,
+        "cb_open_verified": false,
+        "dead_time_ms": null,
+        "confidence": 0.35
+       }
+      ]
+     },
+     "protection_interpretation": {
+      "event_class": "TRANSIENT_LINE_FAULT",
+      "summary": "Fault detected from available waveform/status evidence."
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "current_derivative",
+      "timing_confidence": 0.8,
+      "no_fault_gate_reasons": [
+       "lonjakan arus 6.19\u00d7 prefault",
+       "voltage sag 98.6%",
+       "ketidakseimbangan urutan (I0/I1 2.4%, I2/I1 72.5%)"
+      ],
+      "line_selection": {
+       "selected_line": "BRINGIN 2",
+       "method": "current_interruption",
+       "flags": [],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing BRINGIN 2, selected because its load current was interrupted (breaker opened) while the other line kept carrying current. Other lines \u2014 BRINGIN 1: no significant disturbance.",
+       "lines": [
+        {
+         "line": "BRINGIN 1",
+         "state": "QUIET",
+         "prefault_current_a": 0.9,
+         "peak_current_a": 8.3,
+         "final_current_a": 0.9,
+         "superimposed_current_a": 7.4,
+         "current_interrupted": false,
+         "status_channel_count": 10,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        },
+        {
+         "line": "BRINGIN 2",
+         "state": "SELECTED",
+         "prefault_current_a": 299.6,
+         "peak_current_a": 581.2,
+         "final_current_a": 1.1,
+         "superimposed_current_a": 294.4,
+         "current_interrupted": true,
+         "status_channel_count": 10,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [
+          "DIST SEND BRINGIN 2",
+          "DIST RECEIVE BRINGIN 2"
+         ],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [
+     {
+      "type": "STATION_MISMATCH",
+      "incident_station": "GI BRINGIN",
+      "record_station": "GI MOJOSONGO",
+      "requires_review": true,
+      "overridden": true
+     }
+    ],
+    "created_at": "2026-10-09T21:46:41.018288+00:00"
+   }
+  ],
+  "provenance": {
+   "schema_version": "stage2",
+   "incident_engine_version": "stage1.0",
+   "record_snapshot_versions": [
+    {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "status_waveform_aligned"
+    },
+    {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "dead_time_recording"
+    },
+    {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "status_waveform_aligned"
+    },
+    {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "current_derivative"
+    },
+    {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "dead_time_recording"
+    },
+    {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "current_derivative"
+    }
+   ],
+   "created_at": "2026-10-09T21:46:23.913639+00:00",
+   "updated_at": "2026-10-09T21:47:14.101037+00:00"
+  }
+ },
+ "reconstruction": {
+  "reconstruction_id": "79f074fa94ad442990c68b28c43b9382",
+  "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+  "engine_version": "stage2.0",
+  "schema_version": "stage2",
+  "same_bay_status": "CONFIRMED_SAME_BAY",
+  "same_bay_evidence": [
+   {
+    "type": "OTHER_LINE_END",
+    "description": "Records from ['GI MOJOSONGO'] were lined up with this end's on a fault both recorded \u2014 the other end of the line, not another bay."
+   },
+   {
+    "type": "STATION_NAME_CONSISTENT",
+    "description": "All records agree with incident station 'GI BRINGIN'."
+   },
+   {
+    "type": "SAME_RELAY_ID",
+    "description": "All records report the same relay/device id 'Bay Mojosongo 1-2'."
+   }
+  ],
+  "same_bay_override": null,
+  "alignment": {
+   "status": "LIKELY_ALIGNED",
+   "confidence": 0.55,
+   "order_source": "ABSOLUTE_TIME",
+   "record_order": [
+    "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "e30074ebe97146f18bfa0001e226cb31",
+    "c6334963874749cb931cb215c40a236c",
+    "73bddc4bc3a64201b13bb480a4aec209",
+    "41f6c51a79ca4e459d8fe1204b8afb65",
+    "d47e1e0f37cb4eea854ba2a329102631"
+   ],
+   "pairwise_gaps_ms": [
+    {
+     "left_incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "right_incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "gap_ms": 5104.2,
+     "precise": false,
+     "data_gap_ms": 2070.1
+    },
+    {
+     "left_incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "right_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "gap_ms": 5110.0,
+     "precise": false,
+     "data_gap_ms": 4400.0
+    },
+    {
+     "left_incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "right_incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "gap_ms": 5715.8,
+     "precise": false,
+     "data_gap_ms": 3500.1
+    },
+    {
+     "left_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "right_incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "gap_ms": 5710.0,
+     "precise": false,
+     "data_gap_ms": 5110.0
+    }
+   ],
+   "overlap_groups": [],
+   "warnings": [
+    {
+     "type": "TIME_ZONE_OFFSET_REMOVED",
+     "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
+     "zone_offset_h": -7.0,
+     "description": "The clock of GI MOJOSONGO | BRINGIN 1-2 reads 7 h behind GI BRINGIN | Bay Mojosongo 1-2; aligned on the fault both recorded."
+    }
+   ],
+   "assumptions": [
+    "The clock of GI MOJOSONGO | BRINGIN 1-2 reads 7 h behind GI BRINGIN | Bay Mojosongo 1-2; aligned on the fault both recorded.",
+    "At least one record reports non-nominal clock quality; millisecond-level gaps are indicative, not exact."
+   ],
+   "time_axis": {
+    "reference_group": "GI BRINGIN | Bay Mojosongo 1-2",
+    "zero_iso": "2023-08-21T15:15:03.619791",
+    "records": [
+     {
+      "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+      "clock_group": "GI BRINGIN | Bay Mojosongo 1-2",
+      "method": "reference_clock",
+      "correction_s": 0.0,
+      "zone_offset_h": null,
+      "clock_offset_ms": null,
+      "aligned_on": null,
+      "start_iso": "2023-08-21T15:15:03.619791",
+      "offset_s": 0.0,
+      "span_s": 3.009896
+     },
+     {
+      "incident_record_id": "c6334963874749cb931cb215c40a236c",
+      "clock_group": "GI BRINGIN | Bay Mojosongo 1-2",
+      "method": "reference_clock",
+      "correction_s": 0.0,
+      "zone_offset_h": null,
+      "clock_offset_ms": null,
+      "aligned_on": null,
+      "start_iso": "2023-08-21T15:15:08.699791",
+      "offset_s": 5.08,
+      "span_s": 2.239896
+     },
+     {
+      "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+      "clock_group": "GI BRINGIN | Bay Mojosongo 1-2",
+      "method": "reference_clock",
+      "correction_s": 0.0,
+      "zone_offset_h": null,
+      "clock_offset_ms": null,
+      "aligned_on": null,
+      "start_iso": "2023-08-21T15:15:14.439791",
+      "offset_s": 10.82,
+      "span_s": 3.009896
+     },
+     {
+      "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+      "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
+      "method": "fault_aligned",
+      "correction_s": 25199.999988,
+      "zone_offset_h": -7.0,
+      "clock_offset_ms": 0.012,
+      "aligned_on": {
+       "reference_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+       "record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "agreeing_pairs": 2,
+       "candidate_pairs": 2
+      },
+      "start_iso": "2023-08-21T15:15:03.670291",
+      "offset_s": 0.0505,
+      "span_s": 0.709961
+     },
+     {
+      "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+      "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
+      "method": "fault_aligned",
+      "correction_s": 25199.999988,
+      "zone_offset_h": -7.0,
+      "clock_offset_ms": 0.012,
+      "aligned_on": {
+       "reference_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+       "record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "agreeing_pairs": 2,
+       "candidate_pairs": 2
+      },
+      "start_iso": "2023-08-21T15:15:08.780289",
+      "offset_s": 5.160498,
+      "span_s": 0.599961
+     },
+     {
+      "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+      "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
+      "method": "fault_aligned",
+      "correction_s": 25199.999988,
+      "zone_offset_h": -7.0,
+      "clock_offset_ms": 0.012,
+      "aligned_on": {
+       "reference_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+       "record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "agreeing_pairs": 2,
+       "candidate_pairs": 2
+      },
+      "start_iso": "2023-08-21T15:15:14.490294",
+      "offset_s": 10.870503,
+      "span_s": 0.709961
+     }
+    ],
+    "warnings": [
+     {
+      "type": "TIME_ZONE_OFFSET_REMOVED",
+      "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
+      "zone_offset_h": -7.0,
+      "description": "The clock of GI MOJOSONGO | BRINGIN 1-2 reads 7 h behind GI BRINGIN | Bay Mojosongo 1-2; aligned on the fault both recorded."
+     }
+    ]
+   }
+  },
+  "timeline_event_ids": [
+   "79f074fa94ad442990c68b28c43b9382-1",
+   "79f074fa94ad442990c68b28c43b9382-7",
+   "79f074fa94ad442990c68b28c43b9382-2",
+   "79f074fa94ad442990c68b28c43b9382-3",
+   "79f074fa94ad442990c68b28c43b9382-9",
+   "79f074fa94ad442990c68b28c43b9382-10",
+   "79f074fa94ad442990c68b28c43b9382-8",
+   "79f074fa94ad442990c68b28c43b9382-11",
+   "79f074fa94ad442990c68b28c43b9382-4",
+   "79f074fa94ad442990c68b28c43b9382-17",
+   "79f074fa94ad442990c68b28c43b9382-19",
+   "79f074fa94ad442990c68b28c43b9382-25",
+   "79f074fa94ad442990c68b28c43b9382-27",
+   "79f074fa94ad442990c68b28c43b9382-18",
+   "79f074fa94ad442990c68b28c43b9382-20",
+   "79f074fa94ad442990c68b28c43b9382-28",
+   "79f074fa94ad442990c68b28c43b9382-26",
+   "79f074fa94ad442990c68b28c43b9382-33",
+   "79f074fa94ad442990c68b28c43b9382-39",
+   "79f074fa94ad442990c68b28c43b9382-34",
+   "79f074fa94ad442990c68b28c43b9382-35",
+   "79f074fa94ad442990c68b28c43b9382-41",
+   "79f074fa94ad442990c68b28c43b9382-42",
+   "79f074fa94ad442990c68b28c43b9382-43",
+   "79f074fa94ad442990c68b28c43b9382-40",
+   "79f074fa94ad442990c68b28c43b9382-36",
+   "79f074fa94ad442990c68b28c43b9382-5",
+   "79f074fa94ad442990c68b28c43b9382-6",
+   "79f074fa94ad442990c68b28c43b9382-12",
+   "79f074fa94ad442990c68b28c43b9382-13",
+   "79f074fa94ad442990c68b28c43b9382-14",
+   "79f074fa94ad442990c68b28c43b9382-15",
+   "79f074fa94ad442990c68b28c43b9382-16",
+   "79f074fa94ad442990c68b28c43b9382-21",
+   "79f074fa94ad442990c68b28c43b9382-22",
+   "79f074fa94ad442990c68b28c43b9382-23",
+   "79f074fa94ad442990c68b28c43b9382-24",
+   "79f074fa94ad442990c68b28c43b9382-29",
+   "79f074fa94ad442990c68b28c43b9382-30",
+   "79f074fa94ad442990c68b28c43b9382-31",
+   "79f074fa94ad442990c68b28c43b9382-32",
+   "79f074fa94ad442990c68b28c43b9382-37",
+   "79f074fa94ad442990c68b28c43b9382-38",
+   "79f074fa94ad442990c68b28c43b9382-44",
+   "79f074fa94ad442990c68b28c43b9382-45",
+   "79f074fa94ad442990c68b28c43b9382-46",
+   "79f074fa94ad442990c68b28c43b9382-47",
+   "79f074fa94ad442990c68b28c43b9382-48",
+   "79f074fa94ad442990c68b28c43b9382-49",
+   "79f074fa94ad442990c68b28c43b9382-50",
+   "79f074fa94ad442990c68b28c43b9382-51"
+  ],
+  "relationship_ids": [
+   "79f074fa94ad442990c68b28c43b9382-52",
+   "79f074fa94ad442990c68b28c43b9382-53",
+   "79f074fa94ad442990c68b28c43b9382-54",
+   "79f074fa94ad442990c68b28c43b9382-55",
+   "79f074fa94ad442990c68b28c43b9382-56",
+   "79f074fa94ad442990c68b28c43b9382-57",
+   "79f074fa94ad442990c68b28c43b9382-58"
+  ],
+  "episode_ids": [
+   "79f074fa94ad442990c68b28c43b9382-59",
+   "79f074fa94ad442990c68b28c43b9382-60"
+  ],
+  "observed_incident_facts": {
+   "record_count": 6,
+   "episode_count": 2,
+   "incident_duration_ms": 10860.607,
+   "phase_sequence": [
+    [
+     "B",
+     "C"
+    ],
+    [
+     "B",
+     "C"
+    ]
+   ],
+   "reclose_sequence": [
+    "successful",
+    null
+   ]
+  },
+  "protection_sequence_interpretation": {
+   "event_class": "RECLOSE_THEN_REFAULT",
+   "summary": "A fault was cleared and the line reclosed successfully, but it faulted again 5.7 s after the reclose \u2014 the reclose did not hold. No reclose of the last fault was captured in the attached records (the line may have locked out)."
+  },
+  "incident_hypotheses": [
+   {
+    "hypothesis": "REFAULT_AFTER_SUCCESSFUL_RECLOSE",
+    "mechanism_signal": "CONSISTENT_WITH_PERSISTENT_PHYSICAL_CONTACT",
+    "confidence": 0.6,
+    "episode_indices": [
+     0,
+     1
+    ],
+    "evidence_for": [
+     "The line faulted again 5.7 s after a successful reclose, on the same phases (B-C)."
+    ],
+    "evidence_against": [
+     "A second, independent lightning strike within seconds cannot be excluded from COMTRADE evidence alone \u2014 lightning-detection data, or both faults locating to the same point on the line, would settle it."
+    ],
+    "description": "The line was re-energized healthy and faulted again within seconds, so the cause of the first fault did not go away when the breaker tripped. That is more consistent with something still near the conductor (e.g. vegetation or a foreign object) than with a single lightning transient, which leaves nothing behind once the arc is extinguished. Not a confirmed cause."
+   }
+  ],
+  "physical_cause_evidence": {
+   "scope": "RECORD_LOCAL_SIGNATURES",
+   "records": [
+    {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "top_hypothesis": "PETIR",
+     "confidence": 0.82,
+     "cause_ranking": [
+      {
+       "cause": "PETIR",
+       "label": "Petir / Lightning",
+       "confidence": 0.82
+      },
+      {
+       "cause": "LAYANG",
+       "label": "Layang-Layang / Kite",
+       "confidence": 0.014
+      },
+      {
+       "cause": "BENDA_ASING",
+       "label": "Benda Asing",
+       "confidence": 0.007
+      },
+      {
+       "cause": "PERALATAN",
+       "label": "Peralatan Rusak / Anomali Proteksi",
+       "confidence": 0.001
+      },
+      {
+       "cause": "HEWAN",
+       "label": "Hewan / Binatang",
+       "confidence": 0.0
+      },
+      {
+       "cause": "KONDUKTOR",
+       "label": "Konduktor / Tower",
+       "confidence": 0.0
+      },
+      {
+       "cause": "POHON",
+       "label": "Pohon / Vegetasi",
+       "confidence": 0.0
+      }
+     ],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v1.2025-04",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": "status_waveform_aligned",
+     "timing_confidence": 0.9,
+     "raw_probabilities": {
+      "BENDA_ASING": 0.0006,
+      "HEWAN": 0.0,
+      "KONDUKTOR": 0.0,
+      "LAYANG": 0.0017,
+      "PERALATAN": 0.0,
+      "PETIR": 0.9976,
+      "POHON": 0.0
+     },
+     "calibrated_probabilities": {
+      "BENDA_ASING": 0.0067,
+      "HEWAN": 0.0004,
+      "KONDUKTOR": 0.0004,
+      "LAYANG": 0.0142,
+      "PERALATAN": 0.0008,
+      "PETIR": 0.9772,
+      "POHON": 0.0002
+     },
+     "applied_caps": [
+      {
+       "name": "ceiling_92",
+       "before": 0.9772372107916474,
+       "after": 0.92,
+       "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."
+      },
+      {
+       "name": "reclose_outcome_conflict",
+       "before": 0.92,
+       "after": 0.82,
+       "reason": "Episode the line faulted again shortly after a successful reclose \u2014 inconsistent with a transient cause (PETIR): transient causes are expected to self-clear and stay cleared."
+      }
+     ],
+     "evidence_role": "inception",
+     "fault_type": "transient",
+     "skip_reason": null,
+     "requires_review": true
+    },
+    {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "top_hypothesis": null,
+     "confidence": null,
+     "cause_ranking": [],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v1.2025-04",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": null,
+     "timing_confidence": null,
+     "raw_probabilities": null,
+     "calibrated_probabilities": null,
+     "applied_caps": [],
+     "evidence_role": "aftermath",
+     "fault_type": "none",
+     "skip_reason": "reclose_capture"
+    },
+    {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "top_hypothesis": "PETIR",
+     "confidence": 0.349,
+     "cause_ranking": [
+      {
+       "cause": "PETIR",
+       "label": "Petir / Lightning",
+       "confidence": 0.349
+      },
+      {
+       "cause": "BENDA_ASING",
+       "label": "Benda Asing",
+       "confidence": 0.323
+      },
+      {
+       "cause": "LAYANG",
+       "label": "Layang-Layang / Kite",
+       "confidence": 0.307
+      },
+      {
+       "cause": "PERALATAN",
+       "label": "Peralatan Rusak / Anomali Proteksi",
+       "confidence": 0.009
+      },
+      {
+       "cause": "HEWAN",
+       "label": "Hewan / Binatang",
+       "confidence": 0.008
+      },
+      {
+       "cause": "KONDUKTOR",
+       "label": "Konduktor / Tower",
+       "confidence": 0.002
+      },
+      {
+       "cause": "POHON",
+       "label": "Pohon / Vegetasi",
+       "confidence": 0.002
+      }
+     ],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v1.2025-04",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": "status_waveform_aligned",
+     "timing_confidence": 0.9,
+     "raw_probabilities": {
+      "BENDA_ASING": 0.3265,
+      "HEWAN": 0.0013,
+      "KONDUKTOR": 0.0001,
+      "LAYANG": 0.3032,
+      "PERALATAN": 0.0016,
+      "PETIR": 0.3671,
+      "POHON": 0.0002
+     },
+     "calibrated_probabilities": {
+      "BENDA_ASING": 0.3226,
+      "HEWAN": 0.0082,
+      "KONDUKTOR": 0.0017,
+      "LAYANG": 0.3071,
+      "PERALATAN": 0.0094,
+      "PETIR": 0.3488,
+      "POHON": 0.0022
+     },
+     "applied_caps": [],
+     "evidence_role": "inception",
+     "fault_type": "transient",
+     "skip_reason": null
+    },
+    {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "top_hypothesis": "LAYANG",
+     "confidence": 0.594,
+     "cause_ranking": [
+      {
+       "cause": "LAYANG",
+       "label": "Layang-Layang / Kite",
+       "confidence": 0.594
+      },
+      {
+       "cause": "PETIR",
+       "label": "Petir / Lightning",
+       "confidence": 0.202
+      },
+      {
+       "cause": "BENDA_ASING",
+       "label": "Benda Asing",
+       "confidence": 0.115
+      },
+      {
+       "cause": "POHON",
+       "label": "Pohon / Vegetasi",
+       "confidence": 0.045
+      },
+      {
+       "cause": "KONDUKTOR",
+       "label": "Konduktor / Tower",
+       "confidence": 0.042
+      },
+      {
+       "cause": "PERALATAN",
+       "label": "Peralatan Rusak / Anomali Proteksi",
+       "confidence": 0.002
+      },
+      {
+       "cause": "HEWAN",
+       "label": "Hewan / Binatang",
+       "confidence": 0.0
+      }
+     ],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v1.2025-04",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": "current_derivative",
+     "timing_confidence": 0.8,
+     "raw_probabilities": {
+      "BENDA_ASING": 0.0646,
+      "HEWAN": 0.0,
+      "KONDUKTOR": 0.0141,
+      "LAYANG": 0.7555,
+      "PERALATAN": 0.0002,
+      "PETIR": 0.1497,
+      "POHON": 0.0159
+     },
+     "calibrated_probabilities": {
+      "BENDA_ASING": 0.1151,
+      "HEWAN": 0.0005,
+      "KONDUKTOR": 0.0417,
+      "LAYANG": 0.5935,
+      "PERALATAN": 0.0021,
+      "PETIR": 0.2018,
+      "POHON": 0.0453
+     },
+     "applied_caps": [],
+     "evidence_role": "remote_end",
+     "fault_type": "transient",
+     "skip_reason": null
+    },
+    {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "top_hypothesis": null,
+     "confidence": null,
+     "cause_ranking": [],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v1.2025-04",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": null,
+     "timing_confidence": null,
+     "raw_probabilities": null,
+     "calibrated_probabilities": null,
+     "applied_caps": [],
+     "evidence_role": "remote_end",
+     "fault_type": "none",
+     "skip_reason": "reclose_capture"
+    },
+    {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "top_hypothesis": "PETIR",
+     "confidence": 0.92,
+     "cause_ranking": [
+      {
+       "cause": "PETIR",
+       "label": "Petir / Lightning",
+       "confidence": 0.92
+      },
+      {
+       "cause": "LAYANG",
+       "label": "Layang-Layang / Kite",
+       "confidence": 0.006
+      },
+      {
+       "cause": "PERALATAN",
+       "label": "Peralatan Rusak / Anomali Proteksi",
+       "confidence": 0.003
+      },
+      {
+       "cause": "BENDA_ASING",
+       "label": "Benda Asing",
+       "confidence": 0.002
+      },
+      {
+       "cause": "POHON",
+       "label": "Pohon / Vegetasi",
+       "confidence": 0.001
+      },
+      {
+       "cause": "HEWAN",
+       "label": "Hewan / Binatang",
+       "confidence": 0.0
+      },
+      {
+       "cause": "KONDUKTOR",
+       "label": "Konduktor / Tower",
+       "confidence": 0.0
+      }
+     ],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v1.2025-04",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": "current_derivative",
+     "timing_confidence": 0.8,
+     "raw_probabilities": {
+      "BENDA_ASING": 0.0001,
+      "HEWAN": 0.0,
+      "KONDUKTOR": 0.0,
+      "LAYANG": 0.0005,
+      "PERALATAN": 0.0002,
+      "PETIR": 0.9992,
+      "POHON": 0.0
+     },
+     "calibrated_probabilities": {
+      "BENDA_ASING": 0.0017,
+      "HEWAN": 0.0001,
+      "KONDUKTOR": 0.0003,
+      "LAYANG": 0.0064,
+      "PERALATAN": 0.0034,
+      "PETIR": 0.9875,
+      "POHON": 0.0008
+     },
+     "applied_caps": [
+      {
+       "name": "ceiling_92",
+       "before": 0.9874603366378369,
+       "after": 0.92,
+       "reason": "Hard ceiling 92% untuk mencegah false confidence pada model klasifikasi 7-kelas dengan data terbatas."
+      }
+     ],
+     "evidence_role": "remote_end",
+     "fault_type": "transient",
+     "skip_reason": null
+    }
+   ],
+   "consistency": "CONSISTENT",
+   "incident_root_cause": "UNCONFIRMED"
+  },
+  "narrative": "6 COMTRADE records from the same bay were reconstructed into 2 fault episodes over 11 seconds.\n\nEpisode 1 was a phase-to-phase (or double-line-to-ground) (B-C fault), lasting 65 ms. Reclose was successful after a 5.0 s dead time. (4 records captured this episode.)\nEpisode 2 was a phase-to-phase (or double-line-to-ground) (B-C fault), lasting 66 ms. This episode is a new fault 5.7 s after the previous episode's successful reclose \u2014 the reclose did not hold. (2 records captured this episode.)\n\nThe line was reclosed successfully but faulted again within seconds, so the cause of the first fault did not go away at the trip. A fault that comes back this quickly is more consistent with something still near the conductor than with a one-off transient \u2014 a pattern-based reading, not a confirmed conclusion.\nThe per-record physical-cause signatures are consistent with each other.\nThe physical initiating cause remains unconfirmed from local COMTRADE evidence alone; external evidence (field inspection, lightning detection, protection engineer review) is needed to confirm it.",
+  "record_snapshot_versions": [
+   {
+    "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "status_waveform_aligned"
+   },
+   {
+    "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "dead_time_recording"
+   },
+   {
+    "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "status_waveform_aligned"
+   },
+   {
+    "analysis_id": "a61016829d734511a21c080161d7a439",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "current_derivative"
+   },
+   {
+    "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "dead_time_recording"
+   },
+   {
+    "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "current_derivative"
+   }
+  ],
+  "is_latest": true,
+  "supersedes": null,
+  "created_at": "2026-10-09T21:47:13.669838+00:00",
+  "timeline": [
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-1",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2023-08-21T15:15:03.619791",
+    "relative_incident_ms": 0.0,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (ZQ6D.cfg)",
+    "details": {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-7",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2023-08-21T15:15:03.670291",
+    "relative_incident_ms": 50.5,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (230821,081503670,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg)",
+    "details": {
+     "analysis_id": "a61016829d734511a21c080161d7a439"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-2",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2023-08-21T15:15:03.729687",
+    "relative_incident_ms": 109.9,
+    "relative_record_ms": 109.89599999999999,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-3",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2023-08-21T15:15:03.738333",
+    "relative_incident_ms": 118.5,
+    "relative_record_ms": 118.5416653752327,
+    "source": "canonical_event_window",
+    "label": "Fault inception (B+C)",
+    "details": {
+     "faulted_phases": [
+      "B",
+      "C"
+     ]
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-9",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2023-08-21T15:15:03.738338",
+    "relative_incident_ms": 118.5,
+    "relative_record_ms": 68.04687529802322,
+    "source": "canonical_event_window",
+    "label": "Fault inception (B+C)",
+    "details": {
+     "faulted_phases": [
+      "B",
+      "C"
+     ]
+    },
+    "confidence": 0.8,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-10",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "FAULT_CLEARING",
+    "absolute_time_iso": "2023-08-21T15:15:03.753299",
+    "relative_incident_ms": 133.5,
+    "relative_record_ms": 83.0078125,
+    "source": "canonical_event_window",
+    "label": "Fault clearing",
+    "details": {
+     "fault_duration_ms": 14.960937201976776
+    },
+    "confidence": 0.8,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-8",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2023-08-21T15:15:03.770291",
+    "relative_incident_ms": 150.5,
+    "relative_record_ms": 100.0,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-11",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "RECLOSE_SUCCESS",
+    "absolute_time_iso": "2023-08-21T15:15:03.843924",
+    "relative_incident_ms": 224.1,
+    "relative_record_ms": 173.63281548023224,
+    "source": "canonical_event_window",
+    "label": "Reclose attempt #1 (successful)",
+    "details": {
+     "success": true
+    },
+    "confidence": 0.7,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-4",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "episode_id": null,
+    "event_type": "FAULT_CLEARING",
+    "absolute_time_iso": "2023-08-21T15:15:03.848228",
+    "relative_incident_ms": 228.4,
+    "relative_record_ms": 228.43749821186066,
+    "source": "canonical_event_window",
+    "label": "Fault clearing",
+    "details": {
+     "fault_duration_ms": 64.79166448116302
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-17",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2023-08-21T15:15:08.699791",
+    "relative_incident_ms": 5080.0,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (ZQ6E.cfg)",
+    "details": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-19",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2023-08-21T15:15:08.699791",
+    "relative_incident_ms": 5080.0,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Fault inception (unknown phase)",
+    "details": {
+     "faulted_phases": []
+    },
+    "confidence": 0.6,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-25",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2023-08-21T15:15:08.780289",
+    "relative_incident_ms": 5160.5,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (230821,081508780,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg)",
+    "details": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-27",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2023-08-21T15:15:08.780289",
+    "relative_incident_ms": 5160.5,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Fault inception (unknown phase)",
+    "details": {
+     "faulted_phases": []
+    },
+    "confidence": 0.55,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-18",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2023-08-21T15:15:08.833854",
+    "relative_incident_ms": 5214.1,
+    "relative_record_ms": 134.063,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-20",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "RECLOSE_SUCCESS",
+    "absolute_time_iso": "2023-08-21T15:15:08.834478",
+    "relative_incident_ms": 5214.7,
+    "relative_record_ms": 134.68749821186066,
+    "source": "canonical_event_window",
+    "label": "Reclose attempt #1 (successful)",
+    "details": {
+     "success": true
+    },
+    "confidence": 0.7,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-28",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "RECLOSE_SUCCESS",
+    "absolute_time_iso": "2023-08-21T15:15:08.844469",
+    "relative_incident_ms": 5224.7,
+    "relative_record_ms": 64.1796886920929,
+    "source": "canonical_event_window",
+    "label": "Reclose attempt #1 (successful)",
+    "details": {
+     "success": true
+    },
+    "confidence": 0.7,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-26",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2023-08-21T15:15:08.880289",
+    "relative_incident_ms": 5260.5,
+    "relative_record_ms": 100.0,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-33",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2023-08-21T15:15:14.439791",
+    "relative_incident_ms": 10820.0,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (ZQ6F.cfg)",
+    "details": {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-39",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2023-08-21T15:15:14.490294",
+    "relative_incident_ms": 10870.5,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (230821,081514490,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg)",
+    "details": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-34",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2023-08-21T15:15:14.549687",
+    "relative_incident_ms": 10929.9,
+    "relative_record_ms": 109.89599999999999,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-35",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2023-08-21T15:15:14.564270",
+    "relative_incident_ms": 10944.5,
+    "relative_record_ms": 124.47916716337204,
+    "source": "canonical_event_window",
+    "label": "Fault inception (B+C)",
+    "details": {
+     "faulted_phases": [
+      "B",
+      "C"
+     ]
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-41",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2023-08-21T15:15:14.564278",
+    "relative_incident_ms": 10944.5,
+    "relative_record_ms": 73.98437708616257,
+    "source": "canonical_event_window",
+    "label": "Fault inception (A+B+C)",
+    "details": {
+     "faulted_phases": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    "confidence": 0.8,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-42",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "FAULT_CLEARING",
+    "absolute_time_iso": "2023-08-21T15:15:14.574278",
+    "relative_incident_ms": 10954.5,
+    "relative_record_ms": 83.984375,
+    "source": "canonical_event_window",
+    "label": "Fault clearing",
+    "details": {
+     "fault_duration_ms": 9.999997913837433
+    },
+    "confidence": 0.8,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-43",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "RECLOSE_SUCCESS",
+    "absolute_time_iso": "2023-08-21T15:15:14.576310",
+    "relative_incident_ms": 10956.5,
+    "relative_record_ms": 86.01562678813934,
+    "source": "canonical_event_window",
+    "label": "Reclose attempt #1 (successful)",
+    "details": {
+     "success": true
+    },
+    "confidence": 0.7,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-40",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2023-08-21T15:15:14.590294",
+    "relative_incident_ms": 10970.5,
+    "relative_record_ms": 100.0,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-36",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "episode_id": null,
+    "event_type": "FAULT_CLEARING",
+    "absolute_time_iso": "2023-08-21T15:15:14.672187",
+    "relative_incident_ms": 11052.4,
+    "relative_record_ms": 232.39582777023315,
+    "source": "canonical_event_window",
+    "label": "Fault clearing",
+    "details": {
+     "fault_duration_ms": 65.93748927116394
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-12",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel VR BRINGIN 1: voltage too low (0.6 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-13",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel VS BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-14",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel VT BRINGIN 1: voltage too low (0.2 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-15",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-16",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel A - CH13: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-21",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-22",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel V DC NEG: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-23",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Recording started during CB dead time - fault preceded this file; clearing time and duration are not measurable from this record",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-24",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Fault clearing evidence not available - duration left unset rather than guessed",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-29",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-30",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel A - CH13: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-31",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Recording started during CB dead time - fault preceded this file; clearing time and duration are not measurable from this record",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-32",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Fault clearing evidence not available - duration left unset rather than guessed",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "canonical_schema_version": "stage0",
+     "timing_source": "dead_time_recording"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-37",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-38",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel V DC NEG: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-44",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel VR BRINGIN 1: voltage too low (0.9 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-45",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel VS BRINGIN 1: voltage too low (0.4 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-46",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel A - CH04: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-47",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel A - CH13: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "canonical_schema_version": "stage0",
+     "timing_source": "current_derivative"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-48",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": null,
+    "episode_id": null,
+    "event_type": "DATA_GAP",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "alignment_assessment",
+    "label": "Gap of 2.1s between records",
+    "details": {
+     "left_incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "right_incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "gap_ms": 5104.2,
+     "precise": false,
+     "data_gap_ms": 2070.1
+    },
+    "confidence": 0.4,
+    "provenance": {
+     "kind": "inter_record_gap"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-49",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": null,
+    "episode_id": null,
+    "event_type": "DATA_GAP",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "alignment_assessment",
+    "label": "Gap of 4.4s between records",
+    "details": {
+     "left_incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "right_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "gap_ms": 5110.0,
+     "precise": false,
+     "data_gap_ms": 4400.0
+    },
+    "confidence": 0.4,
+    "provenance": {
+     "kind": "inter_record_gap"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-5",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel V DC POS: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-50",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": null,
+    "episode_id": null,
+    "event_type": "DATA_GAP",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "alignment_assessment",
+    "label": "Gap of 3.5s between records",
+    "details": {
+     "left_incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "right_incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "gap_ms": 5715.8,
+     "precise": false,
+     "data_gap_ms": 3500.1
+    },
+    "confidence": 0.4,
+    "provenance": {
+     "kind": "inter_record_gap"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-51",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": null,
+    "episode_id": null,
+    "event_type": "DATA_GAP",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "alignment_assessment",
+    "label": "Gap of 5.1s between records",
+    "details": {
+     "left_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "right_incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "gap_ms": 5710.0,
+     "precise": false,
+     "data_gap_ms": 5110.0
+    },
+    "confidence": 0.4,
+    "provenance": {
+     "kind": "inter_record_gap"
+    }
+   },
+   {
+    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-6",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel V DC NEG: voltage too low (0.0 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   }
+  ],
+  "relationships": [
+   {
+    "relationship_id": "79f074fa94ad442990c68b28c43b9382-52",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "left_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "right_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "relationship_type": "REMOTE_END_CAPTURE",
+    "confidence": 0.85,
+    "evidence_for": [
+     {
+      "type": "OTHER_SUBSTATION",
+      "local": "GI BRINGIN",
+      "remote": "GI MOJOSONGO",
+      "description": "Recorded at the other end of the line."
+     },
+     {
+      "type": "TIME_RANGE_OVERLAP",
+      "value": 0.71
+     },
+     {
+      "type": "CLOCK_LINED_UP_ON_SHARED_FAULT",
+      "description": "The other end's clock was lined up with this end's on a fault both recorded."
+     },
+     {
+      "type": "SAME_FAULTED_PHASES_AT_BOTH_ENDS",
+      "local": [
+       "B",
+       "C"
+      ],
+      "remote": [
+       "B",
+       "C"
+      ]
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "link": "other_recorder",
+     "overlap_seconds": 0.71,
+     "clock_offset_ms": 0.012,
+     "zone_offset_h": -7.0,
+     "fault_start_difference_ms": 0.0
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   },
+   {
+    "relationship_id": "79f074fa94ad442990c68b28c43b9382-53",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "left_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "right_record_id": "c6334963874749cb931cb215c40a236c",
+    "relationship_type": "RECLOSE_SEQUENCE",
+    "confidence": 0.85,
+    "evidence_for": [
+     {
+      "type": "RIGHT_RECORD_STARTS_IN_DEAD_TIME",
+      "description": "The right record starts with the breaker open and captures its reclose; the fault itself is in the left record."
+     },
+     {
+      "type": "RECLOSE_OUTCOME",
+      "value": "successful"
+     },
+     {
+      "type": "DEAD_TIME_S",
+      "value": 4.986
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "gap_seconds": 5.104,
+     "data_gap_seconds": 2.07,
+     "waveform_similarity": {
+      "computed": false,
+      "reason": "no_time_overlap"
+     },
+     "digital_sequence_similarity": 0.2,
+     "dead_time_s": 4.986,
+     "link": "same_recorder"
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   },
+   {
+    "relationship_id": "79f074fa94ad442990c68b28c43b9382-54",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "left_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "right_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "relationship_type": "RECLOSE_SEQUENCE",
+    "confidence": 0.85,
+    "evidence_for": [
+     {
+      "type": "RIGHT_RECORD_STARTS_IN_DEAD_TIME",
+      "description": "The right record starts with the breaker open and captures its reclose; the fault itself is in the left record."
+     },
+     {
+      "type": "RECLOSE_OUTCOME",
+      "value": "successful"
+     },
+     {
+      "type": "DEAD_TIME_S",
+      "value": 5.091
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "gap_seconds": 5.11,
+     "data_gap_seconds": 4.4,
+     "waveform_similarity": {
+      "computed": false,
+      "reason": "no_time_overlap"
+     },
+     "digital_sequence_similarity": 0.0,
+     "dead_time_s": 5.091,
+     "link": "same_recorder"
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   },
+   {
+    "relationship_id": "79f074fa94ad442990c68b28c43b9382-55",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "left_record_id": "c6334963874749cb931cb215c40a236c",
+    "right_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "relationship_type": "REMOTE_END_CAPTURE",
+    "confidence": 0.85,
+    "evidence_for": [
+     {
+      "type": "OTHER_SUBSTATION",
+      "local": "GI BRINGIN",
+      "remote": "GI MOJOSONGO",
+      "description": "Recorded at the other end of the line."
+     },
+     {
+      "type": "TIME_RANGE_OVERLAP",
+      "value": 0.6
+     },
+     {
+      "type": "CLOCK_LINED_UP_ON_SHARED_FAULT",
+      "description": "The other end's clock was lined up with this end's on a fault both recorded."
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "link": "other_recorder",
+     "overlap_seconds": 0.6,
+     "clock_offset_ms": 0.012,
+     "zone_offset_h": -7.0
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   },
+   {
+    "relationship_id": "79f074fa94ad442990c68b28c43b9382-56",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "left_record_id": "c6334963874749cb931cb215c40a236c",
+    "right_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "relationship_type": "REFAULT_AFTER_RECLOSE",
+    "confidence": 0.8,
+    "evidence_for": [
+     {
+      "type": "NEW_FAULT_AFTER_SUCCESSFUL_RECLOSE",
+      "value": 5.73,
+      "description": "The line faulted again 5.7 s after a successful reclose \u2014 the reclose did not hold."
+     },
+     {
+      "type": "SAME_FAULTED_PHASES_AS_RECLOSED_FAULT",
+      "value": [
+       "B",
+       "C"
+      ]
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "gap_seconds": 5.716,
+     "data_gap_seconds": 3.5,
+     "waveform_similarity": {
+      "computed": false,
+      "reason": "no_time_overlap"
+     },
+     "digital_sequence_similarity": 0.2,
+     "seconds_after_reclose": 5.73,
+     "link": "same_recorder"
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   },
+   {
+    "relationship_id": "79f074fa94ad442990c68b28c43b9382-57",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "left_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "right_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "relationship_type": "REFAULT_AFTER_RECLOSE",
+    "confidence": 0.8,
+    "evidence_for": [
+     {
+      "type": "NEW_FAULT_AFTER_SUCCESSFUL_RECLOSE",
+      "value": 5.72,
+      "description": "The line faulted again 5.7 s after a successful reclose \u2014 the reclose did not hold."
+     },
+     {
+      "type": "FAULT_PHASE_PROGRESSED",
+      "from": [
+       "B",
+       "C"
+      ],
+      "to": [
+       "A",
+       "B",
+       "C"
+      ]
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "gap_seconds": 5.71,
+     "data_gap_seconds": 5.11,
+     "waveform_similarity": {
+      "computed": false,
+      "reason": "no_time_overlap"
+     },
+     "digital_sequence_similarity": 0.0,
+     "seconds_after_reclose": 5.72,
+     "link": "same_recorder"
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   },
+   {
+    "relationship_id": "79f074fa94ad442990c68b28c43b9382-58",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "left_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "right_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "relationship_type": "REMOTE_END_CAPTURE",
+    "confidence": 0.85,
+    "evidence_for": [
+     {
+      "type": "OTHER_SUBSTATION",
+      "local": "GI BRINGIN",
+      "remote": "GI MOJOSONGO",
+      "description": "Recorded at the other end of the line."
+     },
+     {
+      "type": "TIME_RANGE_OVERLAP",
+      "value": 0.71
+     },
+     {
+      "type": "CLOCK_LINED_UP_ON_SHARED_FAULT",
+      "description": "The other end's clock was lined up with this end's on a fault both recorded."
+     },
+     {
+      "type": "SAME_FAULTED_PHASES_AT_BOTH_ENDS",
+      "local": [
+       "B",
+       "C"
+      ],
+      "remote": [
+       "B",
+       "C"
+      ]
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "link": "other_recorder",
+     "overlap_seconds": 0.71,
+     "clock_offset_ms": 0.012,
+     "zone_offset_h": -7.0,
+     "fault_start_difference_ms": 0.0
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   }
+  ],
+  "episodes": [
+   {
+    "episode_id": "79f074fa94ad442990c68b28c43b9382-59",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "member_record_ids": [
+     "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "c6334963874749cb931cb215c40a236c",
+     "e30074ebe97146f18bfa0001e226cb31",
+     "73bddc4bc3a64201b13bb480a4aec209"
+    ],
+    "episode_index": 0,
+    "start_iso": "2023-08-21T15:15:03.729687",
+    "end_iso": "2023-08-21T15:15:08.833854",
+    "duration_ms": 64.79166448116302,
+    "faulted_phases": [
+     "B",
+     "C"
+    ],
+    "fault_type": "LL_OR_DLG",
+    "zone_operations": [],
+    "trip_types": [],
+    "reclose_outcome": "successful",
+    "electrical_summary": {},
+    "local_cause_hypotheses": [
+     {
+      "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+      "top_hypothesis": "PETIR",
+      "confidence": 0.82,
+      "cause_ranking": [
+       {
+        "cause": "PETIR",
+        "label": "Petir / Lightning",
+        "confidence": 0.82
+       },
+       {
+        "cause": "LAYANG",
+        "label": "Layang-Layang / Kite",
+        "confidence": 0.014
+       },
+       {
+        "cause": "BENDA_ASING",
+        "label": "Benda Asing",
+        "confidence": 0.007
+       },
+       {
+        "cause": "PERALATAN",
+        "label": "Peralatan Rusak / Anomali Proteksi",
+        "confidence": 0.001
+       },
+       {
+        "cause": "HEWAN",
+        "label": "Hewan / Binatang",
+        "confidence": 0.0
+       },
+       {
+        "cause": "KONDUKTOR",
+        "label": "Konduktor / Tower",
+        "confidence": 0.0
+       },
+       {
+        "cause": "POHON",
+        "label": "Pohon / Vegetasi",
+        "confidence": 0.0
+       }
+      ],
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": "status_waveform_aligned",
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "inception",
+      "fault_type": "transient",
+      "requires_review": true,
+      "skip_reason": null
+     },
+     {
+      "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+      "top_hypothesis": null,
+      "confidence": null,
+      "cause_ranking": [],
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": null,
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "aftermath",
+      "fault_type": "none",
+      "requires_review": false,
+      "skip_reason": "reclose_capture"
+     },
+     {
+      "analysis_id": "a61016829d734511a21c080161d7a439",
+      "top_hypothesis": "LAYANG",
+      "confidence": 0.594,
+      "cause_ranking": [
+       {
+        "cause": "LAYANG",
+        "label": "Layang-Layang / Kite",
+        "confidence": 0.594
+       },
+       {
+        "cause": "PETIR",
+        "label": "Petir / Lightning",
+        "confidence": 0.202
+       },
+       {
+        "cause": "BENDA_ASING",
+        "label": "Benda Asing",
+        "confidence": 0.115
+       },
+       {
+        "cause": "POHON",
+        "label": "Pohon / Vegetasi",
+        "confidence": 0.045
+       },
+       {
+        "cause": "KONDUKTOR",
+        "label": "Konduktor / Tower",
+        "confidence": 0.042
+       },
+       {
+        "cause": "PERALATAN",
+        "label": "Peralatan Rusak / Anomali Proteksi",
+        "confidence": 0.002
+       },
+       {
+        "cause": "HEWAN",
+        "label": "Hewan / Binatang",
+        "confidence": 0.0
+       }
+      ],
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": "current_derivative",
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "remote_end",
+      "fault_type": "transient",
+      "requires_review": false,
+      "skip_reason": null
+     },
+     {
+      "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+      "top_hypothesis": null,
+      "confidence": null,
+      "cause_ranking": [],
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": null,
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "remote_end",
+      "fault_type": "none",
+      "requires_review": false,
+      "skip_reason": "reclose_capture"
+     }
+    ],
+    "relationship_to_previous": null,
+    "confidence": 0.6,
+    "observed_facts": {
+     "member_record_ids": [
+      "eb94077a9d6145aab7ca2a7a8c8070d6",
+      "c6334963874749cb931cb215c40a236c",
+      "e30074ebe97146f18bfa0001e226cb31",
+      "73bddc4bc3a64201b13bb480a4aec209"
+     ],
+     "faulted_phases": [
+      "B",
+      "C"
+     ],
+     "reclose_outcome": "successful",
+     "reclose_dead_time_s": 4.986,
+     "refault_after_reclose_s": 5.73,
+     "other_recorders": [
+      {
+       "recorder": "GI MOJOSONGO | BRINGIN 1-2",
+       "station": "GI MOJOSONGO",
+       "same_station": false,
+       "member_record_ids": [
+        "e30074ebe97146f18bfa0001e226cb31",
+        "73bddc4bc3a64201b13bb480a4aec209"
+       ],
+       "relationship_types": [
+        "REMOTE_END_CAPTURE"
+       ],
+       "fault_record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "faulted_phases": [
+        "B",
+        "C"
+       ],
+       "fct_ms": 59.3,
+       "fault_start_difference_ms": 0.0,
+       "reclose_outcome": "successful",
+       "reclose_dead_time_s": 5.091,
+       "clock": {
+        "method": "fault_aligned",
+        "zone_offset_h": -7.0,
+        "clock_offset_ms": 0.012
+       }
+      }
+     ]
+    },
+    "interpretation": {
+     "event_classes": [
+      "FAULT_EVENT",
+      "RECLOSE_CAPTURE"
+     ]
+    },
+    "missing_evidence": [
+     {
+      "type": "MULTIPLE_RECORDS_ONE_EPISODE",
+      "description": "This episode spans 4 records (eb94077a9d6145aab7ca2a7a8c8070d6, c6334963874749cb931cb215c40a236c, e30074ebe97146f18bfa0001e226cb31, 73bddc4bc3a64201b13bb480a4aec209): the fault and its trip/reclose sequence captured in separate files, and the other line end's recordings of them. Only the record holding the fault inception is cause evidence."
+     }
+    ],
+    "provenance": {
+     "member_analysis_ids": [
+      "aa493201841e4cc4a2192e2fe5faa1ee",
+      "8ee30ae8bcc44dc1972160d9e7b70059",
+      "a61016829d734511a21c080161d7a439",
+      "e9b0da5623d14626936e1c8a7a64cd05"
+     ],
+     "recorder": "GI BRINGIN | Bay Mojosongo 1-2"
+    }
+   },
+   {
+    "episode_id": "79f074fa94ad442990c68b28c43b9382-60",
+    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "member_record_ids": [
+     "41f6c51a79ca4e459d8fe1204b8afb65",
+     "d47e1e0f37cb4eea854ba2a329102631"
+    ],
+    "episode_index": 1,
+    "start_iso": "2023-08-21T15:15:14.549687",
+    "end_iso": "2023-08-21T15:15:14.549687",
+    "duration_ms": 65.93748927116394,
+    "faulted_phases": [
+     "B",
+     "C"
+    ],
+    "fault_type": "LL_OR_DLG",
+    "zone_operations": [],
+    "trip_types": [],
+    "reclose_outcome": null,
+    "electrical_summary": {},
+    "local_cause_hypotheses": [
+     {
+      "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+      "top_hypothesis": "PETIR",
+      "confidence": 0.349,
+      "cause_ranking": [
+       {
+        "cause": "PETIR",
+        "label": "Petir / Lightning",
+        "confidence": 0.349
+       },
+       {
+        "cause": "BENDA_ASING",
+        "label": "Benda Asing",
+        "confidence": 0.323
+       },
+       {
+        "cause": "LAYANG",
+        "label": "Layang-Layang / Kite",
+        "confidence": 0.307
+       },
+       {
+        "cause": "PERALATAN",
+        "label": "Peralatan Rusak / Anomali Proteksi",
+        "confidence": 0.009
+       },
+       {
+        "cause": "HEWAN",
+        "label": "Hewan / Binatang",
+        "confidence": 0.008
+       },
+       {
+        "cause": "KONDUKTOR",
+        "label": "Konduktor / Tower",
+        "confidence": 0.002
+       },
+       {
+        "cause": "POHON",
+        "label": "Pohon / Vegetasi",
+        "confidence": 0.002
+       }
+      ],
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": "status_waveform_aligned",
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "inception",
+      "fault_type": "transient",
+      "requires_review": false,
+      "skip_reason": null
+     },
+     {
+      "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+      "top_hypothesis": "PETIR",
+      "confidence": 0.92,
+      "cause_ranking": [
+       {
+        "cause": "PETIR",
+        "label": "Petir / Lightning",
+        "confidence": 0.92
+       },
+       {
+        "cause": "LAYANG",
+        "label": "Layang-Layang / Kite",
+        "confidence": 0.006
+       },
+       {
+        "cause": "PERALATAN",
+        "label": "Peralatan Rusak / Anomali Proteksi",
+        "confidence": 0.003
+       },
+       {
+        "cause": "BENDA_ASING",
+        "label": "Benda Asing",
+        "confidence": 0.002
+       },
+       {
+        "cause": "POHON",
+        "label": "Pohon / Vegetasi",
+        "confidence": 0.001
+       },
+       {
+        "cause": "HEWAN",
+        "label": "Hewan / Binatang",
+        "confidence": 0.0
+       },
+       {
+        "cause": "KONDUKTOR",
+        "label": "Konduktor / Tower",
+        "confidence": 0.0
+       }
+      ],
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": "current_derivative",
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "remote_end",
+      "fault_type": "transient",
+      "requires_review": false,
+      "skip_reason": null
+     }
+    ],
+    "relationship_to_previous": "REFAULT_AFTER_RECLOSE",
+    "confidence": 0.9,
+    "observed_facts": {
+     "member_record_ids": [
+      "41f6c51a79ca4e459d8fe1204b8afb65",
+      "d47e1e0f37cb4eea854ba2a329102631"
+     ],
+     "faulted_phases": [
+      "B",
+      "C"
+     ],
+     "reclose_outcome": null,
+     "seconds_after_previous_reclose": 5.73,
+     "other_recorders": [
+      {
+       "recorder": "GI MOJOSONGO | BRINGIN 1-2",
+       "station": "GI MOJOSONGO",
+       "same_station": false,
+       "member_record_ids": [
+        "d47e1e0f37cb4eea854ba2a329102631"
+       ],
+       "relationship_types": [
+        "REMOTE_END_CAPTURE"
+       ],
+       "fault_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+       "faulted_phases": [
+        "B",
+        "C"
+       ],
+       "fct_ms": 78.9,
+       "fault_start_difference_ms": 0.0,
+       "reclose_outcome": null,
+       "reclose_dead_time_s": null,
+       "clock": {
+        "method": "fault_aligned",
+        "zone_offset_h": -7.0,
+        "clock_offset_ms": 0.012
+       }
+      }
+     ]
+    },
+    "interpretation": {
+     "event_classes": [
+      "FAULT_EVENT"
+     ]
+    },
+    "missing_evidence": [
+     {
+      "type": "MULTIPLE_RECORDS_ONE_EPISODE",
+      "description": "This episode spans 2 records (41f6c51a79ca4e459d8fe1204b8afb65, d47e1e0f37cb4eea854ba2a329102631): the fault as recorded at both line ends. Only the record holding the fault inception is cause evidence."
+     }
+    ],
+    "provenance": {
+     "member_analysis_ids": [
+      "30478964cf7f44c184f36ea6fa653dd9",
+      "b8ee0d431749459f9eb0801b56576716"
+     ],
+     "recorder": "GI BRINGIN | Bay Mojosongo 1-2"
+    }
+   }
+  ]
+ }
+}

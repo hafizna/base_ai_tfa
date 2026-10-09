@@ -58,6 +58,7 @@ from ..schemas import (
     DoubleEndedSuggestShiftRequest, DoubleEndedSuggestShiftResponse,
 )
 from ..storage import load_analysis
+from core.clock_offsets import split_clock_offset
 from core.event_analysis import build_event_window
 from core.line_selection import scope_payload_with_selection
 from .relay_21 import (
@@ -97,25 +98,6 @@ def _record_abs_time(payload: dict, t_s: float) -> Optional[float]:
     if start is None or not time:
         return None
     return start.timestamp() + (t_s - float(time[0]))
-
-
-# A record whose clock differs from the other terminal's by a whole number of
-# quarter hours (plus well under a second) was written in another time zone —
-# typically UTC against WIB, as in Qualitrol files named "...,+7h0,...". A
-# genuine two-terminal clock difference is sub-second, so the zone offset is
-# removed before the clocks are compared.
-_TIME_ZONE_STEP_S = 900.0
-_MAX_SYNC_REMAINDER_S = 1.0
-
-
-def _split_clock_offset(raw_shift_s: float) -> tuple[float, Optional[float]]:
-    """(shift_s, zone_offset_s): the zone offset is None when ``raw_shift_s``
-    is not a whole number of quarter hours plus a sub-second remainder."""
-    zone_offset_s = round(raw_shift_s / _TIME_ZONE_STEP_S) * _TIME_ZONE_STEP_S
-    remainder_s = raw_shift_s - zone_offset_s
-    if zone_offset_s != 0.0 and abs(remainder_s) <= _MAX_SYNC_REMAINDER_S:
-        return remainder_s, zone_offset_s
-    return raw_shift_s, None
 
 
 def _fault_step_ratio(samples: list, inception_idx: int, win: int) -> float:
@@ -218,7 +200,7 @@ def _estimate_alignment(payload_a: dict, payload_b: dict) -> dict:
     start_a = _record_abs_time(scoped_a, float(time_a[0])) if time_a else None
     start_b = _record_abs_time(scoped_b, float(time_b[0])) if time_b else None
     if start_a is not None and start_b is not None:
-        shift_s, zone_offset_s = _split_clock_offset(start_a - start_b)
+        shift_s, zone_offset_s = split_clock_offset(start_a - start_b)
         clock_shift_ms = shift_s * 1000.0
         if zone_offset_s is not None:
             # start_A - start_B = +7 h means B's clock reads 7 h behind A's.

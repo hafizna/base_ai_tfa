@@ -70,7 +70,9 @@ class RecordAnalysis:
 
 
 def _source_metadata(payload: dict) -> dict[str, Any]:
+    time = payload.get("time") or []
     return {
+        "duration_s": round(float(time[-1]) - float(time[0]), 6) if len(time) >= 2 else None,
         "station_name": payload.get("station_name", ""),
         "rec_dev_id": payload.get("rec_dev_id", ""),
         "rev_year": payload.get("rev_year", ""),
