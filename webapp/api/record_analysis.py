@@ -27,6 +27,7 @@ from core.analog_trace import trace_payload
 from core.event_analysis import EventWindow, build_event_window
 from core.line_selection import scope_payload_with_selection
 from .fault_detection import detect_fault_presence
+from .fault_reasoning import build_reasoning
 from .record_facts import electrical_measurements, protection_operations
 
 
@@ -42,6 +43,7 @@ class RecordAnalysis:
     protection_operations: list[dict[str, Any]] = field(default_factory=list)
     electrical_measurements: dict[str, Any] = field(default_factory=dict)
     analog_trace: dict[str, Any] = field(default_factory=dict)
+    reasoning: dict[str, Any] = field(default_factory=dict)
     cause_hypotheses: list[dict[str, Any]] = field(default_factory=list)
     missing_evidence: list[dict[str, Any]] = field(default_factory=list)
     provenance: dict[str, Any] = field(default_factory=dict)
@@ -61,6 +63,7 @@ class RecordAnalysis:
             "protection_operations": self.protection_operations,
             "electrical_measurements": self.electrical_measurements,
             "analog_trace": self.analog_trace,
+            "reasoning": self.reasoning,
             "observed_facts": self.observed_facts,
             "protection_interpretation": self.protection_interpretation,
             "cause_hypotheses": self.cause_hypotheses,
@@ -267,16 +270,26 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
             "requires_review": True,
         })
 
+    # Measured facts on the analysed line, for the incident story, and the
+    # reasoning chain drawn from them (one place for every per-fault conclusion).
+    measurements = electrical_measurements(line_payload, event_window)
+    analog_trace = _analog_trace(line_payload)
+    reasoning = build_reasoning(
+        line_payload, event_window, analog_trace, measurements,
+        event_class=protection_interpretation.get("event_class"),
+        gate_reasons=det.reasons,
+    )
+
     return RecordAnalysis(
         record_id=analysis_id,
         source_metadata=source_metadata,
         data_quality=data_quality,
         event_window=event_window,
         fault_episodes=fault_episodes,
-        # Measured facts on the analysed line, for the incident story.
         protection_operations=protection_operations(line_payload, event_window),
-        electrical_measurements=electrical_measurements(line_payload, event_window),
-        analog_trace=_analog_trace(line_payload),
+        electrical_measurements=measurements,
+        analog_trace=analog_trace,
+        reasoning=reasoning,
         cause_hypotheses=[],
         missing_evidence=missing_evidence,
         provenance=provenance,
