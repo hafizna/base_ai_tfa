@@ -319,6 +319,13 @@ export interface DoubleEndedAlignEstimate {
   estimated_shift_ms: number | null;
   estimate_available: boolean;
   estimate_reason: string;
+  clock_shift_ms?: number | null;
+  clock_offset_hours?: number | null;
+  line_a?: string | null;
+  line_b?: string | null;
+  sync_phase?: string | null;
+  sync_channel_a?: string | null;
+  sync_channel_b?: string | null;
 }
 
 export async function fetchDoubleEndedAlignEstimate(analysisIdA: string, analysisIdB: string) {

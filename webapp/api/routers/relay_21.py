@@ -145,6 +145,13 @@ def _voltage_to_volts_scale(channels: list) -> float:
 def _find_phase_channel(
     channels, measurement: str, phase: str, preferred_tag: Optional[str] = None,
 ) -> Optional[np.ndarray]:
+    channel = _pick_phase_channel(channels, measurement, phase, preferred_tag)
+    return None if channel is None else np.array(channel["samples"], dtype=float)
+
+
+def _pick_phase_channel(
+    channels, measurement: str, phase: str, preferred_tag: Optional[str] = None,
+) -> Optional[dict]:
     """Phase voltage/current channel. An exact canonical-name (VA/IB/...) or
     phase-field match always wins; the loose name-suffix aliases ("...L2",
     "...2") are only a fallback for channels the normalizer couldn't name —
@@ -179,8 +186,8 @@ def _find_phase_channel(
     if preferred_tag:
         tagged = [ch for ch in matches if _extract_line_tag(ch.get("name") or "") == preferred_tag]
         if tagged:
-            return np.array(tagged[0]["samples"], dtype=float)
-    return np.array(matches[0]["samples"], dtype=float)
+            return tagged[0]
+    return matches[0]
 
 
 def _find_phase_voltage(channels, phase: str, preferred_tag: Optional[str] = None) -> Optional[np.ndarray]:

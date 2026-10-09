@@ -37,11 +37,11 @@ Time alignment: unlike webapp/api/incidents/joined_waveform.py (which joins
 records SEQUENTIALLY, e.g. trip followed by reclose), a double-ended
 calculation needs both terminals' fault-inception instant on the SAME time
 origin, since line-length-scale accuracy requires sub-millisecond precision
-that neither GPS-free relay clocks nor the coarse ISO-timestamp gap
-(``align-estimate`` below) can reliably provide alone. Per the source
-material's own SIGRA workflow (cursor-drag sync, confirmed/adjusted by the
-user, never auto-trusted), ``manual_shift_ms`` is the authoritative offset
-for ``/compute`` — ``/align-estimate`` only offers a starting point.
+that GPS-free relay clocks cannot provide. ``/align-estimate`` lines up the
+two records' detected inceptions and checks that against their clocks. Per
+the source material's own SIGRA workflow (cursor-drag sync, confirmed/adjusted
+by the user, never auto-trusted), ``manual_shift_ms`` is the authoritative
+offset for ``/compute`` — ``/align-estimate`` only offers a starting point.
 """
 
 import asyncio
@@ -62,13 +62,13 @@ from core.event_analysis import build_event_window
 from core.line_selection import scope_payload_with_selection
 from .relay_21 import (
     LOOP_CHANNELS,
-    _canonical_inception_idx,
     _detect_active_line_tag,
     _find_channel,
     _find_phase_current,
     _find_phase_voltage,
     _find_voltage_for_loop,
     _fundamental_phasor,
+    _pick_phase_channel,
     _voltage_to_volts_scale,
 )
 
@@ -86,16 +86,196 @@ def _parse_iso(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _record_trigger_abs_time(payload: dict) -> Optional[datetime]:
-    """Absolute wall-clock time of this record's ``time == 0`` instant.
-    core/comtrade_parser.py's ``time`` axis is relative to the COMTRADE
-    relay's own trigger point (NOT the first sample — ``time[0]`` is
-    typically negative, a pre-trigger buffer), and ``trigger_time_iso`` is
-    exactly that instant's wall-clock timestamp. Anchoring here (rather than
-    ``start_time_iso``) is what makes it valid to add a record-relative
-    inception time (itself measured against ``time == 0``) straight onto
-    this anchor below without double-counting the pre-trigger offset."""
-    return _parse_iso(payload.get("trigger_time_iso"))
+def _record_abs_time(payload: dict, t_s: float) -> Optional[float]:
+    """Absolute wall-clock time (epoch seconds) of the record-relative
+    instant ``t_s``. The stored ``time`` axis starts at the FIRST sample,
+    whose wall-clock time is ``start_time_iso``; the trigger sits
+    ``trigger_offset_s`` into the record (3.5 s into a real Cibatu record),
+    so ``trigger_time_iso`` is not the anchor of ``time == 0``."""
+    start = _parse_iso(payload.get("start_time_iso"))
+    time = payload.get("time") or []
+    if start is None or not time:
+        return None
+    return start.timestamp() + (t_s - float(time[0]))
+
+
+# A record whose clock differs from the other terminal's by a whole number of
+# quarter hours (plus well under a second) was written in another time zone —
+# typically UTC against WIB, as in Qualitrol files named "...,+7h0,...". A
+# genuine two-terminal clock difference is sub-second, so the zone offset is
+# removed before the clocks are compared.
+_TIME_ZONE_STEP_S = 900.0
+_MAX_SYNC_REMAINDER_S = 1.0
+
+
+def _split_clock_offset(raw_shift_s: float) -> tuple[float, Optional[float]]:
+    """(shift_s, zone_offset_s): the zone offset is None when ``raw_shift_s``
+    is not a whole number of quarter hours plus a sub-second remainder."""
+    zone_offset_s = round(raw_shift_s / _TIME_ZONE_STEP_S) * _TIME_ZONE_STEP_S
+    remainder_s = raw_shift_s - zone_offset_s
+    if zone_offset_s != 0.0 and abs(remainder_s) <= _MAX_SYNC_REMAINDER_S:
+        return remainder_s, zone_offset_s
+    return raw_shift_s, None
+
+
+def _fault_step_ratio(samples: list, inception_idx: int, win: int) -> float:
+    """How strongly a phase current steps at inception: peak over the first
+    two fault cycles against the RMS of the two cycles before."""
+    values = np.asarray(samples, dtype=float)
+    if inception_idx <= 0 or inception_idx >= len(values):
+        return 0.0
+    pre = values[max(0, inception_idx - 2 * win):inception_idx]
+    fault = values[inception_idx:inception_idx + 2 * win]
+    if len(pre) == 0 or len(fault) == 0:
+        return 0.0
+    pre_rms = float(np.sqrt(np.mean(pre ** 2)))
+    return float(np.max(np.abs(fault))) / max(pre_rms, 1e-9)
+
+
+def _cycle_samples(payload: dict) -> int:
+    time = payload.get("time") or []
+    freq = float(payload.get("frequency", 50.0))
+    if len(time) > 1 and time[1] > time[0]:
+        return max(1, int(round(1.0 / (time[1] - time[0]) / freq)))
+    return 1
+
+
+def _sync_overlay(scoped_a: dict, scoped_b: dict, inception_idx_a: int, inception_idx_b: int) -> dict:
+    """Which current the sync overlay shows: the phase whose fault step is
+    clearest at BOTH terminals, on each record's disturbed line. The old
+    overlay took the first "IA" channel in each record — on a DFR recording
+    two lines that was the de-energized line (MJSNG1 at Bringin, BRINGIN 1 at
+    Mojosongo), and on an S-T fault phase A has no step to align on. A weak
+    infeed end can barely step on one faulted phase (Mojosongo: S 2.4x, T 4x
+    its load) while the strong end steps 20x on both, hence the minimum."""
+    channels_a = scoped_a.get("analog_channels", [])
+    channels_b = scoped_b.get("analog_channels", [])
+    tag_a = _detect_active_line_tag(channels_a)
+    tag_b = _detect_active_line_tag(channels_b)
+    win_a = _cycle_samples(scoped_a)
+    win_b = _cycle_samples(scoped_b)
+
+    best = None
+    for phase in "ABC":
+        channel_a = _pick_phase_channel(channels_a, "current", phase, tag_a)
+        channel_b = _pick_phase_channel(channels_b, "current", phase, tag_b)
+        if channel_a is None or channel_b is None:
+            continue
+        clarity = min(
+            _fault_step_ratio(channel_a.get("samples") or [], inception_idx_a, win_a),
+            _fault_step_ratio(channel_b.get("samples") or [], inception_idx_b, win_b),
+        )
+        if best is None or clarity > best[0]:
+            best = (clarity, phase, channel_a, channel_b)
+    if best is None:
+        return {}
+    _clarity, phase, channel_a, channel_b = best
+    return {
+        "sync_phase": phase,
+        "sync_channel_a": channel_a.get("name"),
+        "sync_channel_b": channel_b.get("name"),
+    }
+
+
+_NO_INCEPTION_METHODS = {"no_fault_evidence", "trigger_fallback", "insufficient_data"}
+# Two synchronized DFRs see one fault inception within the detector's own
+# scatter; beyond this the clocks, not the detectors, disagree.
+_CLOCK_AGREEMENT_MS = 2.0
+
+
+def _estimate_alignment(payload_a: dict, payload_b: dict) -> dict:
+    """Starting point for the manual sync step; see ``align_estimate``.
+
+    The shift lines up the two RECORD time axes (``t_B_aligned = t_B -
+    shift``, as in ``_aligned_terminal_pair``), so for one physical instant
+    it is B's record time minus A's. A fault starts at the same instant at
+    both line ends, which makes the detected inceptions the primary source:
+    shift = t_inception_B - t_inception_A, no clock needed. The records'
+    start timestamps give the same number when both DFR clocks are right
+    (shift = start_A - start_B, after removing a whole time-zone offset), so
+    they serve as an independent check rather than as the estimate."""
+    scoped_a, selection_a = scope_payload_with_selection(payload_a)
+    scoped_b, selection_b = scope_payload_with_selection(payload_b)
+    window_a = build_event_window(scoped_a)
+    window_b = build_event_window(scoped_b)
+    time_a = scoped_a.get("time") or []
+    time_b = scoped_b.get("time") or []
+    idx_a = window_a.inception_idx if window_a.inception_idx is not None else 0
+    idx_b = window_b.inception_idx if window_b.inception_idx is not None else 0
+    t_a = float(time_a[idx_a]) if idx_a < len(time_a) else None
+    t_b = float(time_b[idx_b]) if idx_b < len(time_b) else None
+
+    inception_shift_ms = None
+    if (
+        t_a is not None and t_b is not None
+        and window_a.inception_idx is not None and window_b.inception_idx is not None
+        and window_a.method not in _NO_INCEPTION_METHODS and window_b.method not in _NO_INCEPTION_METHODS
+    ):
+        inception_shift_ms = (t_b - t_a) * 1000.0
+
+    clock_shift_ms = None
+    clock_offset_hours = None
+    start_a = _record_abs_time(scoped_a, float(time_a[0])) if time_a else None
+    start_b = _record_abs_time(scoped_b, float(time_b[0])) if time_b else None
+    if start_a is not None and start_b is not None:
+        shift_s, zone_offset_s = _split_clock_offset(start_a - start_b)
+        clock_shift_ms = shift_s * 1000.0
+        if zone_offset_s is not None:
+            # start_A - start_B = +7 h means B's clock reads 7 h behind A's.
+            clock_offset_hours = -zone_offset_s / 3600.0
+
+    zone_note = ""
+    if clock_offset_hours is not None:
+        zone_note = (
+            f" Terminal B's clock reads {abs(clock_offset_hours):g} h "
+            f"{'behind' if clock_offset_hours < 0 else 'ahead of'} terminal A's — a time-zone offset "
+            "(e.g. UTC against WIB), removed before comparing."
+        )
+
+    if inception_shift_ms is not None:
+        estimated_shift_ms = inception_shift_ms
+        estimate_available = True
+        if clock_shift_ms is None:
+            reason = "Aligned on both records' detected fault inception; no start timestamps to cross-check."
+        else:
+            gap_ms = abs(clock_shift_ms - inception_shift_ms)
+            if gap_ms <= _CLOCK_AGREEMENT_MS:
+                reason = (
+                    "Aligned on both records' detected fault inception; their clocks agree within "
+                    f"{gap_ms:.2f} ms.{zone_note}"
+                )
+            else:
+                reason = (
+                    "Aligned on both records' detected fault inception. Their clocks disagree by "
+                    f"{gap_ms:.0f} ms, so at least one DFR clock is off; the inception alignment is used."
+                    f"{zone_note}"
+                )
+    elif clock_shift_ms is not None:
+        estimated_shift_ms = clock_shift_ms
+        estimate_available = True
+        reason = (
+            "From both records' start timestamps — fault inception was not detected on both records. "
+            f"Confirm it on the overlay.{zone_note}"
+        )
+    else:
+        estimated_shift_ms = None
+        estimate_available = False
+        reason = "Neither a detected inception on both records nor both start timestamps — set the shift from the overlay."
+
+    return {
+        "inception_time_a_s": t_a,
+        "inception_time_b_s": t_b,
+        "timing_source_a": window_a.method,
+        "timing_source_b": window_b.method,
+        "estimated_shift_ms": estimated_shift_ms,
+        "estimate_available": estimate_available,
+        "estimate_reason": reason,
+        "clock_shift_ms": clock_shift_ms,
+        "clock_offset_hours": clock_offset_hours,
+        "line_a": selection_a.selected if selection_a is not None else None,
+        "line_b": selection_b.selected if selection_b is not None else None,
+        **_sync_overlay(scoped_a, scoped_b, idx_a, idx_b),
+    }
 
 
 def _load_or_404(analysis_id: str) -> dict:
@@ -821,57 +1001,17 @@ def _compute_distance_histogram(
 
 @router.post("/align-estimate", response_model=DoubleEndedAlignResponse)
 async def align_estimate(body: DoubleEndedAlignRequest):
-    """Coarse starting point for the manual sync step: each record's own
-    (record-relative) inception time, plus — only if BOTH records carry an
-    absolute wall-clock trigger timestamp — a millisecond-level estimate of
-    how far apart those instants are. This is a STARTING POINT for the
-    user's cursor-drag confirmation, never treated as ground truth: relay
-    clocks are frequently un-synced or GPS-free, which is exactly why the
-    source workflow has the user drag cursors and read the delta off the
-    waveform rather than trust wall-clock time alone."""
+    """Starting point for the manual sync step: the shift that lines up both
+    records' detected fault inception, cross-checked against their start
+    timestamps, plus which phase current the overlay should show on each
+    record's disturbed line. A STARTING POINT for the user's confirmation on
+    the overlay, never treated as ground truth — see ``_estimate_alignment``."""
     payload_a = _load_or_404(body.analysis_id_a)
     payload_b = _load_or_404(body.analysis_id_b)
 
     loop = asyncio.get_event_loop()
-
-    def _inceptions():
-        time_a = np.array(payload_a.get("time", []))
-        time_b = np.array(payload_b.get("time", []))
-        idx_a, src_a, _ = _canonical_inception_idx(payload_a, time_a) if len(time_a) >= 4 else (0, "insufficient_data", 0.0)
-        idx_b, src_b, _ = _canonical_inception_idx(payload_b, time_b) if len(time_b) >= 4 else (0, "insufficient_data", 0.0)
-        t_a = float(time_a[idx_a]) if idx_a < len(time_a) else None
-        t_b = float(time_b[idx_b]) if idx_b < len(time_b) else None
-        return t_a, src_a, t_b, src_b
-
-    t_a, src_a, t_b, src_b = await loop.run_in_executor(None, _inceptions)
-
-    abs_a = _record_trigger_abs_time(payload_a)
-    abs_b = _record_trigger_abs_time(payload_b)
-
-    if abs_a is not None and abs_b is not None and t_a is not None and t_b is not None:
-        # Both records' inception instants expressed on one absolute axis:
-        # each side's trigger-instant wall clock + its own trigger-relative
-        # inception time, then differenced — targets "B's inception minus
-        # A's inception" directly.
-        abs_inception_a = abs_a.timestamp() + t_a
-        abs_inception_b = abs_b.timestamp() + t_b
-        estimated_shift_ms = (abs_inception_b - abs_inception_a) * 1000.0
-        estimate_available = True
-        reason = "Derived from both records' absolute trigger/start timestamps — confirm against the waveform cursors."
-    else:
-        estimated_shift_ms = None
-        estimate_available = False
-        reason = "One or both records lack an absolute wall-clock timestamp — set the shift from the cursors only."
-
-    return DoubleEndedAlignResponse(
-        inception_time_a_s=t_a,
-        inception_time_b_s=t_b,
-        timing_source_a=src_a,
-        timing_source_b=src_b,
-        estimated_shift_ms=estimated_shift_ms,
-        estimate_available=estimate_available,
-        estimate_reason=reason,
-    )
+    result = await loop.run_in_executor(None, lambda: _estimate_alignment(payload_a, payload_b))
+    return DoubleEndedAlignResponse(**result)
 
 
 def _run_compute(payload_a: dict, payload_b: dict, body: DoubleEndedComputeRequest) -> dict:
