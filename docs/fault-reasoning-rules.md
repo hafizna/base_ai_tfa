@@ -61,12 +61,21 @@ Setiap kesimpulan yang dihasilkan rantai ini membawa lima hal:
 
 ## Langkah 1 — Apakah ada gangguan?
 
-**F1.1 — Gerbang no-fault.** **VALID.** Gangguan dianggap ada bila salah satu terpenuhi:
+**F1.1 — Gerbang no-fault.** **PERBAIKI.** Gangguan dianggap ada bila salah satu terpenuhi:
 - proteksi beroperasi;
 - ada lonjakan arus (peak ≥2× dan RMS ≥1,5× prefault);
 - ada sag ≥25% disertai unbalance kuat.
 
 Kode: `webapp/api/fault_detection.py`.
+
+Kriteria lonjakan arus tidak cukup sendirian.
+- Contoh: rekaman kedua Cirata #2 (20 Nov 2024).
+  - DFR ter-trigger saat arus naik dari 3 A ke 70 A dan tegangan tetap normal.
+  - Tidak ada proteksi yang beroperasi; CB tertutup sepanjang rekaman.
+  - Gerbang ini tetap membacanya sebagai gangguan ("lonjakan arus 33×"), sehingga kelasnya `FAULT_EVENT`.
+- Gangguan selalu menurunkan tegangan fasanya di lokasi relay.
+- Aturan baru: bila ada kanal tegangan, lonjakan arus hanya dihitung gangguan kalau disertai sag di fasa yang arusnya mengalir.
+- Penelusuran analog (tahap 1) sudah memakai syarat ini: kejadian seperti itu dicatat sebagai `current_rise`, bukan gangguan.
 
 **F1.2 — Rekaman reclose.** **VALID.** Rekaman yang dimulai saat PMT terbuka (dead time) hanya menangkap reclose, jadi penyebab tidak diklasifikasi dari rekaman ini. Kode: `ml_predict._reclose_capture_gate`.
 
