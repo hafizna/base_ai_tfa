@@ -409,6 +409,13 @@ class DoubleEndedAlignResponse(BaseModel):
     estimated_shift_ms: Optional[float]         # coarse ISO-based starting point for the sync UI
     estimate_available: bool
     estimate_reason: str                        # why unavailable, or how it was derived
+    clock_shift_ms: Optional[float] = None      # the same shift from both start timestamps, as a clock check
+    clock_offset_hours: Optional[float] = None  # time-zone offset removed from B against A (e.g. -7: UTC vs WIB)
+    line_a: Optional[str] = None                # disturbed line each terminal is analysed on
+    line_b: Optional[str] = None
+    sync_phase: Optional[str] = None            # phase current shown on the sync overlay
+    sync_channel_a: Optional[str] = None        # that phase's channel name on each disturbed line
+    sync_channel_b: Optional[str] = None
 
 
 class DoubleEndedSuggestShiftRequest(BaseModel):

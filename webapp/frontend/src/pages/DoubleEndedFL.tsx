@@ -165,6 +165,13 @@ export default function DoubleEndedFL() {
   const [estimateNote, setEstimateNote] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
   const [detectedInceptionAS, setDetectedInceptionAS] = useState<number | null>(null);
+  const [syncOverlay, setSyncOverlay] = useState<{
+    phase: string;
+    channelA: string;
+    channelB: string;
+    lineA: string | null;
+    lineB: string | null;
+  } | null>(null);
   const [shiftSearchLoading, setShiftSearchLoading] = useState(false);
   const [shiftSearchNote, setShiftSearchNote] = useState<string | null>(null);
 
@@ -224,9 +231,19 @@ export default function DoubleEndedFL() {
 
   async function fetchEstimate(idA: string, idB: string) {
     setEstimateLoading(true);
+    setSyncOverlay(null);
     try {
       const est = await fetchDoubleEndedAlignEstimate(idA, idB);
       setDetectedInceptionAS(est.inception_time_a_s);
+      if (est.sync_phase && est.sync_channel_a && est.sync_channel_b) {
+        setSyncOverlay({
+          phase: est.sync_phase,
+          channelA: est.sync_channel_a,
+          channelB: est.sync_channel_b,
+          lineA: est.line_a ?? null,
+          lineB: est.line_b ?? null,
+        });
+      }
       if (
         est.estimate_available &&
         est.estimated_shift_ms != null &&
@@ -301,8 +318,15 @@ export default function DoubleEndedFL() {
 
   const syncTraces = useMemo(() => {
     if (!terminalA.comtrade || !terminalB.comtrade) return null;
-    const iaChannel = terminalA.comtrade.analog_channels.find((c) => c.canonical_name === "IA");
-    const ibChannel = terminalB.comtrade.analog_channels.find((c) => c.canonical_name === "IA");
+    // The backend names the phase current to overlay on each record's
+    // disturbed line. Without it, fall back to the first IA channel, which on
+    // a DFR recording two lines can belong to the healthy line.
+    const named = (comtrade: ComtradeData, name: string | undefined) =>
+      name ? comtrade.analog_channels.find((c) => c.name === name) : undefined;
+    const iaChannel = named(terminalA.comtrade, syncOverlay?.channelA)
+      ?? terminalA.comtrade.analog_channels.find((c) => c.canonical_name === "IA");
+    const ibChannel = named(terminalB.comtrade, syncOverlay?.channelB)
+      ?? terminalB.comtrade.analog_channels.find((c) => c.canonical_name === "IA");
     if (!iaChannel || !ibChannel) return null;
     const tA = terminalA.comtrade.time;
     // Apply the current manual shift to B's time axis for display: positive
@@ -310,8 +334,9 @@ export default function DoubleEndedFL() {
     // time values to slide B's trace earlier onto A's axis — matching the
     // backend's shift_s = -manual_shift_ms/1000 convention exactly.
     const tB = terminalB.comtrade.time.map((t) => t - manualShiftMs / 1000);
-    return { tA, iaSamples: iaChannel.samples, tB, ibSamples: ibChannel.samples };
-  }, [terminalA.comtrade, terminalB.comtrade, manualShiftMs]);
+    const label = iaChannel.canonical_name || "IA";
+    return { tA, iaSamples: iaChannel.samples, tB, ibSamples: ibChannel.samples, label };
+  }, [terminalA.comtrade, terminalB.comtrade, manualShiftMs, syncOverlay]);
 
   async function handleFindOptimalShift() {
     if (!terminalA.analysisId || !terminalB.analysisId) return;
@@ -506,9 +531,16 @@ export default function DoubleEndedFL() {
           </div>
           <p className={styles.estimateHint}>
             The two records were triggered independently — align terminal B's fault inception onto terminal A's by
-            adjusting the shift below until both phase-A current traces step at the same time. This shift is the
+            adjusting the shift below until both current traces step at the same time. This shift is the
             authoritative sync value used by the calculation; it is never guessed automatically.
           </p>
+          {syncOverlay && (
+            <p className={styles.estimateHint}>
+              Overlay: phase {syncOverlay.phase} current — the phase whose fault step is clearest at both ends — on{" "}
+              {syncOverlay.lineA ? `line ${syncOverlay.lineA}` : "terminal A"} ({syncOverlay.channelA}) and{" "}
+              {syncOverlay.lineB ? `line ${syncOverlay.lineB}` : "terminal B"} ({syncOverlay.channelB}).
+            </p>
+          )}
           {syncTraces && (
             <div className={styles.syncPlot}>
               <Plot
@@ -518,7 +550,7 @@ export default function DoubleEndedFL() {
                     y: syncTraces.iaSamples,
                     type: "scatter",
                     mode: "lines",
-                    name: "A — IA",
+                    name: `A — ${syncTraces.label}`,
                     line: { color: "#ef4444", width: 1.2 },
                   },
                   {
@@ -526,7 +558,7 @@ export default function DoubleEndedFL() {
                     y: syncTraces.ibSamples,
                     type: "scatter",
                     mode: "lines",
-                    name: "B — IA (shifted)",
+                    name: `B — ${syncTraces.label} (shifted)`,
                     line: { color: "#3b82f6", width: 1.2 },
                   },
                 ]}
@@ -542,7 +574,7 @@ export default function DoubleEndedFL() {
                       : [detectedInceptionAS - 0.08, detectedInceptionAS + 0.16],
                     rangeslider: { visible: true },
                   },
-                  yaxis: { title: { text: "IA (A, primary)" }, gridcolor: "#e2e8f0" },
+                  yaxis: { title: { text: `${syncTraces.label} (A, primary)` }, gridcolor: "#e2e8f0" },
                   legend: { orientation: "h" },
                   paper_bgcolor: "#ffffff",
                   plot_bgcolor: "#ffffff",

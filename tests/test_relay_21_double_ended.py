@@ -22,6 +22,7 @@ from fastapi import HTTPException
 from webapp.api.routers.relay_21_de import (
     _compute_double_ended,
     _compute_distance_histogram,
+    _estimate_alignment,
     _find_optimal_shift,
     _run_compute,
     _single_ended_distance,
@@ -493,3 +494,145 @@ def test_ground_double_ended_requires_three_phase_quantities():
             invert_i_a=False, invert_i_b=False,
             invert_phase_sequence_a=False, invert_phase_sequence_b=False,
         )
+
+
+# --- align-estimate: the sync step's starting point ---------------------------
+
+from datetime import datetime, timedelta  # noqa: E402
+
+INCEPTION = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
+START = datetime(2023, 8, 21, 15, 15, 3, 619791)
+
+
+def _timed_payload(start: datetime, trigger_offset_s: float, station: str, inception: int = INCEPTION) -> dict:
+    payload = _build_terminal_payload(220.0, 5.0, complex(4000.0, 0.0), complex(300.0, 40.0), inception, station)
+    payload["start_time_iso"] = start.isoformat()
+    payload["trigger_time_iso"] = (start + timedelta(seconds=trigger_offset_s)).isoformat()
+    payload["trigger_offset_s"] = trigger_offset_s
+    return payload
+
+
+def test_align_estimate_lines_up_the_detected_inceptions():
+    """The shift lines up the record time axes (t_B_aligned = t_B - shift), so
+    when B's inception lands 50 ms later on its own axis the shift is +50 ms —
+    the same convention _find_optimal_shift recovers above. Start timestamps of
+    one synchronized instant agree with it."""
+    offset = 250  # samples = 50 ms at 5 kHz
+    payload_b = _timed_payload(START - timedelta(seconds=offset / SR), 0.10, "GI-B", INCEPTION + offset)
+    est = _estimate_alignment(_timed_payload(START, 0.10, "GI-A"), payload_b)
+    assert est["estimate_available"]
+    assert est["estimated_shift_ms"] == pytest.approx(50.0, abs=0.3)
+    assert est["clock_shift_ms"] == pytest.approx(50.0, abs=0.01)
+    assert "clocks agree" in est["estimate_reason"]
+
+
+def test_align_estimate_anchors_the_clock_on_the_first_sample_not_the_trigger():
+    """The stored time axis starts at the first sample. Records of the same
+    instant with different pre-trigger lengths must agree at 0 ms, not at the
+    difference of their trigger offsets."""
+    est = _estimate_alignment(_timed_payload(START, 0.10, "GI-A"), _timed_payload(START, 0.30, "GI-B"))
+    assert est["estimated_shift_ms"] == pytest.approx(0.0, abs=0.3)
+    assert est["clock_shift_ms"] == pytest.approx(0.0, abs=0.01)
+    assert est["clock_offset_hours"] is None
+
+
+def test_align_estimate_removes_a_time_zone_offset_before_comparing_clocks():
+    """A Qualitrol record stamped in UTC against a WIB record: 7 h apart plus
+    a sub-second remainder. Only the remainder is a clock difference."""
+    payload_b = _timed_payload(START - timedelta(hours=7) + timedelta(milliseconds=0.4), 0.10, "GI-B")
+    est = _estimate_alignment(_timed_payload(START, 0.11, "GI-A"), payload_b)
+    assert est["clock_offset_hours"] == pytest.approx(-7.0)
+    assert est["clock_shift_ms"] == pytest.approx(-0.4, abs=0.01)
+    assert "7 h behind" in est["estimate_reason"]
+    assert "clocks agree" in est["estimate_reason"]
+
+
+def test_align_estimate_reports_clocks_that_disagree_with_the_inceptions():
+    """Same inception sample on both axes, but B's clock says it started 25 ms
+    later: the clocks are off. The inception alignment is still the estimate."""
+    est = _estimate_alignment(
+        _timed_payload(START, 0.10, "GI-A"),
+        _timed_payload(START + timedelta(milliseconds=25), 0.10, "GI-B"),
+    )
+    assert est["estimated_shift_ms"] == pytest.approx(0.0, abs=0.3)
+    assert est["clock_shift_ms"] == pytest.approx(-25.0, abs=0.01)
+    assert "disagree by 25 ms" in est["estimate_reason"]
+
+
+def test_align_estimate_does_not_strip_an_offset_that_is_not_a_time_zone():
+    """3 min 12 s apart is a wrong clock, not a time zone."""
+    est = _estimate_alignment(
+        _timed_payload(START, 0.10, "GI-A"),
+        _timed_payload(START + timedelta(seconds=192), 0.10, "GI-B"),
+    )
+    assert est["clock_shift_ms"] == pytest.approx(-192_000.0, abs=0.01)
+    assert est["clock_offset_hours"] is None
+    assert est["estimated_shift_ms"] == pytest.approx(0.0, abs=0.3)
+
+
+def _two_line_payload(start: datetime, station: str) -> dict:
+    """A DFR recording two lines: line 1 carries load only, line 2 an S-T fault
+    from INCEPTION on. Channel names follow the real Mojosongo record."""
+    t = np.arange(N) / SR
+
+    def wave(mag: float, angle_deg: float, fault_mag: float = None) -> list:
+        load = mag * np.cos(2 * math.pi * FREQ * t + math.radians(angle_deg))
+        if fault_mag is not None:
+            load[INCEPTION:] = fault_mag * np.cos(2 * math.pi * FREQ * t[INCEPTION:] + math.radians(angle_deg - 80))
+        return load.tolist()
+
+    def channel(name: str, canonical: str, phase: str, measurement: str, samples: list) -> dict:
+        return {
+            "name": name, "canonical_name": canonical, "phase": phase, "measurement": measurement,
+            "unit": "kV" if measurement == "voltage" else "A", "ct_primary": 1.0, "ct_secondary": 1.0,
+            "samples": samples,
+        }
+
+    channels = []
+    for line in (1, 2):
+        faulted = line == 2
+        for letter, phase, angle in (("R", "A", 0), ("S", "B", -120), ("T", "C", 120)):
+            fault_v = 0.6 * 120.0 if faulted and phase != "A" else None
+            fault_i = {"B": 3000.0, "C": 2500.0}.get(phase) if faulted else None
+            channels.append(channel(f"V{letter} BRINGIN {line}", f"V{phase}", phase, "voltage", wave(120.0, angle, fault_v)))
+            channels.append(channel(f"I{letter} BRINGIN {line}", f"I{phase}", phase, "current", wave(400.0, angle - 20, fault_i)))
+    trip = [0] * N
+    for idx in range(INCEPTION + 200, N):
+        trip[idx] = 1
+    return {
+        "station_name": station,
+        "frequency": FREQ,
+        "time": t.tolist(),
+        "start_time_iso": start.isoformat(),
+        "trigger_time_iso": (start + timedelta(seconds=0.1)).isoformat(),
+        "trigger_offset_s": 0.1,
+        "analog_channels": channels,
+        "status_channels": [{"name": "TRIP BRINGIN 2", "samples": trip}],
+    }
+
+
+def test_align_estimate_overlays_the_faulted_phase_on_the_disturbed_line():
+    """The old overlay took the first "IA" channel: the healthy line's phase R,
+    which has no step to align on. It must show a faulted phase of the
+    disturbed line, the one whose step is clearest at both terminals."""
+    est = _estimate_alignment(_two_line_payload(START, "GI-A"), _two_line_payload(START, "GI-B"))
+    assert est["line_a"] == est["line_b"]
+    assert est["line_a"] is not None and est["line_a"].endswith("2")
+    assert est["sync_phase"] == "B"
+    assert est["sync_channel_a"] == "IS BRINGIN 2"
+    assert est["sync_channel_b"] == "IS BRINGIN 2"
+
+
+def test_align_estimate_prefers_the_phase_a_weak_infeed_end_still_shows():
+    """At a weak infeed end one faulted phase barely leaves its load level
+    (Mojosongo: S 2.4x, T 4x). The overlay phase must step at BOTH ends."""
+    weak_b = _two_line_payload(START, "GI-B")
+    t = np.arange(N) / SR
+    for channel in weak_b["analog_channels"]:
+        if channel["name"] == "IS BRINGIN 2":
+            samples = 400.0 * np.cos(2 * math.pi * FREQ * t - math.radians(140))
+            samples[INCEPTION:] = 450.0 * np.cos(2 * math.pi * FREQ * t[INCEPTION:] - math.radians(220))
+            channel["samples"] = samples.tolist()
+    est = _estimate_alignment(_two_line_payload(START, "GI-A"), weak_b)
+    assert est["sync_phase"] == "C"
+    assert est["sync_channel_b"] == "IT BRINGIN 2"
