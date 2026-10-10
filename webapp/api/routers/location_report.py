@@ -871,7 +871,7 @@ def build_defl_pdf(payload_a: dict, payload_b: dict, body: DoubleEndedReportRequ
     ))
     current_label = (
         f"Arus loop {loop_label} di titik gangguan" if loop not in GROUND_LOOPS
-        else f"Arus fasa {_PHASE_LABEL.get(loop[1], loop[1])} di titik gangguan"
+        else f"Arus fasa terbesar ({_PHASE_LABEL.get(result.get('fault_current_phase'), '?')}) di titik gangguan"
     )
     story.append(_meta_line(styles, [
         f"Panjang line {_num(line_km, 2, 'km')}",

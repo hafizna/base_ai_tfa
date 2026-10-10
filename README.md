@@ -749,6 +749,10 @@ base_ai_tfa/                          ← repo root
 
 ## Optimasi Performa (Opsi A)
 
+Rencana terbaru: [Perbaikan performance dan keputusan tech stack](PERFORMANCE_PLAN.md)
+(10 Oktober 2026). Dokumen ini memisahkan temuan repo, hipotesis production,
+prioritas implementasi, dan verifikasi untuk rekaman 1?10 MB.
+
 ### Tambahan UI/API terbaru
 
 | Area | File | Catatan |
@@ -785,11 +789,12 @@ Profile dulu (#1), lalu putuskan step berikutnya berdasar data, bukan asumsi.
 | `comtrade.py::load` (third-party lib) | ~4% |
 | `_compute_locus`, `_compute_electrical_params`, `_digital_sequence_features`, LightGBM `predict_proba`, JSON serialization | tidak muncul di top — bukan bottleneck |
 
-**Keputusan pasca-profile:** sistem sudah well-tuned. Step #1, #2, #5, α yang sudah dieksekusi
-sudah meng-cover hot path utama. Optimasi tambahan (#3, #4, β, γ) marginal dan di-skip kecuali
-ada bukti baru dari production traffic. Step #6 menunggu re-test dengan `.dat` produksi (>1 MB)
-karena synthetic file terlalu kecil untuk men-eksekusi parser scaling. Fokus engineering bergeser
-ke feature & correctness.
+**Batas kesimpulan profile:** hasil di atas berlaku untuk rekaman sintetis 26 KB,
+belum mewakili rekaman production 1?10 MB. Status Skip pada tabel mencatat
+keputusan historis berdasarkan dataset tersebut, bukan bukti bahwa transfer
+waveform, parsing JSON, atau rendering selalu murah. Evaluasi ulang per-channel
+loading, penggunaan ulang hasil analisis, dan ukuran bundle berdasarkan baseline
+production. Lihat [rencana performance terbaru](PERFORMANCE_PLAN.md).
 
 ---
 

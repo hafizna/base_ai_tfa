@@ -519,6 +519,8 @@ def _phasor_at_window_start(ctx: dict, start: int, aligned_start_s: Optional[flo
         rotation = np.exp(-1j * 2.0 * np.pi * ctx["freq"] * aligned_start_s)
         v_ph *= rotation
         i_ph *= rotation
+        if ctx.get("basis") == "negative_sequence":
+            iabc = [value * rotation for value in iabc]
 
     if not np.isfinite(abs(v_ph)) or not np.isfinite(abs(i_ph)):
         raise HTTPException(status_code=422, detail="Could not compute a valid synchronized V/I phasor.")
@@ -526,6 +528,7 @@ def _phasor_at_window_start(ctx: dict, start: int, aligned_start_s: Optional[flo
     return {
         "v_primary": v_ph,
         "i_primary": i_ph,
+        "phase_currents_primary": dict(zip("ABC", iabc)) if ctx.get("basis") == "negative_sequence" else {},
         "inception_idx": inception_idx,
         "clearing_idx": ctx.get("clearing_idx"),
         "inception_time_s": float(ctx["time"][inception_idx]),
@@ -881,18 +884,21 @@ def _compute_double_ended(
         )
 
     if use_sequence:
-        phase_ctx_a = _build_terminal_context(
-            payload_a, loop, invert_i_a, invert_phase_sequence_a,
-            sequence_for_ground=False,
-        )
-        phase_ctx_b = _build_terminal_context(
-            payload_b, loop, invert_i_b, invert_phase_sequence_b,
-            sequence_for_ground=False,
-        )
-        phase_pairs = _paired_fault_windows(phase_ctx_a, phase_ctx_b, manual_shift_ms, n_windows=21)
-        fault_current_a = float(np.median([abs(a["i_primary"] + b["i_primary"]) for a, b in phase_pairs]))
+        # Ground-loop location uses I2, independent of the phase in the loop
+        # name. Display the largest physical phase current at the fault point,
+        # using the same synchronized windows and polarity/sequence corrections.
+        phase_currents = {
+            phase: float(np.median([
+                abs(a["phase_currents_primary"][phase] + b["phase_currents_primary"][phase])
+                for a, b in pairs
+            ]))
+            for phase in "ABC"
+        }
+        fault_current_phase = max(phase_currents, key=phase_currents.get)
+        fault_current_a = phase_currents[fault_current_phase]
     else:
         fault_current_a = float(np.median([abs(a["i_primary"] + b["i_primary"]) for a, b in pairs]))
+        fault_current_phase = None
     distance_km = m * line_len_km
 
     return {
@@ -900,6 +906,7 @@ def _compute_double_ended(
         "distance_km": distance_km,
         "distance_pct": (distance_km / line_len_km) * 100.0,
         "fault_current_a": fault_current_a,
+        "fault_current_phase": fault_current_phase,
         "m_residual_imag": m_residual_imag,
         "kvl_residual": solved["kvl_residual"],
         "distance_spread_km": solved["distance_spread_pu"] * line_len_km,
@@ -1032,7 +1039,7 @@ def _single_ended_distance(
     ``r1_ohm_per_km``/``x1_ohm_per_km``, the same convention
     ``_compute_double_ended`` already uses).
 
-    m_single = Re(Z_measured / Z_per_km), same Re() convention as the
+    distance_km = Re(Z_measured / Z_per_km), same Re() convention as the
     two-ended m = Re(m_complex) above — NOT |Z|/|Z_per_km|. This matters
     physically: a fault resistance Rf adds a real (resistive) term to
     Z_measured (Z_measured = m*Z_per_km*L + Rf, to first order, when this
@@ -1057,8 +1064,8 @@ def _single_ended_distance(
         }
     z_measured = v / i
     z_per_km = complex(r1_ohm_per_km, x1_ohm_per_km)
-    m_single = float(np.real(z_measured / z_per_km))
-    distance_km = m_single * line_len_km
+    # Ohms / (ohms per km) already yields km, not a per-unit distance.
+    distance_km = float(np.real(z_measured / z_per_km))
     if distance_km < 0.0 or distance_km > line_len_km:
         warnings.append(
             f"Terminal {terminal_label} single-ended reading ({distance_km:.2f} km) falls outside the line "

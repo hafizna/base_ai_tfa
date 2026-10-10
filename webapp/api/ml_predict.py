@@ -909,8 +909,24 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
         if len(seg) > 0 and float(np.max(np.abs(seg))) > ph_thr:
             faulted_phases.append(phase)
     faulted_phases_str = "+".join(faulted_phases) if faulted_phases else "A"
-    if len(digital.get("digital_startup_phases") or []) == 1:
-        faulted_phases_str = digital["digital_startup_phases"][0]
+
+    # Reconcile the waveform threshold with the relay's own phase decision.
+    # A large SLG can induce enough mutual-coupling current in a healthy phase
+    # to cross the analog threshold above (for example A+C), while the relay
+    # unambiguously records a single-pole trip on A.  In that situation the
+    # digital single-pole decision is the authoritative source for both the AI
+    # narrative and its FCT phase label.  Do not apply this override when the
+    # digital sequence says three-pole or contains multiple operated phases.
+    digital_startup_phases = digital.get("digital_startup_phases") or []
+    digital_trip_phases = digital.get("digital_trip_phases") or []
+    digital_cb_open_phases = digital.get("digital_cb_open_phases") or []
+    if len(digital_startup_phases) == 1:
+        faulted_phases_str = digital_startup_phases[0]
+    elif digital.get("digital_trip_type") == "single_pole":
+        if len(digital_trip_phases) == 1:
+            faulted_phases_str = digital_trip_phases[0]
+        elif len(digital_cb_open_phases) == 1:
+            faulted_phases_str = digital_cb_open_phases[0]
 
     # Broad "did any protection actually operate?" scan. _digital_sequence_features
     # only catches phase-tagged trips/CB-opens; unphased operate bits like Op_Prot,

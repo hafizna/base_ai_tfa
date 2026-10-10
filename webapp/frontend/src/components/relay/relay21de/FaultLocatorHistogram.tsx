@@ -62,20 +62,25 @@ export default function FaultLocatorHistogram({ histogram, lineLenKm, twoEnded, 
         label: "Single-ended (A)",
         distanceKm: singleEndedA.distance_km,
         color: "#d946ef",
-        detail: `${singleEndedA.distance_km.toFixed(2)} km · ${(singleEndedA.fault_current_a / 1000).toFixed(2)} kA`,
+        detail: `${singleEndedA.distance_km.toFixed(2)} km from A · ${(singleEndedA.fault_current_a / 1000).toFixed(2)} kA`,
       });
     }
     if (showB && singleEndedB) {
       result.push({
         key: "single-b",
         label: "Single-ended (B)",
-        distanceKm: singleEndedB.distance_km,
+        distanceKm: lineLenKm - singleEndedB.distance_km,
         color: "#f59e0b",
-        detail: `${singleEndedB.distance_km.toFixed(2)} km · ${(singleEndedB.fault_current_a / 1000).toFixed(2)} kA`,
+        detail: `${singleEndedB.distance_km.toFixed(2)} km from B<br>${(lineLenKm - singleEndedB.distance_km).toFixed(2)} km from A · ${(singleEndedB.fault_current_a / 1000).toFixed(2)} kA`,
       });
     }
     return result;
-  }, [showTwoEnded, showA, showB, twoEnded, singleEndedA, singleEndedB]);
+  }, [showTwoEnded, showA, showB, twoEnded, singleEndedA, singleEndedB, lineLenKm]);
+
+  // Preserve honest out-of-line readings while keeping enabled markers visible.
+  const minDistance = Math.min(0, ...histogram, ...lines.map((line) => line.distanceKm));
+  const maxDistance = Math.max(lineLenKm, ...histogram, ...lines.map((line) => line.distanceKm));
+  const axisPadding = (maxDistance - minDistance) * 0.04;
 
   // Bound the bin count to the actual sample count — a 41-window sweep
   // rendered into 40+ bins would look like scattered noise rather than a
@@ -149,7 +154,7 @@ export default function FaultLocatorHistogram({ histogram, lineLenKm, twoEnded, 
           autosize: true,
           height: 320,
           margin: { l: 50, r: 20, t: 60, b: 45 },
-          xaxis: { title: { text: "Distance (km)" }, range: [0, lineLenKm], gridcolor: "#e2e8f0" },
+          xaxis: { title: { text: "Distance from terminal A (km)" }, range: [minDistance - axisPadding, maxDistance + axisPadding], gridcolor: "#e2e8f0" },
           yaxis: { title: { text: "Windows" }, gridcolor: "#e2e8f0" },
           shapes,
           annotations,

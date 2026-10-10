@@ -536,6 +536,7 @@ export interface DoubleEndedComputeResult {
   distance_km: number;
   distance_pct: number;
   fault_current_a: number;
+  fault_current_phase?: string | null;
   m_residual_imag: number;
   kvl_residual: number;
   distance_spread_km: number;

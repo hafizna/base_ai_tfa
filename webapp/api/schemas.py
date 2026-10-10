@@ -505,7 +505,8 @@ class DoubleEndedComputeResponse(BaseModel):
     loop: str
     distance_km: float
     distance_pct: float                         # distance_km / line_len_km * 100
-    fault_current_a: float                      # |I_A + I_B| at the fault point, primary amps
+    fault_current_a: float                      # median |I_A + I_B|; ground basis uses largest phase
+    fault_current_phase: Optional[str] = None   # A/B/C for ground basis; phase-loop otherwise
     m_residual_imag: float                      # imaginary residual of the per-unit-distance solution
     kvl_residual: float = 0.0                   # normalized complex multi-window KVL mismatch
     distance_spread_km: float = 0.0             # weighted spread between selected window solutions

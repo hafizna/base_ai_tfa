@@ -16,6 +16,7 @@ import math
 import numpy as np
 
 from webapp.api.routers.relay_21 import _compute_fault_classification
+from webapp.api.ml_predict import _build_narrative_evidence, extract_ml_features
 
 
 FREQ = 50.0
@@ -127,6 +128,33 @@ def test_slg_with_small_healthy_phase_coupling_is_not_misread_as_dlg():
     assert result["to_ground"] is True
 
 
+def test_ai_diagnostic_uses_single_pole_relay_phase_instead_of_analog_dlg():
+    """The AI diagnostic must use the same actual relay phase as the fault
+    panel.  A single-pole trip on A overrides the false A+C analog threshold
+    caused by healthy-phase mutual coupling, including in the FCT sentence."""
+    payload = _build_payload(
+        fault_mag_a=6000.0, fault_mag_b=500.0, fault_mag_c=700.0,
+        in_mag=7000.0,
+        status_channels=[_status("CB1.TrpA")],
+    )
+
+    row = extract_ml_features(payload, "21")
+    evidence = _build_narrative_evidence(
+        row,
+        ranking=[],
+        pred="PETIR",
+        confidence=0.91,
+        margin=0.8,
+    )
+    texts = [item["text"] for item in evidence]
+
+    assert row["digital_trip_type"] == "single_pole"
+    assert row["faulted_phases"] == "A"
+    assert "Fasa A-N (Single Line to Ground)" in texts[0]
+    assert any("fasa terganggu A-N" in text for text in texts)
+    assert all("A+C" not in text and "Double Line to Ground" not in text for text in texts)
+
+
 def test_slg_with_no_reclose_evidence_at_all_still_resolves_to_slg():
     """Central claim from the underlying analysis: absence of reclose
     evidence (record truncated before AR completes, or no AR configured at
@@ -166,6 +194,28 @@ def test_genuine_dlg_both_phases_have_real_evidence():
         in_mag=7000.0,
         status_channels=[_status("CB1.TrpA"), _status("CB1.TrpC")],
     )
+    # Both faulted phases must have a voltage collapse too. The base SLG
+    # fixture keeps C healthy; two trip poles alone do not establish DLG (F4).
+    inception = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
+    vc = next(ch for ch in payload["analog_channels"] if ch["canonical_name"] == "VC")
+    vc["samples"][inception:] = [value * 0.25 / 0.95 for value in vc["samples"][inception:]]
     result = _compute_fault_classification(payload)
     assert result["fault_code"] == "DLG"
     assert set(result["phases"]) == {"A", "C"}
+
+
+def test_ll_bc_badge_agrees_with_ai_reasoning_despite_three_pole_trip():
+    """A three-pole trip describes breaker operation, not three faulted phases."""
+    from tests.test_fault_reasoning import _record
+    from webapp.api.record_analysis import build_record_analysis
+
+    payload = _record(faulted=("B", "C"), ground=False, status=[
+        ("TRIP R", [(40, 80)]), ("TRIP S", [(40, 80)]), ("TRIP T", [(40, 80)]),
+    ])
+    chain = build_record_analysis("test", payload).reasoning
+    phases = next(c for c in chain["conclusions"] if c["key"] == "phases")["value"]
+    result = _compute_fault_classification(payload)
+    assert result["phases"] == phases["phases"]
+    assert result["phases"] == ["B", "C"]
+    assert result["fault_code"] == "LL"
+    assert result["to_ground"] is False
