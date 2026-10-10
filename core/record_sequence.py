@@ -18,6 +18,8 @@ def record_sequence(payload, window):
         name = str(channel.get("name", ""))
         if not re.search(r"\b(?:SOTF|TOR)\b|TRIP\s+ON\s+RECLOSE", name.upper()):
             continue
+        if re.search(r"\b(?:ENABLE|ARM|BLOCK|START|PICKUP)\b", name.upper()):
+            continue  # enabling a SOTF function does not prove it tripped
         samples = np.asarray(channel.get("samples", []), dtype=int)
         for idx in np.flatnonzero(np.diff(samples) > 0) + 1:
             end = next((k for k in range(idx + 1, min(len(samples), len(time_ms))) if samples[k] == 0), len(time_ms) - 1)
@@ -25,7 +27,11 @@ def record_sequence(payload, window):
                 at = float(time_ms[idx])
                 if any(close - 1 <= at <= close + 1000 for close in closes):
                     sotf.append({"time_ms": at, "channel": name})
-    refault = [e for e in episodes[1:] if e.get("after_reclose")]
+    refault = [e for e in episodes if e.get("after_reclose")]
+    # A dead-time capture may lack the healthy waveform reference needed to
+    # time a new fault. SOTF/TOR after a verified close is explicit evidence
+    # of that later trip, without fabricating a waveform inception/duration.
+    status_refault = bool(sotf and not refault)
     failed = bool(sotf or refault or any(e.get("success") is False and e.get("cb_open_verified") is not False for e in window.reclose_events))
     outcome = "failed" if failed else "successful" if closes and any(e.get("success") is True for e in window.reclose_events) else "unknown"
     timeline = []
@@ -38,10 +44,11 @@ def record_sequence(payload, window):
     timeline += [{"kind": "sotf_trip", **e} for e in sotf]
     timeline.sort(key=lambda e: e["time_ms"])
     return {
-        "episode_count": len(episodes), "mechanical_close_confirmed": bool(closes),
-        "restoration_outcome": outcome, "refault_after_reclose": bool(refault),
+        "episode_count": len(episodes) + int(status_refault), "mechanical_close_confirmed": bool(closes),
+        "restoration_outcome": outcome, "refault_after_reclose": bool(refault or status_refault),
+        "refault_evidence": "waveform_after_reclose" if refault else "sotf_after_verified_close" if status_refault else None,
         "sotf_after_reclose": bool(sotf), "reclose_times_ms": closes,
         "sotf_trips": sotf, "timeline": timeline,
-        "interpretation": "RECLOSE_REFAULT_SOTF" if sotf and refault else "RECLOSE_REFAULT" if refault
+        "interpretation": "RECLOSE_REFAULT_SOTF" if sotf else "RECLOSE_REFAULT" if refault
             else "RECLOSE_FAILED" if failed else "RECLOSE_SUCCESSFUL" if outcome == "successful" else "FAULT_EVENT",
     }

@@ -1,0 +1,1015 @@
+{
+  "reviews": [
+    {
+      "record_fingerprint": "79e4e3fb8c8181c32da2c6b0aed83b463b5709017ee77d71e49706cb7cd4bfc9",
+      "file": "Saturday 26 August 2023 07.54.08.000.CFG",
+      "review_notes": "Rawalo-Purbalingga 2, 26 August 2023: pole A auxiliary contact returns at 1566.04 ms, Any Pole Dead resets at 1567.71 ms. Current returns; no further trip/SOTF or waveform fault through record end 2498.33 ms. Success is bounded by the recording, not proof of later service status.",
+      "confidence": "CONFIRMED",
+      "record_end_ms": 2498.3348846435547,
+      "sequence": {
+        "episode_count": 1,
+        "mechanical_close_confirmed": true,
+        "restoration_outcome": "successful",
+        "refault_after_reclose": false,
+        "refault_evidence": null,
+        "sotf_after_reclose": false,
+        "reclose_times_ms": [
+          1567.7059888839722
+        ],
+        "sotf_trips": [],
+        "timeline": [
+          {
+            "kind": "fault_inception",
+            "time_ms": 479.8080027103424,
+            "episode_index": 0
+          },
+          {
+            "kind": "fault_cleared",
+            "time_ms": 559.7760081291199,
+            "episode_index": 0
+          },
+          {
+            "kind": "breaker_reclosed",
+            "time_ms": 1567.7059888839722
+          }
+        ],
+        "interpretation": "RECLOSE_SUCCESSFUL"
+      },
+      "relevant_channels": [
+        {
+          "name": "Any Trip",
+          "initial": 0,
+          "on_ms": [
+            479.8080027103424
+          ],
+          "off_ms": [
+            559.7760081291199
+          ]
+        },
+        {
+          "name": "DIST Trip A",
+          "initial": 0,
+          "on_ms": [
+            479.8080027103424
+          ],
+          "off_ms": [
+            541.450023651123
+          ]
+        },
+        {
+          "name": "DIST Trip B",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST Trip C",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DEF Sig. Send",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST. Chan Recv",
+          "initial": 0,
+          "on_ms": [
+            573.1040239334106
+          ],
+          "off_ms": [
+            756.3639879226685
+          ]
+        },
+        {
+          "name": "Z1",
+          "initial": 0,
+          "on_ms": [
+            479.8080027103424
+          ],
+          "off_ms": [
+            541.450023651123
+          ]
+        },
+        {
+          "name": "Z2",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Any Pole Dead",
+          "initial": 0,
+          "on_ms": [
+            521.4580297470093
+          ],
+          "off_ms": [
+            1567.7059888839722
+          ]
+        },
+        {
+          "name": "All Pole Dead",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "SOTF/TOR Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST Sig. Send",
+          "initial": 0,
+          "on_ms": [
+            479.8080027103424
+          ],
+          "off_ms": [
+            551.4460206031799
+          ]
+        },
+        {
+          "name": "DIST. Chan Recv",
+          "initial": 0,
+          "on_ms": [
+            573.1040239334106
+          ],
+          "off_ms": [
+            756.3639879226685
+          ]
+        },
+        {
+          "name": "DEF. Chan Recv",
+          "initial": 0,
+          "on_ms": [
+            504.7979950904846
+          ],
+          "off_ms": [
+            711.3819718360901
+          ]
+        },
+        {
+          "name": "CB Aux A (52-A)",
+          "initial": 1,
+          "on_ms": [
+            1566.0400390625
+          ],
+          "off_ms": [
+            518.1260108947754
+          ]
+        },
+        {
+          "name": "CB Aux B (52-A)",
+          "initial": 1,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "CB Aux C (52-A)",
+          "initial": 1,
+          "on_ms": [],
+          "off_ms": []
+        }
+      ],
+      "trip_path": {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Z1, seketika",
+        "evidence": [
+          "Z1 pickup +0,0 ms; trip pole R +0,0 ms."
+        ],
+        "rules": [
+          "F5.1",
+          "F5.2"
+        ],
+        "confidence": "high",
+        "value": {
+          "kind": "z1",
+          "zones_on_ms": {
+            "1": -0.0
+          },
+          "zones_recorded": [
+            1,
+            2,
+            3
+          ],
+          "receive_recorded": true,
+          "send_recorded": true,
+          "sotf_recorded": true,
+          "excluded_earth_pilot_channels": [
+            "DEF Sig. Send",
+            "DEF. Chan Recv"
+          ],
+          "receive_at_trip": null,
+          "send_active": "DIST Sig. Send",
+          "sotf_active": null,
+          "trip_zones": []
+        },
+        "conflicts": []
+      },
+      "scheme": null
+    },
+    {
+      "record_fingerprint": "c5fea1369517f967c0cf39728edd69a25127dc03443806f18ed1972900548301",
+      "file": "241211,131329938,UTC,GI RAWALO,P442,Schneider Electric.cfg",
+      "review_notes": "Rawalo-Purbalingga 1, 11 December 2024: pole C auxiliary contact returns at 1471.08 ms, Any Pole Dead resets at 1472.74 ms. No further trip/SOTF or waveform fault through 2678.10 ms. Success is bounded by the recording.",
+      "confidence": "CONFIRMED",
+      "record_end_ms": 2678.0951023101807,
+      "sequence": {
+        "episode_count": 1,
+        "mechanical_close_confirmed": true,
+        "restoration_outcome": "successful",
+        "refault_after_reclose": false,
+        "refault_evidence": null,
+        "sotf_after_reclose": false,
+        "reclose_times_ms": [
+          1472.7439880371094
+        ],
+        "sotf_trips": [],
+        "timeline": [
+          {
+            "kind": "fault_inception",
+            "time_ms": 329.86798882484436,
+            "episode_index": 0
+          },
+          {
+            "kind": "fault_cleared",
+            "time_ms": 426.4959990978241,
+            "episode_index": 0
+          },
+          {
+            "kind": "breaker_reclosed",
+            "time_ms": 1472.7439880371094
+          }
+        ],
+        "interpretation": "RECLOSE_SUCCESSFUL"
+      },
+      "relevant_channels": [
+        {
+          "name": "DIST. Chan Recv",
+          "initial": 0,
+          "on_ms": [
+            356.5239906311035
+          ],
+          "off_ms": [
+            544.7819828987122
+          ]
+        },
+        {
+          "name": "DIST Trip A",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST Trip B",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST Trip C",
+          "initial": 0,
+          "on_ms": [
+            346.52799367904663
+          ],
+          "off_ms": [
+            411.50200366973877
+          ]
+        },
+        {
+          "name": "DIST Sig. Send",
+          "initial": 0,
+          "on_ms": [
+            346.52799367904663
+          ],
+          "off_ms": [
+            421.49800062179565
+          ]
+        },
+        {
+          "name": "Z1",
+          "initial": 0,
+          "on_ms": [
+            346.52799367904663
+          ],
+          "off_ms": [
+            411.50200366973877
+          ]
+        },
+        {
+          "name": "Z2",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Any Pole Dead",
+          "initial": 0,
+          "on_ms": [
+            386.51201128959656
+          ],
+          "off_ms": [
+            1472.7439880371094
+          ]
+        },
+        {
+          "name": "All Pole Dead",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "SOTF/TOR Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Any Trip",
+          "initial": 0,
+          "on_ms": [
+            346.52799367904663
+          ],
+          "off_ms": [
+            426.4959990978241
+          ]
+        },
+        {
+          "name": "CB Aux A (52-A)",
+          "initial": 1,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "CB Aux B (52-A)",
+          "initial": 1,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "CB Aux C (52-A)",
+          "initial": 1,
+          "on_ms": [
+            1471.0780382156372
+          ],
+          "off_ms": [
+            383.17999243736267
+          ]
+        },
+        {
+          "name": "DEF Sig. Send",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DEF Trip A",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DEF Trip B",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DEF Trip C",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        }
+      ],
+      "trip_path": {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Z1, seketika",
+        "evidence": [
+          "Z1 pickup +16,6 ms; trip pole T +16,6 ms bersamaan dengan DIST. Chan Recv."
+        ],
+        "rules": [
+          "F5.1",
+          "F5.2"
+        ],
+        "confidence": "high",
+        "value": {
+          "kind": "z1",
+          "zones_on_ms": {
+            "1": 16.6
+          },
+          "zones_recorded": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "receive_recorded": true,
+          "send_recorded": true,
+          "sotf_recorded": true,
+          "excluded_earth_pilot_channels": [
+            "DEF Sig. Send",
+            "DEF UNB CR"
+          ],
+          "receive_at_trip": "DIST. Chan Recv",
+          "send_active": "DIST Sig. Send",
+          "sotf_active": null,
+          "trip_zones": []
+        },
+        "conflicts": []
+      },
+      "scheme": null
+    },
+    {
+      "record_fingerprint": "deebd8943a4e340f3dd2cf74b0a0fcc83bc7385576f20cb61ad4c4fecb8cd0b6",
+      "file": "Friday 26 April 2024 14.29.20.000.CFG",
+      "review_notes": "Cibatu-Mekarsari 2, 26 April 2024: Z1 and distance Send recorded silent; Z2 pickup 3506.93 ms, distance Receive and trip 3516.93 ms. Pattern supports PUTT, conditional on valid channel wiring and relay settings; not a confirmed configured scheme.",
+      "confidence": "PROBABLE",
+      "record_end_ms": 10514.886856079102,
+      "sequence": {
+        "episode_count": 1,
+        "mechanical_close_confirmed": true,
+        "restoration_outcome": "successful",
+        "refault_after_reclose": false,
+        "refault_evidence": null,
+        "sotf_after_reclose": false,
+        "reclose_times_ms": [
+          4578.167915344238
+        ],
+        "sotf_trips": [],
+        "timeline": [
+          {
+            "kind": "fault_inception",
+            "time_ms": 3480.273962020874,
+            "episode_index": 0
+          },
+          {
+            "kind": "fault_cleared",
+            "time_ms": 3570.2381134033203,
+            "episode_index": 0
+          },
+          {
+            "kind": "breaker_reclosed",
+            "time_ms": 4578.167915344238
+          }
+        ],
+        "interpretation": "RECLOSE_SUCCESSFUL"
+      },
+      "relevant_channels": [
+        {
+          "name": "DIST Trip A",
+          "initial": 0,
+          "on_ms": [
+            3516.926050186157
+          ],
+          "off_ms": [
+            3570.2381134033203
+          ]
+        },
+        {
+          "name": "DIST Trip B",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST Trip C",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST Sig. Send",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "SOTF/TOR Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Z1",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Z2",
+          "initial": 0,
+          "on_ms": [
+            3506.930112838745
+          ],
+          "off_ms": [
+            3570.2381134033203
+          ]
+        },
+        {
+          "name": "SOTF/TOR Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Any Pole Dead",
+          "initial": 0,
+          "on_ms": [
+            3570.2381134033203,
+            4579.833984375
+          ],
+          "off_ms": [
+            4578.167915344238,
+            4583.166122436523
+          ]
+        },
+        {
+          "name": "All Pole Dead",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST. Chan Recv",
+          "initial": 0,
+          "on_ms": [
+            3516.926050186157
+          ],
+          "off_ms": [
+            3598.560094833374
+          ]
+        }
+      ],
+      "trip_path": {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Aided trip lewat teleproteksi",
+        "evidence": [
+          "Z2 pickup +26,6 ms; trip pole R +36,6 ms bersamaan dengan DIST UNB CR.",
+          "Trip 10 ms setelah Z2 pickup, jauh sebelum timer Z2 0,4 s \u00b110%. Z1 tidak pickup."
+        ],
+        "rules": [
+          "F5.1",
+          "F5.2",
+          "F5.3"
+        ],
+        "confidence": "high",
+        "value": {
+          "kind": "accelerated",
+          "zones_on_ms": {
+            "2": 26.6
+          },
+          "zones_recorded": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "receive_recorded": true,
+          "send_recorded": true,
+          "sotf_recorded": true,
+          "excluded_earth_pilot_channels": [],
+          "receive_at_trip": "DIST UNB CR",
+          "send_active": null,
+          "sotf_active": null,
+          "trip_zones": [],
+          "elapsed_ms": 10.0,
+          "pickup_zone": 2
+        },
+        "conflicts": []
+      },
+      "scheme": {
+        "key": "scheme",
+        "step": 5,
+        "label": "Skema",
+        "title": "PUTT",
+        "evidence": [
+          "Kanal Send direkam dan tidak pernah aktif. Pada POTT, sisi ini akan mengirim begitu Z2 pickup.",
+          "Bergantung pada kanal Send yang memang terhubung."
+        ],
+        "rules": [
+          "F5.4"
+        ],
+        "confidence": "medium",
+        "value": {
+          "scheme": "PUTT"
+        },
+        "conflicts": []
+      }
+    },
+    {
+      "record_fingerprint": "1be620bfb5cded546ddc73481fb03085e6dffb7d5ea6e6f70feb49bfc0164ffc",
+      "file": "Friday 20 May 2022 17.22.15.000.CFG",
+      "review_notes": "Ungaran-Krian, 20 May 2022: Z1 silent; Z2 C pickup 489.98 ms, Aid 1 distance trip/Receive 498.73 ms; Aided 1 Send silent. Aided 2 Send belongs to another path and cannot prove distance POTT. Probable PUTT requires settings/wiring confirmation.",
+      "confidence": "PROBABLE",
+      "record_end_ms": 2501.6028881073,
+      "sequence": {
+        "episode_count": 1,
+        "mechanical_close_confirmed": false,
+        "restoration_outcome": "unknown",
+        "refault_after_reclose": false,
+        "refault_evidence": null,
+        "sotf_after_reclose": false,
+        "reclose_times_ms": [],
+        "sotf_trips": [],
+        "timeline": [
+          {
+            "kind": "fault_inception",
+            "time_ms": 471.62699699401855,
+            "episode_index": 0
+          },
+          {
+            "kind": "fault_cleared",
+            "time_ms": 598.4150171279907,
+            "episode_index": 0
+          }
+        ],
+        "interpretation": "FAULT_EVENT"
+      },
+      "relevant_channels": [
+        {
+          "name": "Trip Output A",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Trip Output B",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Trip Output C",
+          "initial": 0,
+          "on_ms": [
+            498.7320005893707
+          ],
+          "off_ms": [
+            598.4150171279907
+          ]
+        },
+        {
+          "name": "Zone 2 A Start",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Zone 2 B Start",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Zone 2 C Start",
+          "initial": 0,
+          "on_ms": [
+            489.9750053882599
+          ],
+          "off_ms": [
+            545.4559922218323
+          ]
+        },
+        {
+          "name": "Aided 1 Send",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Aided 1 Receive",
+          "initial": 0,
+          "on_ms": [
+            498.7320005893707
+          ],
+          "off_ms": [
+            753.5390257835388
+          ]
+        },
+        {
+          "name": "Zone 1 Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Zone 2 Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Aid 1 Dist Trip",
+          "initial": 0,
+          "on_ms": [
+            498.7320005893707
+          ],
+          "off_ms": [
+            545.4559922218323
+          ]
+        },
+        {
+          "name": "Aided 2 Receive",
+          "initial": 0,
+          "on_ms": [
+            488.7239933013916
+          ],
+          "off_ms": [
+            741.0290241241455
+          ]
+        },
+        {
+          "name": "Aided 2 Send",
+          "initial": 0,
+          "on_ms": [
+            497.48098850250244
+          ],
+          "off_ms": [
+            547.1240282058716
+          ]
+        },
+        {
+          "name": "Aid 2 DEF Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Aid 2 Delta Trip",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Any Trip",
+          "initial": 0,
+          "on_ms": [
+            498.7320005893707
+          ],
+          "off_ms": [
+            598.4150171279907
+          ]
+        },
+        {
+          "name": "SOTF Trip Zone 1",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "SOTF Trip Zone 2",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Trip Output A",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Trip Output B",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "Trip Output C",
+          "initial": 0,
+          "on_ms": [
+            498.7320005893707
+          ],
+          "off_ms": [
+            598.4150171279907
+          ]
+        }
+      ],
+      "trip_path": {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Aided trip lewat teleproteksi",
+        "evidence": [
+          "Z2 pickup +18,4 ms; trip pole T +27,1 ms bersamaan dengan Aided 1 Receive.",
+          "Trip 9 ms setelah Z2 pickup, jauh sebelum timer Z2 0,4 s \u00b110%. Z1 tidak pickup."
+        ],
+        "rules": [
+          "F5.1",
+          "F5.2",
+          "F5.3"
+        ],
+        "confidence": "high",
+        "value": {
+          "kind": "accelerated",
+          "zones_on_ms": {
+            "2": 18.4
+          },
+          "zones_recorded": [
+            1,
+            2
+          ],
+          "receive_recorded": true,
+          "send_recorded": true,
+          "sotf_recorded": true,
+          "excluded_earth_pilot_channels": [],
+          "receive_at_trip": "Aided 1 Receive",
+          "send_active": null,
+          "sotf_active": null,
+          "trip_zones": [],
+          "elapsed_ms": 8.7,
+          "pickup_zone": 2
+        },
+        "conflicts": []
+      },
+      "scheme": {
+        "key": "scheme",
+        "step": 5,
+        "label": "Skema",
+        "title": "PUTT",
+        "evidence": [
+          "Kanal Send direkam dan tidak pernah aktif. Pada POTT, sisi ini akan mengirim begitu Z2 pickup.",
+          "Bergantung pada kanal Send yang memang terhubung."
+        ],
+        "rules": [
+          "F5.4"
+        ],
+        "confidence": "medium",
+        "value": {
+          "scheme": "PUTT"
+        },
+        "conflicts": []
+      }
+    },
+    {
+      "record_fingerprint": "90b37e19b4d579d41ba2bfcd1b8e9d53c3c0d0439a22096281f499089de069f5",
+      "file": "Wednesday 07 May 2025 14.26.33.000.CFG",
+      "review_notes": "Majenang-Banjar 1, 7 May 2025: distance Send 795.64 ms, distance Receive and Z2 trip 808.98 ms. Same-path send precedes receive/trip by 13.34 ms. Probable POTT; pickup source of Send and configured scheme require relay settings.",
+      "confidence": "PROBABLE",
+      "record_end_ms": 4021.3260650634766,
+      "sequence": {
+        "episode_count": 1,
+        "mechanical_close_confirmed": true,
+        "restoration_outcome": "successful",
+        "refault_after_reclose": false,
+        "refault_evidence": null,
+        "sotf_after_reclose": false,
+        "reclose_times_ms": [
+          1896.515965461731
+        ],
+        "sotf_trips": [],
+        "timeline": [
+          {
+            "kind": "fault_inception",
+            "time_ms": 774.7859954833984,
+            "episode_index": 0
+          },
+          {
+            "kind": "fault_cleared",
+            "time_ms": 874.0320205688477,
+            "episode_index": 0
+          },
+          {
+            "kind": "breaker_reclosed",
+            "time_ms": 1896.515965461731
+          }
+        ],
+        "interpretation": "RECLOSE_SUCCESSFUL"
+      },
+      "relevant_channels": [
+        {
+          "name": "DIST. Chan Recv",
+          "initial": 0,
+          "on_ms": [
+            808.9799880981445
+          ],
+          "off_ms": [
+            890.7120227813721
+          ]
+        },
+        {
+          "name": "DIST Sig. Send",
+          "initial": 0,
+          "on_ms": [
+            795.635998249054
+          ],
+          "off_ms": [
+            884.0399980545044
+          ]
+        },
+        {
+          "name": "DIST Trip A",
+          "initial": 0,
+          "on_ms": [
+            808.9799880981445
+          ],
+          "off_ms": [
+            874.0320205688477
+          ]
+        },
+        {
+          "name": "DIST Trip B",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST Trip C",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST TRIP Z2",
+          "initial": 0,
+          "on_ms": [
+            808.9799880981445
+          ],
+          "off_ms": [
+            874.0320205688477
+          ]
+        },
+        {
+          "name": "DIST TRIP Z3",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        },
+        {
+          "name": "DIST TRIP Z3",
+          "initial": 0,
+          "on_ms": [],
+          "off_ms": []
+        }
+      ],
+      "trip_path": {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Aided trip lewat teleproteksi",
+        "evidence": [
+          "Trip pole R +34,2 ms bersamaan dengan DIST. Chan Recv; DIST TRIP Z2 +34,2 ms.",
+          "Trip 34 ms setelah awal gangguan (kanal pickup zona tidak direkam), jauh sebelum timer Z2 0,4 s \u00b110%. Kanal Z1 tidak direkam."
+        ],
+        "rules": [
+          "F5.1",
+          "F5.2",
+          "F5.3"
+        ],
+        "confidence": "high",
+        "value": {
+          "kind": "accelerated",
+          "zones_on_ms": {},
+          "zones_recorded": [],
+          "receive_recorded": true,
+          "send_recorded": true,
+          "sotf_recorded": false,
+          "excluded_earth_pilot_channels": [],
+          "receive_at_trip": "DIST. Chan Recv",
+          "send_active": "DIST Sig. Send",
+          "sotf_active": null,
+          "trip_zones": [
+            2
+          ],
+          "timed_from_fault_start": true,
+          "elapsed_ms": 34.2,
+          "pickup_zone": 2
+        },
+        "conflicts": []
+      },
+      "scheme": {
+        "key": "scheme",
+        "step": 5,
+        "label": "Skema",
+        "title": "POTT",
+        "evidence": [
+          "Kanal DIST Sig. Send aktif sebelum/saat trip dipercepat dan receive dari jalur yang sama terekam.",
+          "Pola mendukung POTT; sumber pickup Send dan setting relay masih perlu dikonfirmasi."
+        ],
+        "rules": [
+          "F5.4"
+        ],
+        "confidence": "medium",
+        "value": {
+          "scheme": "POTT",
+          "setting_confirmed": false
+        },
+        "conflicts": []
+      }
+    }
+  ],
+  "candidate_count_unique": 60,
+  "parse_failures": 5,
+  "pipeline_fingerprint": "ca4369e6f3d431ec7fad5e31a4889df48646cd86b829d6b107cc0a762f585c8f",
+  "method": "Explicit channel-edge and waveform review. Selection columns are not ground truth; capture partitions are not new training samples."
+}

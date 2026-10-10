@@ -22,6 +22,7 @@ terms, PLN phase names (R/S/T for A/B/C). Times are ms after the fault start
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -202,6 +203,15 @@ def _is_receive(ch: _Channel) -> bool:
 
 def _is_send(ch: _Channel) -> bool:
     return ch.role == "teleprotection" and bool(ch.tokens & _SEND) and not (ch.tokens & _RECEIVE)
+
+
+def _pilot_index(name: str) -> Optional[str]:
+    match = re.search(r"\bAID(?:ED)?\s*(\d+)\b", name.upper())
+    return match.group(1) if match else None
+
+
+def _earth_pilot(ch: _Channel) -> bool:
+    return bool(ch.tokens & {"DEF", "67N", "EARTH", "GROUND"})
 
 
 def is_send_channel(name: str) -> bool:
@@ -676,8 +686,17 @@ def _trip_path(ctx: _Context, trip: Optional[dict[str, Any]]) -> dict[str, Any]:
         on = ch.first_on(earliest)
         if on is not None and on <= until:
             zone_on[ch.zone] = min(on, zone_on.get(ch.zone, math.inf))
-    receive = [ch for ch in ctx.channels if _is_receive(ch)]
-    send = [ch for ch in ctx.channels if _is_send(ch)]
+    # A distance-zone path must not borrow DEF/67N permission. These can be
+    # separate pilot schemes even when their outputs share the same trip.
+    receive = [ch for ch in ctx.channels if _is_receive(ch) and not _earth_pilot(ch)]
+    send = [ch for ch in ctx.channels if _is_send(ch) and not _earth_pilot(ch)]
+    excluded = [ch.name for ch in ctx.channels if _earth_pilot(ch) and (_is_receive(ch) or _is_send(ch))]
+    trip_pilots = {_pilot_index(name) for name in (trip or {}).get("channels", [])
+                   if "DIST" in name.upper() and _pilot_index(name) is not None}
+    pilot = next(iter(trip_pilots)) if len(trip_pilots) == 1 else None
+    if pilot is not None:
+        receive = [ch for ch in receive if _pilot_index(ch.name) in (None, pilot)]
+        send = [ch for ch in send if _pilot_index(ch.name) in (None, pilot)]
     sotf = [ch for ch in ctx.channels if _is_sotf(ch)]
     path.update({
         "zones_on_ms": {z: round(t - ctx.t0, 1) for z, t in sorted(zone_on.items())},
@@ -685,6 +704,7 @@ def _trip_path(ctx: _Context, trip: Optional[dict[str, Any]]) -> dict[str, Any]:
         "receive_recorded": bool(receive),
         "send_recorded": bool(send),
         "sotf_recorded": bool(sotf),
+        "excluded_earth_pilot_channels": excluded,
     })
     if trip is None:
         dropped = [z for z in (2, 3) if z in zone_on]
@@ -695,6 +715,10 @@ def _trip_path(ctx: _Context, trip: Optional[dict[str, Any]]) -> dict[str, Any]:
     at = trip["abs_ms"]
     window = (min(zone_on.values(), default=at) - 5.0, at + 10.0)
     path["receive_at_trip"] = next((ch.name for ch in receive if ch.on_during(*window)), None)
+    received_pilot = _pilot_index(path["receive_at_trip"] or "")
+    if received_pilot is not None:
+        send = [ch for ch in send if _pilot_index(ch.name) in (None, received_pilot)]
+        path["send_recorded"] = bool(send)
     path["send_active"] = next((ch.name for ch in send if ch.on_during(window[0], at + 10.0)), None)
     path["sotf_active"] = next((ch.name for ch in sotf if ch.on_during(at - 10.0, at + 10.0)), None)
 
@@ -859,9 +883,13 @@ def _no_trip_conclusion(ctx: _Context, path: dict[str, Any]) -> Conclusion:
     receive = [(ch, t) for ch, t in receive if t is not None]
     send = [(ch, t) for ch, t in send if t is not None]
     if receive and send:
-        rx_ch, rx = min(receive, key=lambda item: item[1])
-        tx_ch, tx = min(send, key=lambda item: item[1])
-        if 0.0 <= tx - rx <= 30.0 and (clearing is None or rx <= clearing):
+        pairs = [(rx_ch, rx, tx_ch, tx) for rx_ch, rx in receive for tx_ch, tx in send
+                 if _earth_pilot(rx_ch) == _earth_pilot(tx_ch)
+                 and (_pilot_index(rx_ch.name) is None or _pilot_index(tx_ch.name) is None
+                      or _pilot_index(rx_ch.name) == _pilot_index(tx_ch.name))
+                 and 0 <= tx - rx <= 30 and (clearing is None or rx <= clearing)]
+        if pairs:
+            rx_ch, rx, tx_ch, tx = min(pairs, key=lambda pair: pair[1])
             evidence.append(
                 f"{rx_ch.name} {_ms(rx - ctx.t0)} ms lalu {tx_ch.name} {_ms(tx - ctx.t0)} ms: sinyal dipantulkan (echo), "
                 "pola skema POTT dari ujung weak infeed. Trip kemungkinan dari logika weak infeed yang tidak dipetakan ke DFR."
@@ -879,8 +907,9 @@ def _scheme_conclusion(path: dict[str, Any]) -> Optional[Conclusion]:
     if path.get("receive_at_trip"):
         if path.get("send_active"):
             return Conclusion("scheme", 5, "Skema", "POTT",
-                              [f"Kanal {path['send_active']} aktif saat Z2 pickup: sisi ini ikut mengirim izin (overreach)."],
-                              ["F5.4"], "high", {"scheme": "POTT"})
+                              [f"Kanal {path['send_active']} aktif sebelum/saat trip dipercepat dan receive dari jalur yang sama terekam.",
+                               "Pola mendukung POTT; sumber pickup Send dan setting relay masih perlu dikonfirmasi."],
+                              ["F5.4"], "medium", {"scheme": "POTT", "setting_confirmed": False})
         if path.get("send_recorded"):
             return Conclusion("scheme", 5, "Skema", "PUTT", [
                 "Kanal Send direkam dan tidak pernah aktif. Pada POTT, sisi ini akan mengirim begitu Z2 pickup.",
@@ -890,10 +919,12 @@ def _scheme_conclusion(path: dict[str, Any]) -> Optional[Conclusion]:
                           ["Ada receive saat trip, tetapi kanal Send tidak direkam, jadi PUTT dan POTT tidak dapat dibedakan."],
                           ["F5.4"], "medium", {"scheme": "permissive"})
     if path.get("receive_recorded"):
-        return Conclusion("scheme", 5, "Skema", "Blocking (DCB)", [
-            "Kanal receive direkam tetapi tidak aktif, dan trip menyusul Z2 dengan jeda pendek: tidak ada sinyal blok, jadi trip diizinkan.",
-            "Bisa juga unblocking dengan loss-of-guard.",
-        ], ["F5.4"], "medium", {"scheme": "blocking"})
+        return Conclusion("scheme", 5, "Skema", "Tidak dapat ditentukan", [
+            "Tidak ada receive distance pada jalur trip. Trip cepat saja belum membuktikan skema blocking atau permissive.",
+            "Receive/send DEF merupakan jalur berbeda dan tidak membuktikan izin distance."
+            if path.get("excluded_earth_pilot_channels") else
+            "Perlu setting relay dan pemetaan kanal untuk memastikan sumber percepatan trip.",
+        ], ["F5.4"], "low", {"scheme": None})
     return Conclusion("scheme", 5, "Skema", "Tidak dapat ditentukan",
                       ["Kanal teleproteksi (send/receive) tidak direkam."], ["F5.4"], "low", {"scheme": None})
 

@@ -1,8 +1,24 @@
 import json
 
 from models.context_training import CONTEXT_FEATURES, reviewed_targets, train_context, build_context_dataset
+from models.context_training import context_vector
 from models.build_dataset import pipeline_fingerprint, identity
 from tests.test_feedback_training_pipeline import pair
+
+
+def test_context_features_keep_teleprotection_order_and_missing_timing():
+    from tests.test_fault_reasoning import _record
+    from webapp.api.record_analysis import build_record_analysis
+    payload = _record(status=[("Z1", []), ("Z2", [(25, 85)]), ("Any Trip", [(35, 85)]),
+                              ("DISTANCE SEND", [(25, 90)]), ("DIST. Chan Recv", [(35, 120)])])
+    vector = dict(zip(CONTEXT_FEATURES, context_vector(build_record_analysis("order", payload))))
+    assert vector["send_receive_order_observed"] == 1
+    assert abs(vector["send_to_receive_ms"] - 10) < 1
+    assert abs(vector["receive_to_trip_ms"]) < 1
+    payload["status_channels"] = [ch for ch in payload["status_channels"] if "SEND" not in ch["name"]]
+    missing = dict(zip(CONTEXT_FEATURES, context_vector(build_record_analysis("missing", payload))))
+    assert missing["send_receive_order_observed"] == 0
+    assert missing["send_timing_observed"] == 0
 
 
 def test_context_targets_require_explicit_review_and_never_use_folder_causes():

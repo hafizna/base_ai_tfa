@@ -114,6 +114,49 @@ def test_a_reclose_inside_the_record_is_read_from_the_breaker_contacts():
     assert any(re.fullmatch(r"Auto Close \+1\d{3},\d → \+1\d{3},\d ms\.", line) for line in reclose["evidence"])
 
 
+def test_def_permission_does_not_prove_distance_pott():
+    # PRKAN-KDPTN: DEF receive coincides with trip; distance receive is later.
+    _reasoning, rows = _conclusions(_record(status=[
+        ("Z1", []), ("Z2", [(60, 155)]),
+        ("Any Trip", [(70, 155)]),
+        ("DISTANCE SEND", [(60, 150)]),
+        ("DEF SEND", [(40, 155)]),
+        ("DEF. Chan Recv", [(70, 160)]),
+        ("DIST. Chan Recv", [(225, 300)]),
+    ]))
+    assert rows["trip_path"]["value"]["receive_at_trip"] is None
+    assert rows["scheme"]["value"]["scheme"] is None
+
+
+def test_same_distance_send_receive_supports_provisional_pott():
+    _reasoning, rows = _conclusions(_record(status=[
+        ("Z1", []), ("Z2", [(25, 85)]), ("Any Trip", [(35, 85)]),
+        ("DISTANCE SEND", [(25, 90)]), ("DIST. Chan Recv", [(35, 120)]),
+    ]))
+    assert rows["scheme"]["value"]["scheme"] == "POTT"
+    assert rows["scheme"]["confidence"] == "medium"
+    assert rows["scheme"]["value"]["setting_confirmed"] is False
+
+
+def test_aid_2_send_does_not_turn_aid_1_distance_trip_into_pott():
+    _reasoning, rows = _conclusions(_record(status=[
+        ("Z1", []), ("Z2", [(25, 85)]), ("Aid 1 Dist Trip", [(35, 85)]),
+        ("Aided 1 Send", []), ("Aided 1 Receive", [(35, 120)]),
+        ("Aided 2 Send", [(25, 90)]), ("Aided 2 Receive", [(25, 120)]),
+        ("Aid 2 DEF Trip", []),
+    ]))
+    assert rows["trip_path"]["value"]["receive_at_trip"] == "Aided 1 Receive"
+    assert rows["trip_path"]["value"]["send_active"] is None
+    assert rows["scheme"]["value"]["scheme"] == "PUTT"
+
+
+def test_echo_does_not_join_distance_receive_to_def_send():
+    _reasoning, rows = _conclusions(_record(faulted=("A", "B", "C"), status=[
+        ("DIST. Chan Recv", [(25, 120)]), ("DEF SEND", [(35, 120)]),
+    ]))
+    assert "echo" not in rows["trip_path"]["value"]
+
+
 def test_clearing_is_the_last_current_zero_within_the_grid_code_limit():
     payload = _record(faulted=("A",), clear_ms=80.0, status=[("Z1", [(20, 80)]), ("DIST Trip A", [(30, 80)])])
     _reasoning, rows = _conclusions(payload)

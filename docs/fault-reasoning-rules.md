@@ -192,15 +192,17 @@ Bila file setting (RIO) tersedia, timer diambil dari file itu. Toleransinya **±
 
 | Yang terlihat di rekaman (Z2 pickup, Z1 tidak) | Pembacaan |
 |---|---|
-| Trip sebelum timer Z2; ada receive saat trip; Send lokal direkam tapi tidak pernah aktif | Aided trip, **PUTT** |
-| Trip sebelum timer Z2; ada receive; Send lokal aktif saat Z2 pickup | Aided trip, **POTT** |
-| Trip sebelum timer Z2; kanal receive direkam tapi tidak aktif; trip menyusul Z2 pickup dengan jeda pendek (puluhan ms) | **Blocking (DCB)**: tidak ada sinyal blok, jadi trip diizinkan. Bisa juga unblocking dengan loss-of-guard. |
+| Trip sebelum timer Z2; ada receive distance saat trip; Send pada jalur yang sama direkam tapi tidak pernah aktif | Aided trip, **kemungkinan PUTT**; validasi wiring/setting diperlukan |
+| Trip sebelum timer Z2; ada receive distance; Send pada jalur yang sama aktif sebelum/saat trip | Aided trip, **kemungkinan POTT**; sumber pickup Send perlu dikonfirmasi |
+| Trip sebelum timer Z2; receive distance tidak aktif saat trip | **Skema belum dapat ditentukan**. Trip cepat tanpa receive tidak membuktikan DCB; perlu setting/pemetaan kanal |
 | Trip sebelum timer Z2, tepat setelah PMT menutup (reclose/close) | **SOTF/TOR** (F5.5) |
 | Trip sebelum timer Z2; kanal receive/send tidak direkam | Trip dipercepat; skema **tidak dapat ditentukan** |
 | Trip ≈ 0,4/0,8 s setelah Z2 pickup | **Z2 waktu tunda**: teleproteksi tidak membantu atau tidak ada |
 | Z2 pickup lalu hilang **tanpa trip lokal** | Gangguan di luar line, di balik GI lawan, dan diputus proteksi lain. Z2 hanya standby. |
 
 Catatan untuk pola "Z2 aktif lalu tiba-tiba hilang":
+- Send/receive DEF/67N tidak digabung dengan distance. Aid 1 dan Aid 2 juga dipisahkan; output `Aid 1 Dist Trip` mengikat pembacaan ke kanal Aid 1.
+- Prinsip PUTT/POTT berbeda pada sumber pengiriman izin (underreach/overreach), sehingga pola kanal satu rekaman merupakan inferensi, bukan bukti setting. Referensi: [SEL, Performance Issues With Directional Comparison](https://selinc.com/api/download/6382/).
 - Z2 hilang karena arus gangguan berhenti. Artinya gangguan padam sebelum timer Z2.
 - Pola ini belum menentukan skema. Yang menentukan adalah ada tidaknya trip lokal, receive, dan send (tabel di atas).
 
