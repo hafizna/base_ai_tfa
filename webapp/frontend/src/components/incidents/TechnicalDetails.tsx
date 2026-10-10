@@ -176,6 +176,17 @@ function ReasoningTab({ episodes, story, refreshing, onAddRecords, onRefreshAnal
             <span className={styles.count}>{conclusions} kesimpulan</span>
             <span className={ledger.flag_count ? styles.countWarn : styles.count}>{ledger.flag_count} ditandai</span>
             <span className={ledger.conflict_count ? styles.countWarn : styles.count}>{ledger.conflict_count} konflik</span>
+            {/* A ledger keeps the rules of the day it was built; this reads the
+                same records again with the current ones. */}
+            <button
+              type="button"
+              className={styles.button}
+              disabled={refreshing}
+              title="Analisa ulang rekaman dengan aturan terbaru, lalu susun ulang urutan kejadian"
+              onClick={onRefreshAnalyses}
+            >
+              {refreshing ? "Memuat ulang…" : "Muat ulang analisa"}
+            </button>
           </>
         )}
       </div>

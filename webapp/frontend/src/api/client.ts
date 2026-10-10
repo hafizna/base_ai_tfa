@@ -1242,6 +1242,17 @@ export async function refreshIncidentSnapshots(incidentId: string) {
   return data;
 }
 
+/** The incident report PDF. The server prints the story the page built
+ * (incidentStory.ts), and adds each fault's reasoning and signal sequence
+ * from the stored reconstruction. */
+export async function generateIncidentReport(incidentId: string, story: object): Promise<Blob> {
+  const { data } = await api.post(`/api/incidents/${incidentId}/report`, { story }, {
+    responseType: "blob",
+    timeout: 120000,
+  });
+  return data;
+}
+
 export interface AddEvidenceRequest {
   evidence_type: EvidenceType;
   source?: string;

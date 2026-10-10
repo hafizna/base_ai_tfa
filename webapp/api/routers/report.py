@@ -268,7 +268,8 @@ class _HeaderFooter:
     """The header and footer every report shares. A report from another
     process than the distance engine (fault-location reports) passes its own
     kicker, an accent colour drawn as a bar above the header on every page,
-    and its own footer text."""
+    and its own footer text; a report about something other than one analysis
+    (an incident) names its own identifier."""
 
     def __init__(
         self,
@@ -281,6 +282,7 @@ class _HeaderFooter:
         kicker: str = "LAPORAN ANALISIS GANGGUAN COMTRADE",
         accent: Optional[colors.Color] = None,
         footer_left: Optional[str] = None,
+        id_label: str = "ANALYSIS ID",
     ):
         self.station = station or "—"
         self.device = device or "—"
@@ -290,6 +292,7 @@ class _HeaderFooter:
         self.kicker = kicker
         self.accent = accent
         self.footer_left = footer_left
+        self.id_label = id_label
 
     def on_page(self, canvas: Canvas, _doc):
         canvas.saveState()
@@ -333,7 +336,7 @@ class _HeaderFooter:
         # Right meta block (analysis ID + timestamp)
         canvas.setFillColor(BRAND_MUTED)
         canvas.setFont("Helvetica-Bold", 6.5)
-        canvas.drawRightString(PAGE_W - MARGIN, header_top - 3.5 * mm, "ANALYSIS ID")
+        canvas.drawRightString(PAGE_W - MARGIN, header_top - 3.5 * mm, self.id_label)
         canvas.setFillColor(BRAND_NAVY)
         canvas.setFont("Helvetica", 8)
         canvas.drawRightString(PAGE_W - MARGIN, header_top - 6 * mm, self.analysis_id)
