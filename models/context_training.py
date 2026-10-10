@@ -27,6 +27,8 @@ from core.cff_parser import parse_cff_bytes
 CONTEXT_FEATURES = ["episode_count", "closure_confirmed", "refault", "sotf", "first_fct_ms", "last_fct_ms", "initial_phase_count",
                     "trip_delay_ms", "zone1_at_trip", "zone2_at_trip", "zone3_at_trip",
                     "receive_at_trip", "send_at_trip", "ar_command_before_close",
+                    "receive_timing_observed", "receive_to_trip_ms", "send_timing_observed", "send_to_trip_ms",
+                    "send_receive_order_observed", "send_to_receive_ms",
                     *[f"current_gain_{p}" for p in "ABC"], *[f"voltage_ratio_{p}" for p in "ABC"]]
 
 
@@ -37,6 +39,14 @@ def context_vector(analysis):
     origin = analysis.event_window.inception_time_ms if analysis.event_window else None
     trip_times = [t for op in operations if op.get("role") == "trip" for t in op.get("on_ms", []) if origin is not None and t >= origin]
     trip = min(trip_times) if trip_times else None
+    conclusions = {row["key"]: row for row in analysis.reasoning.get("conclusions", [])}
+    path = (conclusions.get("trip_path", {}).get("value") or {})
+    def channel_time(name):
+        edges = [t for op in operations if op.get("name") == name for t in op.get("on_ms", [])
+                 if origin is not None and t >= origin - 20 and trip is not None and t <= trip + 10]
+        return min(edges) if edges else None
+    receive = channel_time(path.get("receive_at_trip"))
+    send = channel_time(path.get("send_active"))
     def active_at_trip(op):
         if trip is None:
             return False
@@ -50,16 +60,19 @@ def context_vector(analysis):
             denominator = float((pre.get(before) or {}).get(phase) or 0)
             numerator = float((fault.get(after) or {}).get(phase) or 0)
             gains.append(numerator / denominator if denominator > 0 else 0)
-    return [len(episodes), int(seq.get("mechanical_close_confirmed", False)),
+    return [seq.get("episode_count", len(episodes)), int(seq.get("mechanical_close_confirmed", False)),
             int(seq.get("refault_after_reclose", False)), int(seq.get("sotf_after_reclose", False)),
             float(episodes[0].get("fault_duration_ms") or 0) if episodes else 0,
             float(episodes[-1].get("fault_duration_ms") or 0) if episodes else 0,
             len(episodes[0].get("faulted_phases") or []) if episodes else 0,
             trip - origin if trip is not None and origin is not None else 0,
             *[int(any(op.get("role") == "zone" and op.get("zone") == z and active_at_trip(op) for op in operations)) for z in (1, 2, 3)],
-            int(any(op.get("role") == "teleprotection" and any(s in op.get("name", "").upper() for s in ("RECV", "RCV", "RECEIVE")) and active_at_trip(op) for op in operations)),
-            int(any(op.get("role") == "teleprotection" and "SEND" in op.get("name", "").upper() and active_at_trip(op) for op in operations)),
-            int(any(op.get("role") == "reclose" and any(t <= min(seq.get("reclose_times_ms") or [float("inf")]) for t in op.get("on_ms", [])) for op in operations)), *gains]
+            int(bool(path.get("receive_at_trip"))), int(bool(path.get("send_active"))),
+            int(any(op.get("role") == "reclose" and any(t <= min(seq.get("reclose_times_ms") or [float("inf")]) for t in op.get("on_ms", [])) for op in operations)),
+            int(receive is not None), trip - receive if receive is not None else 0,
+            int(send is not None), trip - send if send is not None else 0,
+            int(send is not None and receive is not None), receive - send if send is not None and receive is not None else 0,
+            *gains]
 
 
 def reviewed_targets(feedback):
@@ -148,7 +161,7 @@ def build_context_dataset(inventory, output, training_dir=None, annotations=Path
                      "source": correction.get("ground_truth_source", []),
                      "baseline": {"event_class": analysis.protection_interpretation.get("event_class"),
                                   "sequence_class": analysis.event_window.sequence.get("interpretation") if analysis.event_window else None,
-                                  "episode_count": str(len(analysis.fault_episodes)),
+                                  "episode_count": str(analysis.event_window.sequence.get("episode_count", len(analysis.fault_episodes))) if analysis.event_window else "0",
                                   "restoration_outcome": analysis.event_window.sequence.get("restoration_outcome") if analysis.event_window else None}})
         rows[-1]["baseline"].update(
             scheme=(conclusions.get("scheme", {}).get("value") or {}).get("scheme"),

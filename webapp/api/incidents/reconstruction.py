@@ -402,7 +402,27 @@ def _observed_incident_facts(records: list[IncidentRecord], episodes: list[Fault
     }
 
 
-def _protection_sequence_interpretation(episodes: list[FaultEpisode], relationships: list[RecordRelationship]) -> dict[str, Any]:
+def _protection_sequence_interpretation(episodes: list[FaultEpisode], relationships: list[RecordRelationship],
+                                       records: Optional[list[IncidentRecord]] = None) -> dict[str, Any]:
+    # Capture groups are not physical-fault counts: one file can contain
+    # initial fault + reclose + SOTF, and a dead-time file can omit inception.
+    # Preserve the explicit, verified record chronology at incident level.
+    sequences = [(r.incident_record_id, (r.canonical_snapshot.get("event_window") or {}).get("sequence") or {})
+                 for r in records or []]
+    sotf = [(rid, seq) for rid, seq in sequences if seq.get("sotf_after_reclose")
+            and seq.get("mechanical_close_confirmed")]
+    if sotf:
+        count = max(seq.get("episode_count", 0) for _rid, seq in sotf)
+        if count == 1 and any((r.canonical_snapshot.get("event_window") or {}).get("fault_episodes")
+                              and r.incident_record_id not in {rid for rid, _seq in sotf} for r in records or []):
+            count = 2  # initial fault is captured separately from the SOTF
+        return {"event_class": "RECLOSE_REFAULT_SOTF",
+                "summary": "Breaker closure was confirmed, followed by a renewed fault and SOTF/TOR trip; restoration failed.",
+                "evidence_record_ids": [rid for rid, _seq in sotf],
+                "capture_group_count": len(episodes),
+                "fault_episode_count": count,
+                "restoration_outcome": "failed", "sotf_after_reclose": True,
+                "timing_note": "SOTF proves a subsequent trip; waveform inception may be unavailable in a dead-time capture."}
     if not episodes:
         return {"event_class": "NO_EPISODES", "summary": "No fault episodes could be reconstructed."}
     if len(episodes) == 1:
@@ -824,7 +844,7 @@ def run_reconstruction(
     )
 
     observed_facts = _observed_incident_facts(records, episodes, axis)
-    interpretation = _protection_sequence_interpretation(episodes, relationships)
+    interpretation = _protection_sequence_interpretation(episodes, relationships, records)
     hypotheses = _incident_hypotheses(episodes, relationships)
 
     # Each fault's reasoning ledger: its record's chain, completed with what
@@ -843,6 +863,8 @@ def run_reconstruction(
         hypotheses,
         physical_cause.get("records", []),
     )
+    if interpretation.get("event_class") == "RECLOSE_REFAULT_SOTF":
+        narrative = interpretation["summary"] + " " + interpretation["timing_note"]
 
     prior = incident_storage.get_latest_reconstruction(incident.incident_id)
 

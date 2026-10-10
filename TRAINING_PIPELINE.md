@@ -34,9 +34,12 @@ SOTF, durasi per episode, serta perubahan arus/tegangan per fasa.
 Learner konteks mengevaluasi tiap target pada grouped CV melawan baseline
 aturan yang berjalan. Kandidat disimpan hanya bila lebih baik; ia tidak
 mengganti fakta terukur atau aturan proteksi otomatis. Minimal diperlukan dua
-outcome dengan dua kelompok kejadian independen per outcome. Satu kasus Rawalo
-adalah regression/ground truth untuk dikumpulkan, bukan cukup data untuk
-mengklaim model konteks telah belajar generalisasi.
+outcome dengan dua kelompok kejadian independen per outcome. Review 11 Oktober
+2026 menghasilkan enam rekaman beranotasi: satu reclose gagal/SOTF, dua
+reclose bertahan, dua kemungkinan PUTT dan satu kemungkinan POTT. Dukungan
+kelompok untuk outcome gagal dan POTT masih satu; bobot konteks belum dilatih
+atau dipromosikan. Bukti dan batas review ada di
+[review kasus konteks](docs/context-case-review.md).
 
 Menambah anotasi atau memperbaiki aturan bukan retraining bobot secara otomatis.
 Pipeline ini membuat pembelajaran konteks dapat dilakukan dan dievaluasi saat

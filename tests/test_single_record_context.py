@@ -71,3 +71,25 @@ def test_reclose_command_without_a_contact_return_does_not_confirm_closure():
     window = build_event_window(payload)
     assert not window.sequence.get("mechanical_close_confirmed")
     assert not window.sequence.get("sotf_after_reclose")
+
+
+def test_sotf_enable_is_not_a_sotf_trip():
+    payload = full_reclose_refault_payload()
+    for ch in payload["status_channels"]:
+        if ch["name"] == "SOTF/TOR Trip":
+            ch["name"] = "SOTF Enable"
+    assert build_event_window(payload).sequence["sotf_after_reclose"] is False
+
+
+def test_complete_and_partitioned_incident_keep_same_sotf_context():
+    from models.context_capture_comparison import compare
+    result = compare(full_reclose_refault_payload(), [1.2, 1.55])
+    for view in (result["complete"], result["partitioned"]):
+        interpretation = view["interpretation"]
+        assert interpretation["event_class"] == "RECLOSE_REFAULT_SOTF"
+        assert interpretation["fault_episode_count"] == 2
+        assert interpretation["restoration_outcome"] == "failed"
+    assert result["purpose"] == "regression_only_not_training_samples"
+    assert len([e for e in result["complete"]["timeline"] if e["event_type"] == "FAULT_INCEPTION"]) == 2
+    assert not any(e["event_type"] == "FAULT_INCEPTION" and e["relative_record_ms"] == 0
+                   for e in result["partitioned"]["timeline"])

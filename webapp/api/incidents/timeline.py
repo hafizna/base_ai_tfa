@@ -129,7 +129,7 @@ def build_timeline(
             ))
 
         inception_ms = window.get("inception_time_ms")
-        if inception_ms is not None:
+        if inception_ms is not None and window.get("method") != "dead_time_recording":
             events.append(_new_event(
                 new_id_fn, incident_id,
                 incident_record_id=record.incident_record_id,
@@ -159,6 +159,20 @@ def build_timeline(
                 confidence=float(window.get("confidence", 0.0) or 0.0),
                 provenance=provenance,
             ))
+
+        for episode in (window.get("fault_episodes") or [])[1:]:
+            for field, kind, label in (("inception_time_ms", "FAULT_INCEPTION", "Fault recurrence after reclose"),
+                                       ("clearing_time_ms", "FAULT_CLEARING", "Recurring fault clearing")):
+                at = episode.get(field)
+                if at is None:
+                    continue
+                events.append(_new_event(
+                    new_id_fn, incident_id, incident_record_id=record.incident_record_id,
+                    event_type=kind, absolute_time=to_abs(at), anchor=anchor, record_ms=at,
+                    source="canonical_fault_episode", label=label,
+                    details={"episode_index": episode.get("episode_index"), "faulted_phases": episode.get("faulted_phases"),
+                             "fault_duration_ms": episode.get("fault_duration_ms")},
+                    confidence=float(episode.get("confidence", 0.0)), provenance=provenance))
 
         for idx, reclose in enumerate(observed.get("reclose_events") or window.get("reclose_events") or []):
             if not isinstance(reclose, dict):
