@@ -52,7 +52,7 @@ _CALIBRATOR_PATH = Path(__file__).parent.parent.parent / "models" / "proba_calib
 _MODEL_BUNDLE_CACHE: Optional[dict] = None
 _MODEL_META_CACHE: Optional[dict] = None
 _CALIBRATOR_CACHE: Optional[dict] = None
-_FEATURE_VERSION = "v1.2025-04"  # bump when feature schema changes incompatibly
+from models.feature_schema import FEATURE_VERSION as _FEATURE_VERSION
 
 _LABEL_DISPLAY = {
     "PETIR":       "Petir / Lightning",
@@ -136,6 +136,11 @@ def _load_calibrator() -> Optional[dict]:
     try:
         with open(_CALIBRATOR_PATH, "rb") as f:
             _CALIBRATOR_CACHE = pickle.load(f)
+        # A fitted calibrator contains the old classifier too. Never reuse it
+        # after a different model has been promoted.
+        expected_sha = hashlib.sha256(_MODEL_PATH.read_bytes()).hexdigest()[:12]
+        if _CALIBRATOR_CACHE.get("classifier_sha") != expected_sha:
+            _CALIBRATOR_CACHE = {}
     except Exception:
         _CALIBRATOR_CACHE = {}
         return None
@@ -175,6 +180,7 @@ def _model_metadata(bundle: Optional[dict]) -> dict:
         meta["model_version"] = f"{trained_at[:10] if trained_at != 'unknown' else 'untrained'}+{meta.get('model_sha256_prefix', '????????')}"
         meta["feature_cols"] = list(bundle.get("feature_cols") or [])
         meta["classes"] = list(bundle.get("classes") or bundle.get("all_classes") or [])
+        meta["model_feature_version"] = bundle.get("feature_version", "legacy-unknown")
         # Cast numpy.int64 → int so FastAPI / JSON serializer accepts the response.
         meta["class_counts"] = {str(k): int(v) for k, v in (bundle.get("class_counts") or {}).items()}
         meta["training_profile"] = dict(profile) if profile else {}
@@ -556,16 +562,18 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
             or re.search(r"\bCB\s*AUX\b", name) is not None
         )
         breaker_id = breaker_match.group(1) if breaker_match is not None else ("AUXCB" if is_aux_cb else None)
+        has_52a = re.search(r"\b52[\s/._-]*A\b", name) is not None
         is_cb_aux_open_contact = (
             is_aux_cb
             and phase is not None
             and not any(block in name for block in ("HEALTH", "HEALTHY", "ALARM", "FAIL", "LOCK", "BLOCK"))
             and not any(close in name for close in ("CLOSE", "CLOSED", "52A", "CONT", "CONTACT"))
+            and not has_52a
         )
         is_cb_open = is_cb_open or is_cb_aux_open_contact
         is_cb_closed_contact = (
             breaker_id is not None
-            and ("CONT" in name or "CONTACT" in name or re.search(r"\b52A\b", name) is not None)
+            and ("CONT" in name or "CONTACT" in name or has_52a)
             and not any(block in name for block in ("TRIP", "ALARM", "FAIL", "LOCK", "BLOCK"))
         )
         # Position channels named for the closed state ("CB Closed C ph") or a
@@ -576,7 +584,7 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
             and phase is not None
             and 0 <= start_idx < len(samples) and int(samples[start_idx]) == 1
             and ((breaker_id is not None and re.search(r"\bCLOSED\b", name) is not None)
-                 or re.search(r"\b52A\b", name) is not None)
+                 or has_52a)
             and not any(block in name for block in (
                 "TRIP", "ALARM", "FAIL", "LOCK", "BLOCK", "HEALTH", "CMD", "COMMAND"))
         )
@@ -608,6 +616,9 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
                 close_ms = _first_stable_edge_ms_after(samples, time, rise_idx, 1, 0)
                 if close_ms is not None:
                     cb_close_phases[phase] = min(close_ms, cb_close_phases.get(phase, close_ms))
+                    reopen_ms = _first_stable_edge_ms_after(samples, time, _index_for_ms(time, close_ms), 0, 1)
+                    if reopen_ms is not None and reopen_ms - close_ms <= 1000:
+                        ar_flags["failed"] = True
             if is_cb_closed_contact or is_cb_closed_state:
                 # Closed-contact channels (e.g. CB1.CONT.A): 1=CB closed,
                 # 1->0=open/trip, 0->1=reclose. This is common in 1.5 breaker bays
@@ -625,6 +636,9 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
                     if close_ms is not None:
                         cb_close_phases[phase] = min(close_ms, cb_close_phases.get(phase, close_ms))
                         cb_contact_close_phases[phase] = min(close_ms, cb_contact_close_phases.get(phase, close_ms))
+                        reopen_ms = _first_stable_edge_ms_after(samples, time, _index_for_ms(time, close_ms), 1, 0)
+                        if reopen_ms is not None and reopen_ms - close_ms <= 1000:
+                            ar_flags["failed"] = True
             if is_startup:
                 startup_phases[phase] = min(first_ms, startup_phases.get(phase, first_ms))
             if is_fault:
@@ -732,7 +746,7 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
     }
 
 
-def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
+def extract_ml_features(payload: dict, relay_type: str = "21", *, event_window=None) -> dict:
     """Build the 17-feature dict from a stored COMTRADE session payload."""
     payload = scope_payload(payload)  # multi-line DFR record -> its disturbed line only
     channels = payload.get("analog_channels", [])
@@ -785,17 +799,20 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
     pre_end = min(2 * cycle_n, len(i_primary) // 4)
     pre_rms = float(np.sqrt(np.mean(i_primary[:pre_end] ** 2))) if pre_end > 1 else 0.0
     threshold = max(pre_rms, np.max(np.abs(i_primary)) * 0.05, 0.05)
-    window = build_event_window(payload)
+    window = event_window if event_window is not None else build_event_window(payload)
     if window.inception_idx is not None and window.inception_idx < len(i_primary):
         inception_idx = window.inception_idx
     else:
         inception_idx = int(np.argmax(np.abs(i_primary)))
     extinction_idx = len(i_primary) - 1
-    for k in range(inception_idx + cycle_n, len(i_primary)):
-        s = max(0, k - cycle_n // 2)
-        if float(np.sqrt(np.mean(i_primary[s: k + 1] ** 2))) < threshold * 0.6:
-            extinction_idx = k
-            break
+    if window.clearing_idx is not None:
+        extinction_idx = window.clearing_idx
+    else:
+        for k in range(inception_idx + cycle_n, len(i_primary)):
+            s = max(0, k - cycle_n // 2)
+            if float(np.sqrt(np.mean(i_primary[s: k + 1] ** 2))) < threshold * 0.6:
+                extinction_idx = k
+                break
 
     fault_duration_ms = float((time[extinction_idx] - time[inception_idx]) * 1000)
     fault_window = i_primary[inception_idx: inception_idx + cycle_n]
@@ -892,6 +909,11 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
     # HIGH before fault inception (or polarity-inverted), producing false "berhasil"
     # verdicts even when the breaker never physically reclosed.
     ar_result = digital.get("digital_ar_status")
+    # Position return confirms the close happened, not that restoration held.
+    # The canonical detector also sees a reopen or SOTF/TOR after the close.
+    if any(e.get("success") is False and e.get("cb_open_verified") is not False for e in window.reclose_events):
+        ar_result = False
+        digital["digital_ar_status"] = False
 
     # Ground fault detection (I0 > 20% of I1)
     is_ground = i0_i1_ratio > 0.2
@@ -981,7 +1003,7 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
 
     result = {
         "fault_duration_ms": round(max(fault_duration_ms, 0.0), 1),
-        "fault_count": 1,
+        "fault_count": max(1, len(window.fault_episodes)),
         "peak_fault_current_a": round(peak_fault_current_a, 2),
         "di_dt_max": round(di_dt_max, 2),
         "i0_i1_ratio": round(i0_i1_ratio, 3),
@@ -1004,7 +1026,23 @@ def extract_ml_features(payload: dict, relay_type: str = "21") -> dict:
         "protection_operated": bool(operate_active),
     }
     result.update(digital)
+    result["fault_episodes"] = window.fault_episodes
+    result["sequence"] = window.sequence
     return result
+
+
+def _reclose_sequence_evidence(row: dict) -> list[dict]:
+    episodes = row.get("fault_episodes") or []
+    if len(episodes) < 2 or row.get("reclose_successful") is not False:
+        return []
+    sequence = row.get("sequence") or {}
+    sotf = " SOTF/TOR bekerja setelah penutupan kembali." if sequence.get("sotf_after_reclose") else ""
+    return [_ev(
+        f"Rekaman ini memuat {len(episodes)} episode gangguan: PMT menutup kembali, "
+        "tetapi gangguan muncul lagi setelah reclose. Operasi penutupan terekam; pemulihan sistem gagal. "
+        "Durasi episode pertama tidak mencakup dead time maupun gangguan berikutnya." + sotf,
+        "notable", kind="physics",
+    )]
 
 
 def _empty_features() -> dict:
@@ -1180,6 +1218,7 @@ def _build_narrative_evidence(row: dict, ranking: list, pred: str, confidence: f
     else:
         evidence.append(_ev("Status Auto Reclose (AR) tidak teridentifikasi dari rekaman digital.", "info", kind="physics"))
 
+    evidence.extend(_reclose_sequence_evidence(row))
     top_label = ranking[0]['label'] if ranking else "—"
     evidence.append(_ev(
         f"Berdasarkan analisis pola gelombang, AI mengklasifikasikan gangguan ini sebagai {top_label} "
@@ -1389,12 +1428,8 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
                 if k == cause_key:
                     continue
                 ranking.append({"cause": k, "label": v, "confidence": round((1.0 - tier1.confidence) / max(len(_LABEL_MAP) - 1, 1), 3)})
-        else:
-            # Permanent-fault rules — present a flat distribution but keep
-            # KONDUKTOR slightly elevated since that is the modal cause.
-            for k, v in _LABEL_MAP.items():
-                base = 0.18 if k == "KONDUKTOR" else 0.05
-                ranking.append({"cause": k, "label": v, "confidence": round(base, 3)})
+        # A failed reclose identifies the sequence/outcome, not a physical
+        # cause. Leave cause probabilities absent instead of inventing them.
 
         fault_type = "permanent"  # all current Tier 1 rules describe permanent / equipment issues
 
@@ -1407,6 +1442,8 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
                 "notable", kind="rule",
             ),
         ]
+
+        evidence.extend(_reclose_sequence_evidence(row))
 
         return {
             "fault_type": fault_type,

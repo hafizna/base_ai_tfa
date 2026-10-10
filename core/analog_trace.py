@@ -540,7 +540,11 @@ def trace_payload(payload: dict) -> Optional[AnalogTrace]:
             elif v_ret is not None:
                 summary["voltage_returns"][p] = v_ret
                 summary["dead_time_ms"][p] = round(v_ret - t_zero, 1)
-        later = [d for d in faults[1:] if d["start_ms"] > (min(summary["current_returns"].values(), default=np.inf))]
+        return_ms = min(summary["current_returns"].values(), default=np.inf)
+        # Windowed RMS onset can precede its current-return edge by a few
+        # samples. A later fault that clears again is still a refault.
+        later = [d for d in faults[1:] if d["start_ms"] >= return_ms - cycle_ms
+                 and d.get("clearing_ms") is not None and d["clearing_ms"] > return_ms]
         if later:
             summary["refault_ms"] = later[0]["start_ms"]
     if starts_dead:

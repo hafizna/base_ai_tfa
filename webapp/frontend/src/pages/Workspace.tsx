@@ -1,4 +1,5 @@
 import { Component, useEffect, useState } from "react";
+import RecordContextPanel from "../components/panels/RecordContextPanel";
 import type { ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 
@@ -570,6 +571,11 @@ export default function Workspace() {
               </aside>
 
               <section className={styles.rightPanel}>
+                {(relayType === "21" || isLineRelay) && (
+                  <PanelErrorBoundary label="Konteks kejadian">
+                    <RecordContextPanel analysisId={currentAnalysisId} dataRevision={dataRevision} />
+                  </PanelErrorBoundary>
+                )}
                 {renderPrimaryAnalysisPanel()}
 
                 <PanelErrorBoundary label="COMTRADE Explorer">

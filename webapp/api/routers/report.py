@@ -44,6 +44,7 @@ from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
     Image,
+    KeepTogether,
     PageTemplate,
     PageBreak,
     Paragraph,
@@ -54,6 +55,7 @@ from reportlab.platypus import (
 
 from ..storage import load_analysis
 from ..fault_detection import detect_fault_presence
+from ..record_analysis import build_record_analysis
 from core.line_selection import scope_payload
 from .relay_21 import _compute_electrical_params, _compute_fault_classification
 from .relay_87l import _compute_diff_restraint, _line_diff_evidence
@@ -468,7 +470,7 @@ def _build_conclusion(
         z_inception = elec.get("z_at_inception_ohm")
         z_angle = elec.get("z_angle_deg")
         if z_inception is not None:
-            z_line = f"<b>Impedansi saat inception:</b> {z_inception:.2f} Ω"
+            z_line = f"<b>Impedansi fasa A saat inception:</b> {z_inception:.2f} Ω"
             if z_angle is not None:
                 z_line += f" ∠ {z_angle:.1f}°"
             narrative_lines.append(z_line)
@@ -834,7 +836,7 @@ def _fmt_peak(value: float) -> str:
     return f"{v:.2f}"
 
 
-def _render_analog_time_diagram(payload: dict, channels: list[dict], center_ms: float) -> bytes:
+def _render_analog_time_diagram(payload: dict, channels: list[dict], center_ms: float, event_window=None) -> bytes:
     """Render the stacked ABB-style analog time diagram as a PNG."""
     import matplotlib
 
@@ -848,6 +850,9 @@ def _render_analog_time_diagram(payload: dict, channels: list[dict], center_ms: 
     rel_time = time_values - center_ms
     start_ms = max(float(rel_time[0]), -20.0)
     end_ms = min(float(rel_time[-1]), 200.0)
+    if event_window and len(event_window.fault_episodes) > 1:
+        last_end = max(e.get("clearing_time_ms") or e["inception_time_ms"] for e in event_window.fault_episodes)
+        end_ms = min(float(rel_time[-1]), max(200.0, last_end - center_ms + 60))
     if end_ms <= start_ms + 5:
         start_ms = float(rel_time[0])
         end_ms = float(rel_time[-1])
@@ -869,6 +874,13 @@ def _render_analog_time_diagram(payload: dict, channels: list[dict], center_ms: 
         yw = y[window]
         ax.plot(xw, yw, color=trace_color, linewidth=0.6)
         ax.axvline(0, color="#d40000", linewidth=0.8, zorder=3)
+        if event_window and len(event_window.fault_episodes) > 1:
+            for episode in event_window.fault_episodes[1:]:
+                ax.axvline(episode["inception_time_ms"] - center_ms, color="#d40000", linewidth=0.6)
+            for close in event_window.sequence.get("reclose_times_ms", []):
+                ax.axvline(close - center_ms, color="#2563eb", linewidth=0.6, linestyle="--")
+            for trip in event_window.sequence.get("sotf_trips", []):
+                ax.axvline(trip["time_ms"] - center_ms, color="#7c3aed", linewidth=0.6, linestyle=":")
 
         peak = _nice_peak(float(np.max(np.abs(yw))) if yw.size else 1.0)
         ax.set_ylim(-peak, peak)
@@ -908,19 +920,26 @@ def _render_analog_time_diagram(payload: dict, channels: list[dict], center_ms: 
     return buf.getvalue()
 
 
-def _build_analog_time_diagram_section(styles: dict, payload: dict, relay_type: str) -> list:
+def _build_analog_time_diagram_section(styles: dict, payload: dict, relay_type: str, event_window=None) -> list:
     channels = _select_analog_diagram_channels(payload, relay_type)
     if not channels:
         return []
     center_ms = _event_center_ms(payload)
-    raw = _render_analog_time_diagram(payload, channels, center_ms)
+    if event_window and event_window.inception_time_ms is not None:
+        center_ms = event_window.inception_time_ms
+    raw = _render_analog_time_diagram(payload, channels, center_ms, event_window)
     if not raw:
         return []
 
     flowables: list = _section_header(styles, "COMTRADE", "Analog Time Diagram")
+    span_note = (
+        "Jendela mencakup seluruh episode: merah menandai inception, biru reclose, ungu SOTF/TOR."
+        if event_window and len(event_window.fault_episodes) > 1
+        else "Jendela di sekitar gangguan; garis merah menandai trigger/inception."
+    )
     flowables.append(Paragraph(
         "Kanal analog penting (arus & tegangan) ditumpuk dalam satu diagram dengan skala lokal "
-        "per-kanal dan jendela waktu di sekitar gangguan. Garis merah menandai trigger/inception.",
+        "per-kanal. " + span_note,
         styles["body_muted"],
     ))
     flowables.append(Spacer(1, 4))
@@ -938,7 +957,7 @@ def _build_analog_time_diagram_section(styles: dict, payload: dict, relay_type: 
     img.drawHeight = target_h
     img.hAlign = "LEFT"
     flowables.append(img)
-    return flowables
+    return [KeepTogether(flowables)]
 
 
 def _render_binary_time_diagram(payload: dict, channels: list[dict], page_no: int) -> bytes:
@@ -1083,15 +1102,15 @@ def _build_electrical_section(styles: dict, elec: dict) -> list:
         ("I peak fasa A", _format_number(elec.get("i_peak_ia_a"), " A")),
         ("I peak fasa B", _format_number(elec.get("i_peak_ib_a"), " A")),
         ("I peak fasa C", _format_number(elec.get("i_peak_ic_a"), " A")),
-        ("V sag", _format_number(elec.get("v_sag_pct"), " %", 1)),
+        ("V sag fasa A", _format_number(elec.get("v_sag_pct"), " %", 1)),
         ("I positive sequence", _format_number(elec.get("i_pos_seq_a"), " A")),
         ("I negative sequence", _format_number(elec.get("i_neg_seq_a"), " A")),
         ("I zero sequence", _format_number(elec.get("i_zero_seq_a"), " A")),
-        ("|Z| at inception", _format_number(elec.get("z_at_inception_ohm"), " Ω")),
-        ("|Z| minimum", _format_number(elec.get("z_min_ohm"), " Ω")),
-        ("R at fault", _format_number(elec.get("r_at_fault_ohm"), " Ω")),
-        ("X at fault", _format_number(elec.get("x_at_fault_ohm"), " Ω")),
-        ("Z angle", _format_number(elec.get("z_angle_deg"), " °", 1)),
+        ("|Z_A| at inception", _format_number(elec.get("z_at_inception_ohm"), " Ω")),
+        ("|Z_A| minimum", _format_number(elec.get("z_min_ohm"), " Ω")),
+        ("R fasa A", _format_number(elec.get("r_at_fault_ohm"), " Ω")),
+        ("X fasa A", _format_number(elec.get("x_at_fault_ohm"), " Ω")),
+        ("Z_A angle", _format_number(elec.get("z_angle_deg"), " °", 1)),
     ]
 
     # Two-column layout for compactness
@@ -1105,7 +1124,7 @@ def _build_electrical_section(styles: dict, elec: dict) -> list:
     col_w = 50 * mm
     val_w = 35 * mm
     for (ll, lv), (rl, rv) in zip(left_rows, right_rows):
-        pair_data.append([ll, lv, rl, rv])
+        pair_data.append([ll, Paragraph(xml_escape(str(lv)), styles["body_muted"]), rl, Paragraph(xml_escape(str(rv)), styles["body_muted"])])
 
     pair_table = Table(
         pair_data,
@@ -1151,7 +1170,7 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
         return []
 
     flowables: list = []
-    flowables.extend(_section_header(styles, "SECTION 3", "Analisis AI — Fault Cause"))
+    flowables.extend(_section_header(styles, "SECTION 3", "Analisis AI — Fault Cause" if cause_ranking else "Interpretasi kejadian — proteksi & reclose"))
 
     # Header summary line (fault type + overall confidence)
     summary_bits = []
@@ -1164,7 +1183,8 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
         summary_bits.append(f"<b>Jenis kejadian:</b> {ft_label}")
     if isinstance(overall_conf, (int, float)) and fault_type != "none":
         pct = overall_conf * 100 if overall_conf <= 1 else overall_conf
-        summary_bits.append(f"<b>Confidence overall:</b> {pct:.0f}%")
+        confidence_label = "Confidence overall" if cause_ranking else "Keyakinan pembacaan kejadian"
+        summary_bits.append(f"<b>{confidence_label}:</b> {pct:.0f}%")
     if summary_bits:
         flowables.append(Paragraph(" &nbsp;·&nbsp; ".join(summary_bits), styles["body"]))
         flowables.append(Spacer(1, 4))
@@ -1556,6 +1576,32 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
     styles = _build_styles()
 
     story: list = []
+    if is_line_distance:
+        context = build_record_analysis(analysis_id, payload)
+        sequence = context.event_window.sequence if context.event_window else {}
+        story.extend([
+            Paragraph("KONTEKS KEJADIAN", styles["section_kicker"]),
+            Paragraph("Urutan gangguan dan respons proteksi", styles["section"]),
+            Paragraph(f"{len(context.fault_episodes)} episode gangguan dalam satu rekaman. Dead time tidak dihitung sebagai durasi gangguan.", styles["body"]),
+        ])
+        if sequence.get("mechanical_close_confirmed"):
+            text = "PMT menutup kembali. "
+            text += "Pemulihan gagal; gangguan muncul kembali setelah reclose." if sequence.get("refault_after_reclose") else "Hasil pemulihan: " + sequence.get("restoration_outcome", "unknown") + "."
+            if sequence.get("sotf_after_reclose"):
+                text += " SOTF/TOR trip sesudah penutupan kembali."
+            story.append(Paragraph(text, styles["body"]))
+        for episode in context.fault_episodes:
+            start, end, duration = (episode.get(k) for k in ("inception_time_ms", "clearing_time_ms", "fault_duration_ms"))
+            detail = f"Episode {episode['episode_index'] + 1}: mulai {start:.1f} ms" if start is not None else f"Episode {episode['episode_index'] + 1}"
+            if end is not None and duration is not None:
+                detail += f", padam {end:.1f} ms, durasi {duration:.1f} ms."
+            story.append(Paragraph(detail, styles["body"]))
+        for row in context.reasoning.get("conclusions", []):
+            if row["key"] in {"trip_path", "trip_reclose"}:
+                story.append(Paragraph(xml_escape(row["title"]), styles["body"]))
+                for evidence in row["evidence"]:
+                    story.append(Paragraph(xml_escape(evidence), styles["body_muted"]))
+        story.append(Spacer(1, 10))
     if is_line_distance and fault_class is not None:
         story.append(_build_conclusion(styles, fault_class, request.ai_analysis, elec))
     else:
@@ -1581,7 +1627,7 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
         story.extend(soe_section)
         story.append(Spacer(1, 8))
 
-    analog_section = _build_analog_time_diagram_section(styles, payload, relay_type)
+    analog_section = _build_analog_time_diagram_section(styles, payload, relay_type, context.event_window if is_line_distance else None)
     if analog_section:
         story.extend(analog_section)
         story.append(Spacer(1, 8))

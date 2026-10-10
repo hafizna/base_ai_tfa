@@ -79,6 +79,13 @@ class TrainingFeedbackRequest(BaseModel):
     protection_interpretation_correct: Optional[bool] = None
     actual_event_class: str = ""
 
+    scheme_correct: Optional[bool] = None
+    actual_scheme: str = ""
+    trip_path_correct: Optional[bool] = None
+    actual_trip_path: str = ""
+    sotf_correct: Optional[bool] = None
+    actual_sotf_after_reclose: Optional[bool] = None
+
     cause_correct: Optional[bool] = None
     actual_cause: str = ""
 
@@ -129,6 +136,7 @@ async def submit_training_feedback(
     except Exception:
         analysis_snapshot = None
     payload["canonical_analysis_snapshot"] = analysis_snapshot
+    payload["record_fingerprint"] = training_retention.retained_fingerprint(payload["analysis_id"])
 
     row = training_retention.append_feedback(payload)
     return {"status": "ok", "feedback": row}

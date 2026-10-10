@@ -58,7 +58,7 @@ from models.train import FEATURE_COLS
 
 warnings.filterwarnings("ignore")
 
-DEFAULT_FEATURES_CSV = Path(__file__).parent.parent / "data" / "features" / "labeled_features.csv"
+DEFAULT_FEATURES_CSV = Path(__file__).parent.parent / "data" / "features" / "labeled_features_v2.csv"
 DEFAULT_MODEL_PATH = Path(__file__).parent / "fault_classifier.pkl"
 DEFAULT_OUT_PATH = Path(__file__).parent / "proba_calibrator.pkl"
 

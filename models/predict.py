@@ -830,31 +830,8 @@ def _build_feature_vector(row: dict, feature_cols: list[str] | None = None) -> "
     input contract identical to training and removes that warning at the
     source instead of suppressing it.
     """
-    di_dt  = float(row.get("di_dt_max", 0) or 0)
-    peak_i = float(row.get("peak_fault_current_a", 0) or 0)
-
-    feature_cols = feature_cols or FEATURE_COLS
-    feature_map = {
-        "fault_duration_ms": float(row.get("fault_duration_ms", 0) or 0),
-        "fault_count": float(row.get("fault_count", 1) or 1),
-        "peak_fault_current_a": np.log1p(max(peak_i, 0)),
-        "di_dt_max": np.log1p(max(di_dt, 0)),
-        "i0_i1_ratio": float(row.get("i0_i1_ratio", 0) or 0),
-        "thd_percent": float(row.get("thd_percent", 0) or 0),
-        "inception_angle_degrees": float(row.get("inception_angle_degrees", 0) or 0),
-        "voltage_sag_depth_pu": float(row.get("voltage_sag_depth_pu", 0) or 0),
-        "voltage_phase_ratio_spread_pu": float(row.get("voltage_phase_ratio_spread_pu", 0) or 0),
-        "healthy_phase_voltage_ratio": float(row.get("healthy_phase_voltage_ratio", 0) or 0),
-        "v2_v1_ratio": float(row.get("v2_v1_ratio", 0) or 0),
-        "voltage_thd_max_percent": float(row.get("voltage_thd_max_percent", 0) or 0),
-        "reclose_enc": encode_reclose(row.get("reclose_successful")),
-        "is_ground_enc": 1 if str(row.get("is_ground_fault", "")).lower() == "true" else 0,
-        "trip_type_enc": encode_trip_type(row.get("trip_type", "")),
-        "phase_count": parse_phase_count(row.get("faulted_phases", "")),
-        "zone_enc": encode_zone(row.get("zone_operated", "")),
-    }
-    vec = [feature_map.get(col, float(row.get(col, 0) or 0)) for col in feature_cols]
-    return pd.DataFrame([vec], columns=feature_cols, dtype=float)
+    from models.feature_schema import build_feature_frame
+    return build_feature_frame([row], feature_cols)
 
 
 _SOE_LOOP_PATTERNS = (

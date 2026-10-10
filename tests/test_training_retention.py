@@ -24,6 +24,9 @@ def test_training_retention_roundtrip(tmp_path, monkeypatch):
     assert (record_dir / "case.cfg").read_bytes() == b"cfg"
     assert (record_dir / "case.dat").read_bytes() == b"dat"
     assert (record_dir / "metadata.json").exists()
+    import json
+    manifest = json.loads((record_dir / "metadata.json").read_text())
+    assert tr.retained_fingerprint("abc123") == manifest["record_fingerprint"]
 
     tr.append_feedback(
         {

@@ -407,7 +407,7 @@ def flatten_differential_features(feat, label, cfg_path, prot, fault, record):
     return d
 
 
-def main():
+def _legacy_main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Extract any zip/rar archives found in raw_data/ before scanning
@@ -522,6 +522,13 @@ def main():
         t = label_counts[label]
         print(f"{label:<15} {s:>8} {s87:>8} {t:>8} {(s + s87)/t*100:>7.0f}%")
     print(f"\nTotal: {len(rows)} distance rows + {len(rows_87l)} 87L rows / {len(cfg_files)} attempted")
+
+
+def main():
+    # The default dataset path uses the exact live-analysis reader. Retain
+    # the old helpers for callers rebuilding historical baselines/87L tables.
+    from models.build_dataset import main as shared_main
+    shared_main()
 
 
 if __name__ == "__main__":

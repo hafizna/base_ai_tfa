@@ -223,6 +223,18 @@ def detect_fault(record) -> Optional[FaultEvent]:
             fault.faulted_phases = reconciled_phases
 
     if fault and fault.confidence > 0.7:
+        # A later SOTF trip must not extend the initial fault through the
+        # breaker's dead time. The waveform identifies the first clearing.
+        closes = [e['time'] for e in fault.reclose_events if e.get('time') is not None]
+        if (closes and wf_fault and wf_fault.clearing_time is not None
+                and fault.clearing_time is not None
+                and wf_fault.clearing_time < min(closes) < fault.clearing_time):
+            fault.inception_idx = wf_fault.inception_idx
+            fault.inception_time = wf_fault.inception_time
+            fault.clearing_idx = wf_fault.clearing_idx
+            fault.clearing_time = wf_fault.clearing_time
+            fault.duration_ms = wf_fault.duration_ms
+            fault.detection_method = "status_waveform_episodes"
         # If status channels found a plausible duration (>= 5ms), return it.
         # Sub-5ms durations are toggle noise (e.g. A/R signal bouncing), not real clearing.
         if fault.duration_ms >= 5.0:

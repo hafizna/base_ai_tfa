@@ -1168,7 +1168,17 @@ def _trip_and_reclose(ctx: _Context, trip: Optional[dict[str, Any]], path: dict[
         "ar_mode": ar_mode,
         "reclose_success": reclose.get("success") if reclose else None,
         "dead_time_s": round(dead_time_s, 3) if dead_time_s else None,
+        "sequence": ctx.window.sequence if ctx.window else {},
     }
+    sequence = ctx.window.sequence if ctx.window else {}
+    if sequence.get("refault_after_reclose"):
+        evidence.append("PMT menutup kembali, tetapi gangguan muncul lagi: penutupan berhasil secara mekanis, pemulihan tidak bertahan.")
+        title += "; gangguan berulang setelah reclose"
+    if sequence.get("sotf_after_reclose"):
+        rules.append("F5.5")
+        for event in sequence["sotf_trips"]:
+            evidence.append(f"{event['channel']} aktif {_ms(event['time_ms'] - (ctx.t0 or 0))} ms setelah inception gangguan, sesudah PMT reclose.")
+        title += "; SOTF/TOR trip"
     return Conclusion("trip_reclose", 6, "Trip dan reclose", title, evidence, sorted(set(rules), key=_rule_order),
                       confidence, value), flags
 
