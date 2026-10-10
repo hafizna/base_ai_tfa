@@ -772,7 +772,11 @@ export default function DoubleEndedFL() {
               <div className={styles.resultStatValue}>{result.distance_pct.toFixed(1)}%</div>
             </div>
             <div className={styles.resultStat}>
-              <div className={styles.resultStatLabel}>Fault current</div>
+              <div className={styles.resultStatLabel}>
+                {result.calculation_basis === "negative_sequence"
+                  ? `Fault current (max phase${result.fault_current_phase ? ` ${result.fault_current_phase}` : ""})`
+                  : "Fault current (loop)"}
+              </div>
               <div className={styles.resultStatValue}>{(result.fault_current_a / 1000).toFixed(2)} kA</div>
             </div>
             <div className={styles.resultStat}>

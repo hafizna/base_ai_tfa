@@ -1031,7 +1031,17 @@ def _compute_fault_classification(payload: dict) -> dict:
     fault_ms = float(row.get("fault_duration_ms", 0) or 0)
     prefault_ms = max(0.0, round(total_ms - fault_ms, 1))
 
-    phases, to_ground = _evidence_based_fault_phases(payload, row)
+    # F4 is the shared reasoning chain used by the record, incident and report.
+    # Import locally: fault_reasoning itself uses our phasor helpers.
+    from ..record_analysis import build_record_analysis
+
+    reasoning = build_record_analysis("fault-classification", payload).reasoning
+    phase_conclusion = next(
+        (c for c in reasoning.get("conclusions", []) if c.get("key") == "phases"), {}
+    )
+    phase_value = phase_conclusion.get("value") or {}
+    phases = [p for p in phase_value.get("phases", []) if p in ("A", "B", "C")]
+    to_ground = bool(phase_value.get("ground", False))
     n_phases = len(phases)
 
     if n_phases >= 3:

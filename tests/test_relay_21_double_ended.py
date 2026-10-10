@@ -401,8 +401,7 @@ def test_single_ended_distance_recovers_known_location_at_zero_rf():
     r1, x1 = 0.05, 0.4
     z_line = complex(r1, x1) * line_len_km
     i_a = complex(300.0, 40.0)
-    v_f = complex(4000.0, 0.0)
-    v_a = v_f + m0 * z_line * i_a  # single-ended model: V_A = m*Zline*I_A + V_F (Rf=0 folded into V_F here)
+    v_a = m0 * z_line * i_a  # zero fault voltage at Rf=0
 
     inception = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
     clearing = inception + int(round(SR * 5 / FREQ))
@@ -410,12 +409,46 @@ def test_single_ended_distance_recovers_known_location_at_zero_rf():
 
     term_a = _terminal_phasor(payload_a, "ZA", False, False, shift_s=0.0)
     result = _single_ended_distance(term_a, r1, x1, line_len_km, "A")
-    # With Rf=0 and V_F folded in as a constant offset (not physically
-    # zeroed at the fault point), the single-ended reading won't match m0
-    # exactly — this fixture isn't meant to prove exactness, only that the
-    # calculation runs and produces a finite, sane-magnitude result.
-    assert np.isfinite(result["distance_km"])
+    assert result["distance_km"] == pytest.approx(m0 * line_len_km, abs=0.05)
+    assert result["distance_pct"] == pytest.approx(m0 * 100, abs=0.2)
     assert result["fault_current_a"] > 0
+
+
+@pytest.mark.parametrize("line_len_km", [20.0, 21.44, 50.0])
+def test_single_ended_km_does_not_scale_twice_with_line_length(line_len_km):
+    z_per_km = complex(0.05, 0.4)
+    current = complex(1000, 200)
+    term = {"v_primary": 17.4 * z_per_km * current, "i_primary": current}
+    result = _single_ended_distance(term, 0.05, 0.4, line_len_km, "A")
+    assert result["distance_km"] == pytest.approx(17.4)
+    assert result["distance_pct"] == pytest.approx(1740 / line_len_km)
+
+
+@pytest.mark.parametrize("loop", ["ZA", "ZB", "ZC"])
+def test_ground_basis_fault_current_uses_largest_phase_not_loop_name(loop):
+    """A B-C fault viewed through ZA still reports B/C infeed, not healthy IA."""
+    line_len_km, m0 = 20.0, 0.4
+    z_line = complex(0.05, 0.4) * line_len_km
+    inception = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
+    payloads = []
+    for station, currents, distance in [
+        ("GI-A", [20, 2000, -2000], m0),
+        ("GI-B", [10, 1000, -1000], 1 - m0),
+    ]:
+        payload = _build_terminal_payload(220, 5, 100, 100, inception, station)
+        for idx, phase in enumerate("ABC"):
+            for prefix, phasor in [("I", currents[idx]), ("V", distance * z_line * currents[idx])]:
+                samples = abs(phasor) * np.cos(2 * math.pi * FREQ * np.arange(N) / SR + cmath.phase(phasor))
+                channel = next(ch for ch in payload["analog_channels"] if ch["canonical_name"] == prefix + phase)
+                channel["samples"][inception:] = samples[inception:].tolist()
+        payloads.append(payload)
+    result = _compute_double_ended(
+        *payloads, loop, line_len_km, 0.05, 0.4, 0.0,
+        False, False, False, False,
+    )
+    assert result["distance_km"] == pytest.approx(m0 * line_len_km, abs=0.05)
+    assert result["fault_current_a"] == pytest.approx(3000, rel=0.01)
+    assert result["fault_current_phase"] in {"B", "C"}
 
 
 def test_single_ended_distance_inflates_with_fault_resistance():
@@ -444,11 +477,9 @@ def test_single_ended_distance_inflates_with_fault_resistance():
     # Monotonically increasing with Rf — each step should read farther out.
     for earlier, later in zip(readings, readings[1:]):
         assert later > earlier
-    # Matches the hand-derived inflation formula: m_single grows by
-    # Rf * Re(1/Z_per_km) per unit Rf, and distance_km = m_single *
-    # line_len_km, so the km-slope is Re(1/Z_per_km) * line_len_km.
+    # Ohms / (ohms per km) already yields km: no extra line-length factor.
     z_per_km = complex(r1, x1)
-    expected_slope = (1.0 / z_per_km).real * line_len_km
+    expected_slope = (1.0 / z_per_km).real
     observed_slope = (readings[-1] - readings[0]) / 50.0
     assert abs(observed_slope - expected_slope) < 0.05
 

@@ -8,6 +8,7 @@ import {
   type LocusEvent,
   type LocusEventCategory,
 } from "../../../api/client";
+import { eventLoopsForFamily, type LoopName } from "./faultLoopSelection";
 import Plot from "../../plot/PlotlyChart";
 import styles from "../../panels/Panel.module.css";
 
@@ -90,8 +91,6 @@ interface ImportedRelayData {
   vtRatio?: number;
 }
 
-type LoopName = "ZA" | "ZB" | "ZC" | "ZAB" | "ZBC" | "ZCA";
-
 type ZoneFamily = "ground" | "phase";
 type TimeMode = "fault" | "all";
 type PlotFamily = "ground" | "phase";
@@ -112,38 +111,6 @@ const LOOP_COLORS: Record<LoopName, string> = {
   ZBC: "#b45309",
   ZCA: "#be123c",
 };
-
-function loopForGroundPhase(phase: string): LoopName | null {
-  const normalized = phase.trim().toUpperCase();
-  if (normalized === "A") return "ZA";
-  if (normalized === "B") return "ZB";
-  if (normalized === "C") return "ZC";
-  return null;
-}
-
-function loopForPhasePair(phases: string[]): LoopName | null {
-  const key = [...new Set(phases.map((phase) => phase.trim().toUpperCase()))].sort().join("");
-  if (key === "AB") return "ZAB";
-  if (key === "BC") return "ZBC";
-  if (key === "AC") return "ZCA";
-  return null;
-}
-
-function eventLoopsForFamily(family: PlotFamily, classification: FaultClassification21 | null): LoopName[] {
-  if (!classification) return family === "ground" ? GROUND_LOOPS : PHASE_LOOPS;
-  const phases = classification.phases ?? [];
-
-  if (classification.to_ground) {
-    if (family !== "ground") return [];
-    const loops = phases.map(loopForGroundPhase).filter((loop): loop is LoopName => loop !== null);
-    return loops.length ? loops : GROUND_LOOPS;
-  }
-
-  if (family !== "phase") return [];
-  if (phases.length >= 3) return PHASE_LOOPS;
-  const loop = loopForPhasePair(phases);
-  return loop ? [loop] : PHASE_LOOPS;
-}
 
 const GROUND_ZONE_TEMPLATES: Zone[] = [
   { label: "Z1", shape: "mho", center_r: 0, center_x: 0, radius: 0, rf_fwd: 0, rf_rev: 0, xf: 0, xr: 0, line_angle_deg: 75, color: "#22c55e" },
