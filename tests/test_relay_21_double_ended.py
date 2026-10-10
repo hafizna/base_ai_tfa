@@ -19,6 +19,7 @@ import numpy as np
 import pytest
 from fastapi import HTTPException
 
+from webapp.api.routers import relay_21_de
 from webapp.api.routers.relay_21_de import (
     _compute_double_ended,
     _compute_distance_histogram,
@@ -190,6 +191,157 @@ def test_distance_independent_of_fault_resistance():
         assert abs(d - expected) < 0.05
     # All four Rf values should land on essentially the same distance.
     assert max(distances) - min(distances) < 1e-6
+
+
+_A = cmath.exp(1j * 2 * math.pi / 3)
+_POSITIVE = (1.0, _A ** 2, _A)  # phase rotation of a positive-sequence set
+
+
+def _abc_payload(v_pre, i_pre, v_fault, i_fault, inception: int, station: str) -> dict:
+    """``_build_terminal_payload`` with every phase's prefault and fault phasor
+    given, so a fault can involve some phases and leave the others on load."""
+    payload = _build_terminal_payload(1.0, 1.0, 0j, 0j, inception, station)
+    t = np.arange(N) / SR
+
+    def stepped(pre: complex, fault: complex) -> list:
+        wave = abs(pre) * np.cos(2 * math.pi * FREQ * t + cmath.phase(pre))
+        wave[inception:] = (abs(fault) * np.cos(2 * math.pi * FREQ * t + cmath.phase(fault)))[inception:]
+        return wave.tolist()
+
+    for channel in payload["analog_channels"]:
+        idx = "ABC".index(channel["phase"])
+        if channel["measurement"] == "voltage":
+            channel["samples"] = stepped(v_pre[idx], v_fault[idx])
+        else:
+            channel["samples"] = stepped(i_pre[idx], i_fault[idx])
+    return payload
+
+
+def _solve_fault(
+    loop: str, fault_from_a: dict, fault_from_b: dict, m0: float = 0.4, line_len_km: float = 20.0,
+    load_a: float = 100.0, charging: float = 5.0,
+) -> dict:
+    """Two terminals of a line carrying ``load_a`` from A to B, with a fault at
+    ``m0`` drawing ``fault_from_a``/``fault_from_b`` (phase -> amps) from each
+    end, plus the line's ``charging`` current on every phase. Phases are
+    uncoupled (Z0 = Z1), so every phase drops Z times its own current and each
+    phase's KVL holds exactly."""
+    z_line = complex(0.05, 0.4) * line_len_km
+    v_nom = 87_000.0
+    inception = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
+    load = [load_a * cmath.exp(-0.3j) * rot for rot in _POSITIVE]
+    load_b = [-load[k] + 1j * charging * _POSITIVE[k] for k in range(3)]
+    i_a = [load[k] + fault_from_a.get(p, 0j) for k, p in enumerate("ABC")]
+    i_b = [load_b[k] + fault_from_b.get(p, 0j) for k, p in enumerate("ABC")]
+    # Any fault-point voltage satisfies the two-ended equations; sag the
+    # faulted phases so the record reads as a fault.
+    faulted = set(fault_from_a) | set(fault_from_b)
+    v_f = [v_nom * rot * (0.3 if p in faulted else 1.0) for rot, p in zip(_POSITIVE, "ABC")]
+    v_pre = [v_nom * rot for rot in _POSITIVE]
+    payload_a = _abc_payload(
+        v_pre, load, [v_f[k] + m0 * z_line * i_a[k] for k in range(3)], i_a, inception, "GI-A",
+    )
+    payload_b = _abc_payload(
+        v_pre, load_b, [v_f[k] + (1.0 - m0) * z_line * i_b[k] for k in range(3)], i_b, inception, "GI-B",
+    )
+    return _compute_double_ended(
+        payload_a, payload_b, loop, line_len_km, 0.05, 0.4,
+        manual_shift_ms=0.0,
+        invert_i_a=False, invert_i_b=False,
+        invert_phase_sequence_a=False, invert_phase_sequence_b=False,
+    )
+
+
+_FAULT_ANGLE = cmath.exp(-1.3j)
+_A_GROUND = ({"A": 2000.0 * _FAULT_ANGLE}, {"A": 1500.0 * _FAULT_ANGLE})
+_B_C = (
+    {"B": 2000.0 * _FAULT_ANGLE, "C": -2000.0 * _FAULT_ANGLE},
+    {"B": 1500.0 * _FAULT_ANGLE, "C": -1500.0 * _FAULT_ANGLE},
+)
+
+
+def test_a_loop_through_healthy_phases_only_is_not_a_valid_location():
+    # F7.4: an R-N fault draws no current in the S-T loop, so the two-ended
+    # equations hold for any distance — however small the residual.
+    result = _solve_fault("ZBC", *_A_GROUND)
+    assert result["loop_carries_fault"] is False
+    assert result["fault_point_ratio"] < 0.05
+    assert result["warnings"][0].startswith("The fault draws almost no current in loop ZBC")
+
+
+@pytest.mark.parametrize("loop, fault", [
+    ("ZA", _A_GROUND), ("ZAB", _A_GROUND), ("ZCA", _A_GROUND),
+    # Negative sequence (the ground loops) is drawn by a phase-phase fault too.
+    ("ZBC", _B_C), ("ZAB", _B_C), ("ZCA", _B_C), ("ZA", _B_C),
+])
+def test_any_quantity_the_fault_draws_current_in_locates_it(loop, fault):
+    result = _solve_fault(loop, *fault)
+    assert result["loop_carries_fault"] is True
+    assert result["fault_point_ratio"] > 0.9
+    assert abs(result["distance_km"] - 0.4 * 20.0) < 0.05
+
+
+def test_negative_sequence_is_not_valid_for_a_balanced_fault():
+    # 1% unbalance between the phases, as any real three-phase fault has.
+    three_phase = [
+        {p: amps * scale * _FAULT_ANGLE * rot for p, rot, scale in zip("ABC", _POSITIVE, (1.0, 1.01, 0.99))}
+        for amps in (2000.0, 1500.0)
+    ]
+    assert _solve_fault("ZA", *three_phase)["loop_carries_fault"] is False
+    assert _solve_fault("ZAB", *three_phase)["loop_carries_fault"] is True
+
+
+def test_a_weak_infeed_end_is_flagged():
+    # Terminal B feeds the fault only 120 A against its 100 A load.
+    result = _solve_fault("ZA", {"A": 2000.0 * _FAULT_ANGLE}, {"A": 120.0 * _FAULT_ANGLE})
+    assert result["loop_carries_fault"] is True
+    assert result["weak_infeed_terminals"] == ["B"]
+    assert result["fault_contribution_ratio_b"] == pytest.approx(1.2, abs=0.05)
+    assert any(w.startswith("Terminal B is a weak-infeed end") for w in result["warnings"])
+    assert abs(result["distance_km"] - 0.4 * 20.0) < 0.05
+
+
+def _reading(phases: str, ground: bool, label: str, weak_infeed: bool = False) -> dict:
+    return {"phases": list(phases), "ground": ground, "label": label, "weak_infeed": weak_infeed}
+
+
+def test_the_loop_comes_from_the_strong_end_when_one_end_is_weak_infeed(monkeypatch):
+    # F7.4: a weak-infeed end reads its phases from the voltage sag alone, so
+    # the strong end's reading sets the loop even when it is terminal B.
+    readings = {"a": _reading("BC", False, "S-T", weak_infeed=True), "b": _reading("BC", False, "S-T")}
+    monkeypatch.setattr(relay_21_de, "_reasoned_phases", lambda payload: readings[payload])
+    suggestion = relay_21_de._suggest_loop("a", "b")
+    assert suggestion["loop"] == "ZBC"
+    assert suggestion["source_terminal"] == "B"
+    assert suggestion["agree"] is True
+    assert suggestion["weak_infeed_terminals"] == ["A"]
+
+
+def test_a_single_phase_fault_is_solved_in_negative_sequence(monkeypatch):
+    monkeypatch.setattr(relay_21_de, "_reasoned_phases", lambda payload: _reading("B", True, "S-N"))
+    assert relay_21_de._suggest_loop("a", "b")["loop"] == "ZB"
+
+
+def test_a_double_phase_to_ground_fault_is_solved_on_its_phase_phase_loop(monkeypatch):
+    # The R-T loop drops Z1 times its current whether or not ground is involved.
+    readings = {"a": _reading("AC", True, "R-T-N"), "b": _reading("C", True, "T-N")}
+    monkeypatch.setattr(relay_21_de, "_reasoned_phases", lambda payload: readings[payload])
+    suggestion = relay_21_de._suggest_loop("a", "b")
+    assert suggestion["loop"] == "ZCA"
+    assert suggestion["agree"] is False
+    assert "terminal B reads T-N" in suggestion["reason"]
+
+
+def test_a_three_phase_fault_is_solved_on_a_phase_phase_loop(monkeypatch):
+    monkeypatch.setattr(relay_21_de, "_reasoned_phases", lambda payload: _reading("ABC", False, "R-S-T"))
+    suggestion = relay_21_de._suggest_loop("a", "b")
+    assert suggestion["loop"] == "ZAB"
+    assert "every phase-phase loop" in suggestion["reason"]
+
+
+def test_no_loop_is_suggested_without_a_reading(monkeypatch):
+    monkeypatch.setattr(relay_21_de, "_reasoned_phases", lambda payload: None)
+    assert relay_21_de._suggest_loop("a", "b")["loop"] is None
 
 
 def test_out_of_range_distance_warns():

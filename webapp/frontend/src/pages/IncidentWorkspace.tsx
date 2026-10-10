@@ -1,38 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  addIncidentEvidence,
   deleteIncident,
   detachIncidentRecord,
   fetchIncident,
   fetchIncidentEpisodes,
   fetchIncidentRelationships,
-  fetchIncidentTimeline,
   fetchReconstruction,
-  listIncidentEvidence,
-  listReconstructions,
   reconstructIncident,
-  removeIncidentEvidence,
-  reorderIncidentRecords,
+  refreshIncidentSnapshots,
   updateIncident,
-  type AssetType,
   type BatchUploadResponse,
-  type ClockAssessment,
-  type EvidenceConfidence,
-  type EvidenceType,
   type FaultEpisodeOut,
-  type IncidentEvidenceOut,
   type IncidentOut,
   type IncidentRecordOut,
-  type IncidentStatus,
-  type IncidentTimelineEventOut,
-  type ProtectionFamily,
   type ReconstructionOut,
   type RecordRelationshipOut,
 } from "../api/client";
 import BatchUploadPanel from "../components/incidents/BatchUploadPanel";
-import EpisodeCards from "../components/incidents/EpisodeCards";
-import IncidentRecordsTable from "../components/incidents/IncidentRecordsTable";
 import { buildIncidentStory, isReconstructionStale, type IncidentStory } from "../components/incidents/incidentStory";
 import {
   CauseSection,
@@ -41,65 +26,9 @@ import {
   SequenceSection,
   SummarySection,
 } from "../components/incidents/IncidentStoryView";
-import NarrativePanel from "../components/incidents/NarrativePanel";
-import PhysicalCauseEvidencePanel from "../components/incidents/PhysicalCauseEvidencePanel";
-import ReconstructionControls from "../components/incidents/ReconstructionControls";
-import ReconstructionSummary from "../components/incidents/ReconstructionSummary";
-import RelationshipInspector from "../components/incidents/RelationshipInspector";
-import SegmentedTimeline from "../components/incidents/SegmentedTimeline";
+import TechnicalDetails from "../components/incidents/TechnicalDetails";
 import { useMultiComtradeEnabled } from "../hooks/useFeatureFlags";
 import styles from "./IncidentWorkspace.module.css";
-
-const STATUS_OPTIONS: IncidentStatus[] = ["DRAFT", "OPEN", "UNDER_REVIEW", "CONFIRMED", "CLOSED", "ARCHIVED"];
-const ASSET_TYPE_OPTIONS: AssetType[] = [
-  "TRANSMISSION_LINE",
-  "TRANSFORMER",
-  "BUSBAR",
-  "FEEDER",
-  "REACTOR",
-  "CAPACITOR",
-  "OTHER",
-  "UNKNOWN",
-];
-const PROTECTION_FAMILY_OPTIONS: ProtectionFamily[] = [
-  "DISTANCE",
-  "LINE_DIFFERENTIAL",
-  "TRANSFORMER_DIFFERENTIAL",
-  "OVERCURRENT",
-  "REF",
-  "SBEF",
-  "MIXED",
-  "UNKNOWN",
-];
-const CLOCK_ASSESSMENT_OPTIONS: ClockAssessment[] = [
-  "SYNCHRONIZED",
-  "LIKELY_SYNCHRONIZED",
-  "ORDER_ONLY",
-  "UNTRUSTED",
-  "UNKNOWN",
-];
-const EVIDENCE_TYPE_OPTIONS: EvidenceType[] = [
-  "COMTRADE_RECORD",
-  "REMOTE_END_COMTRADE",
-  "RELAY_EVENT_REPORT",
-  "OPERATOR_SOE",
-  "FIELD_INSPECTION",
-  "PATROL_REPORT",
-  "LIGHTNING_DETECTION",
-  "PROTECTION_ENGINEER_NOTE",
-  "PHOTO",
-  "OTHER",
-];
-const EVIDENCE_CONFIDENCE_OPTIONS: EvidenceConfidence[] = ["CONFIRMED", "PROBABLE", "POSSIBLE", "UNKNOWN"];
-
-function formatTime(iso: string | null) {
-  if (!iso) return "No absolute time";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
 
 function recordSetSignature(records: IncidentRecordOut[]): string {
   return records
@@ -118,26 +47,17 @@ export default function IncidentWorkspace() {
   const [incident, setIncident] = useState<IncidentOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [savingHeader, setSavingHeader] = useState(false);
-  const [showEvidenceForm, setShowEvidenceForm] = useState(false);
-  const [evidenceDraft, setEvidenceDraft] = useState({
-    evidence_type: "OTHER" as EvidenceType,
-    source: "",
-    description: "",
-    confidence: "UNKNOWN" as EvidenceConfidence,
-  });
 
   const multiComtradeEnabled = useMultiComtradeEnabled();
 
   const [reconstruction, setReconstruction] = useState<ReconstructionOut | null>(null);
-  const [reconstructions, setReconstructions] = useState<ReconstructionOut[]>([]);
-  const [timeline, setTimeline] = useState<IncidentTimelineEventOut[]>([]);
   const [relationships, setRelationships] = useState<RecordRelationshipOut[]>([]);
   const [episodes, setEpisodes] = useState<FaultEpisodeOut[]>([]);
   const [reconstructionLoaded, setReconstructionLoaded] = useState(false);
   const [reconstructionLoading, setReconstructionLoading] = useState(false);
   const [reconstructionError, setReconstructionError] = useState<string | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   // Record set an automatic rebuild was already started for, so a failing
   // rebuild is not retried in a loop.
   const autoRebuiltFor = useRef<string | null>(null);
@@ -166,7 +86,6 @@ export default function IncidentWorkspace() {
 
   function applyReconstruction(recon: ReconstructionOut | null) {
     setReconstruction(recon);
-    setTimeline(recon?.timeline ?? []);
     setRelationships(recon?.relationships ?? []);
     setEpisodes(recon?.episodes ?? []);
   }
@@ -176,24 +95,19 @@ export default function IncidentWorkspace() {
     setReconstructionLoading(true);
     setReconstructionError(null);
     try {
-      const [recon, versions] = await Promise.all([
-        fetchReconstruction(incidentId, targetReconstructionId).catch((err) => {
-          if (err?.response?.status === 404) return null;
-          throw err;
-        }),
-        listReconstructions(incidentId).catch(() => []),
-      ]);
+      const recon = await fetchReconstruction(incidentId, targetReconstructionId).catch((err) => {
+        if (err?.response?.status === 404) return null;
+        throw err;
+      });
       if (recon) {
         applyReconstruction({
           ...recon,
-          timeline: recon.timeline ?? (await fetchIncidentTimeline(incidentId).catch(() => [])),
           relationships: recon.relationships ?? (await fetchIncidentRelationships(incidentId).catch(() => [])),
           episodes: recon.episodes ?? (await fetchIncidentEpisodes(incidentId).catch(() => [])),
         });
       } else {
         applyReconstruction(null);
       }
-      setReconstructions(versions);
     } catch (err) {
       setReconstructionError(err instanceof Error ? err.message : "Failed to load reconstruction.");
     } finally {
@@ -223,7 +137,6 @@ export default function IncidentWorkspace() {
       const freshIncident = await fetchIncident(incidentId);
       setIncident(freshIncident);
       applyReconstruction(recon);
-      setReconstructions(await listReconstructions(incidentId).catch(() => []));
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setReconstructionError(detail || (err instanceof Error ? err.message : "Reconstruction failed."));
@@ -291,21 +204,31 @@ export default function IncidentWorkspace() {
     window.setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
-  function recordLabel(recordId: string): string {
-    const record = incident?.records.find((r) => r.incident_record_id === recordId);
-    return record?.source_filename || record?.analysis_id.slice(0, 10) || recordId.slice(0, 8);
-  }
-
-  async function patchField(field: string, value: unknown) {
-    if (!incidentId) return;
-    setSavingHeader(true);
+  async function handleSave(fields: Record<string, unknown>) {
+    if (!incidentId || !incident) return;
     try {
-      const updated = await updateIncident(incidentId, { [field]: value });
+      const stationChanged = (fields.station_name ?? null) !== (incident.station_name ?? null);
+      const updated = await updateIncident(incidentId, fields);
       setIncident(updated);
+      // The incident's substation picks the end the story is told from.
+      if (stationChanged && incident.records.length > 0) await handleReconstruct();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update incident.");
+    }
+  }
+
+  // Analyse the attached records again with the current engine (their
+  // snapshots were taken when they were attached), then rebuild the sequence.
+  async function handleRefreshAnalyses() {
+    if (!incidentId) return;
+    setRefreshing(true);
+    try {
+      await refreshIncidentSnapshots(incidentId);
+      await handleReconstruct();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyse the records again.");
     } finally {
-      setSavingHeader(false);
+      setRefreshing(false);
     }
   }
 
@@ -317,34 +240,6 @@ export default function IncidentWorkspace() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to detach record.");
-    }
-  }
-
-  async function handleMove(records: IncidentRecordOut[], index: number, direction: -1 | 1) {
-    if (!incidentId) return;
-    const target = index + direction;
-    if (target < 0 || target >= records.length) return;
-    const ids = records.map((r) => r.incident_record_id);
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    try {
-      await reorderIncidentRecords(incidentId, ids);
-      await load();
-      // Same record set, new order: the automatic rebuild only watches membership.
-      await handleReconstruct();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reorder records.");
-    }
-  }
-
-  async function handleAddEvidence() {
-    if (!incidentId) return;
-    try {
-      await addIncidentEvidence(incidentId, evidenceDraft);
-      setShowEvidenceForm(false);
-      setEvidenceDraft({ evidence_type: "OTHER", source: "", description: "", confidence: "UNKNOWN" });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add evidence.");
     }
   }
 
@@ -451,320 +346,53 @@ export default function IncidentWorkspace() {
           className={styles.detailsCard}
           aria-label="Detail teknis"
         >
-          <button
-            type="button"
-            className={styles.detailsToggle}
-            aria-expanded={detailsOpen}
-            onClick={() => setDetailsOpen((v) => !v)}
-          >
-            <span className={styles.detailsHeading}>
-              <span className={styles.detailsTitle}>Detail teknis</span>
-              <span className={styles.muted}>
-                Data insiden, urutan rekaman, hubungan antar rekaman, audit model AI, evidence, riwayat rekonstruksi
-              </span>
-            </span>
-            <svg
-              className={detailsOpen ? styles.chevronOpen : styles.chevron}
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+          {!detailsOpen && (
+            <button
+              type="button"
+              className={styles.detailsToggle}
+              aria-expanded={false}
+              onClick={() => setDetailsOpen(true)}
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+              <span className={styles.detailsHeading}>
+                <span className={styles.detailsTitle}>Detail teknis</span>
+                <span className={styles.muted}>
+                  Penalaran tiap gangguan, urutan sinyal, rekaman, dan data insiden
+                </span>
+              </span>
+              <svg
+                className={styles.chevron}
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          )}
 
           {detailsOpen && (
             <div className={styles.detailsBody}>
-              <div className={styles.subsection}>
-                <div className={styles.subsectionHeader}>
-                  <h3>Incident details</h3>
-                  <button type="button" className={styles.dangerButton} onClick={handleArchive}>
-                    Arsipkan insiden
-                  </button>
-                </div>
-                <div className={styles.headerGrid}>
-                  <label className={styles.field}>
-                    Title
-                    <input
-                      value={incident.title}
-                      onChange={(e) => setIncident({ ...incident, title: e.target.value })}
-                      onBlur={(e) => patchField("title", e.target.value)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    Status
-                    <select
-                      value={incident.status}
-                      onChange={(e) => patchField("status", e.target.value)}
-                      disabled={savingHeader}
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className={styles.field}>
-                    Station
-                    <input
-                      defaultValue={incident.station_name ?? ""}
-                      onBlur={(e) => patchField("station_name", e.target.value || null)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    Bay
-                    <input
-                      defaultValue={incident.bay_name ?? ""}
-                      onBlur={(e) => patchField("bay_name", e.target.value || null)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    Asset name
-                    <input
-                      defaultValue={incident.asset_name ?? ""}
-                      onBlur={(e) => patchField("asset_name", e.target.value || null)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    Asset type
-                    <select
-                      value={incident.asset_type ?? "UNKNOWN"}
-                      onChange={(e) => patchField("asset_type", e.target.value)}
-                    >
-                      {ASSET_TYPE_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className={styles.field}>
-                    Voltage (kV)
-                    <input
-                      type="number"
-                      defaultValue={incident.voltage_level_kv ?? ""}
-                      onBlur={(e) => patchField("voltage_level_kv", e.target.value ? Number(e.target.value) : null)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    Protection family
-                    <select
-                      value={incident.protection_family ?? "UNKNOWN"}
-                      onChange={(e) => patchField("protection_family", e.target.value)}
-                    >
-                      {PROTECTION_FAMILY_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className={styles.field}>
-                    Clock assessment
-                    <select
-                      value={incident.clock_assessment}
-                      onChange={(e) => patchField("clock_assessment", e.target.value)}
-                    >
-                      {CLOCK_ASSESSMENT_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className={styles.field}>
-                    Incident start
-                    <input value={formatTime(incident.incident_start_iso)} readOnly />
-                  </label>
-                  <label className={styles.field}>
-                    Incident end
-                    <input value={formatTime(incident.incident_end_iso)} readOnly />
-                  </label>
-                </div>
-                <label className={styles.field}>
-                  Operator notes
-                  <textarea
-                    defaultValue={incident.operator_notes ?? ""}
-                    onBlur={(e) => patchField("operator_notes", e.target.value || null)}
-                    rows={2}
-                  />
-                </label>
-              </div>
-
-              <div className={styles.subsection}>
-                <h3>Attached records</h3>
-                <IncidentRecordsTable
-                  records={incident.records}
-                  episodes={episodes}
-                  relationships={relationships}
-                  manualOrderConflict={incident.missing_evidence.some((m) => m.type === "RECORD_ORDER_REQUIRES_REVIEW")}
-                  onMove={handleMove}
-                  onDetach={handleDetach}
-                />
-              </div>
-
-              {multiComtradeEnabled && (
-                <>
-                  <div className={styles.subsection}>
-                    <h3>Reconstruction</h3>
-                    <ReconstructionControls
-                      reconstruction={reconstruction}
-                      reconstructions={reconstructions}
-                      stale={isReconstructionStale(incident, reconstruction) && Boolean(reconstruction)}
-                      staleReason="the attached records changed since this reconstruction"
-                      loading={reconstructionLoading || rebuilding}
-                      recordCount={incident.records.length}
-                      onReconstruct={handleReconstruct}
-                      onSelectVersion={(id) => loadReconstructionState(id)}
-                      selectedVersionId={reconstruction?.reconstruction_id ?? null}
-                    />
-                  </div>
-                  {reconstruction && (
-                    <>
-                      <div className={styles.subsection}>
-                        <h3>Summary</h3>
-                        <ReconstructionSummary reconstruction={reconstruction} />
-                      </div>
-                      <div className={styles.subsection}>
-                        <h3>Segmented incident timeline</h3>
-                        <SegmentedTimeline
-                          records={incident.records}
-                          timeline={timeline}
-                          episodes={episodes}
-                          relationships={relationships}
-                        />
-                      </div>
-                      <div className={styles.subsection}>
-                        <h3>Episodes</h3>
-                        <EpisodeCards incidentId={incidentId ?? ""} episodes={episodes} records={incident.records} />
-                      </div>
-                      <div className={styles.subsection}>
-                        <h3>Relationship inspector</h3>
-                        <RelationshipInspector
-                          incidentId={incident.incident_id}
-                          relationships={relationships}
-                          recordLabel={recordLabel}
-                          onOverridden={() => loadReconstructionState(reconstruction.reconstruction_id)}
-                        />
-                      </div>
-                      <div className={styles.subsection}>
-                        <h3>Narrative and uncertainty</h3>
-                        <NarrativePanel reconstruction={reconstruction} />
-                      </div>
-                      <div className={styles.subsection}>
-                        <h3>Physical-cause evidence</h3>
-                        <PhysicalCauseEvidencePanel
-                          physicalCauseEvidence={reconstruction.physical_cause_evidence}
-                          episodes={episodes}
-                          recordLabel={recordLabel}
-                        />
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-
-              <div className={styles.subsection}>
-                <div className={styles.subsectionHeader}>
-                  <h3>Evidence</h3>
-                  <button type="button" className={styles.smallButton} onClick={() => setShowEvidenceForm((v) => !v)}>
-                    + Add evidence
-                  </button>
-                </div>
-                {showEvidenceForm && (
-                  <div className={styles.evidenceForm}>
-                    <select
-                      value={evidenceDraft.evidence_type}
-                      onChange={(e) => setEvidenceDraft({ ...evidenceDraft, evidence_type: e.target.value as EvidenceType })}
-                    >
-                      {EVIDENCE_TYPE_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={evidenceDraft.confidence}
-                      onChange={(e) =>
-                        setEvidenceDraft({ ...evidenceDraft, confidence: e.target.value as EvidenceConfidence })
-                      }
-                    >
-                      {EVIDENCE_CONFIDENCE_OPTIONS.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      placeholder="Source (e.g. Field team, BMKG)"
-                      value={evidenceDraft.source}
-                      onChange={(e) => setEvidenceDraft({ ...evidenceDraft, source: e.target.value })}
-                    />
-                    <textarea
-                      placeholder="Description / notes"
-                      value={evidenceDraft.description}
-                      onChange={(e) => setEvidenceDraft({ ...evidenceDraft, description: e.target.value })}
-                      rows={2}
-                    />
-                    <div className={styles.modalActions}>
-                      <button type="button" onClick={() => setShowEvidenceForm(false)}>
-                        Cancel
-                      </button>
-                      <button type="button" className={styles.smallButton} onClick={handleAddEvidence}>
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {incident.evidence_ids.length === 0 ? (
-                  <div className={styles.empty}>No evidence added yet.</div>
-                ) : (
-                  <EvidenceList incidentId={incident.incident_id} onChanged={load} />
-                )}
-              </div>
-
-              <div className={styles.subsection}>
-                <h3>Record collection summary</h3>
-                <p className={styles.summaryNote}>{incident.incident_interpretation.summary}</p>
-                <div className={styles.summaryGrid}>
-                  <div>
-                    <strong>{incident.observed_summary.record_count}</strong>
-                    <span>records</span>
-                  </div>
-                  <div>
-                    <strong>{incident.observed_summary.records_with_absolute_time}</strong>
-                    <span>with absolute time</span>
-                  </div>
-                  <div>
-                    <strong>{incident.observed_summary.records_without_absolute_time}</strong>
-                    <span>without absolute time</span>
-                  </div>
-                  <div>
-                    <strong>{incident.observed_summary.protection_types.join(", ") || "-"}</strong>
-                    <span>protection types</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.subsection}>
-                <h3>Missing evidence</h3>
-                {incident.missing_evidence.length === 0 ? (
-                  <div className={styles.empty}>Nothing flagged.</div>
-                ) : (
-                  <ul className={styles.missingList}>
-                    {incident.missing_evidence.map((m, i) => (
-                      <li key={i}>{m.description}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <TechnicalDetails
+                incident={incident}
+                reconstruction={reconstruction}
+                episodes={episodes}
+                relationships={relationships}
+                story={story}
+                refreshing={refreshing}
+                onHide={() => setDetailsOpen(false)}
+                onAddRecords={() => openUpload()}
+                onDetach={(id) => void handleDetach(id)}
+                onSave={handleSave}
+                onArchive={() => void handleArchive()}
+                onRefreshAnalyses={() => void handleRefreshAnalyses()}
+                onRelationshipChanged={() => void loadReconstructionState(reconstruction?.reconstruction_id)}
+              />
             </div>
           )}
         </section>
@@ -800,41 +428,6 @@ export default function IncidentWorkspace() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function EvidenceList({ incidentId, onChanged }: { incidentId: string; onChanged: () => void }) {
-  const [items, setItems] = useState<IncidentEvidenceOut[] | null>(null);
-
-  useEffect(() => {
-    listIncidentEvidence(incidentId).then(setItems);
-  }, [incidentId]);
-
-  async function remove(evidenceId: string) {
-    await removeIncidentEvidence(incidentId, evidenceId);
-    onChanged();
-    setItems(await listIncidentEvidence(incidentId));
-  }
-
-  if (!items) return <div className={styles.empty}>Loading evidence…</div>;
-  if (items.length === 0) return <div className={styles.empty}>No evidence added yet.</div>;
-
-  return (
-    <div className={styles.evidenceListWrap}>
-      {items.map((ev) => (
-        <div key={ev.evidence_id} className={styles.evidenceItem}>
-          <div>
-            <span className={styles.evidenceType}>{ev.evidence_type}</span>
-            <span className={styles.evidenceConfidence}>{ev.confidence}</span>
-          </div>
-          <div className={styles.evidenceDescription}>{ev.description || "-"}</div>
-          <div className={styles.evidenceSource}>{ev.source}</div>
-          <button type="button" onClick={() => remove(ev.evidence_id)}>
-            Remove
-          </button>
-        </div>
-      ))}
     </div>
   );
 }

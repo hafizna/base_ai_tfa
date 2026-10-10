@@ -298,6 +298,17 @@ class PhaseClassification(BaseModel):
     max_ratio: float        # max(i_diff / threshold) — >1.0 = inside operate region
 
 
+class LineDiffEvidence(BaseModel):
+    """F5.8: whether a record carries line-differential (87L) evidence — the
+    relay's own differential current, a validated local/remote current pair,
+    or a differential operate channel that asserted."""
+    has_87l: bool
+    diff_data_mode: str                         # TWO_TERMINAL | TWO_TERMINAL_RAW | LOCAL_ONLY
+    operate_channels: List[str] = []            # differential operate channels recorded
+    operated_channels: List[str] = []           # the ones that asserted
+    evidence: List[str] = []
+
+
 class DiffRestraintResponse(BaseModel):
     samples: List[DiffRestraintSample]
     params: CharacteristicParams
@@ -418,6 +429,18 @@ class DoubleEndedAlignResponse(BaseModel):
     sync_channel_b: Optional[str] = None
 
 
+class DoubleEndedLoopSuggestion(BaseModel):
+    """The loop to solve on, from each terminal's reasoning chain (rule F4,
+    the faulted phases) — F7.4: only a quantity the fault draws current in
+    gives a valid two-ended location."""
+    loop: Optional[str] = None                  # None when no terminal found the faulted phases
+    label: Optional[str] = None                 # PLN phase label, e.g. "S-T"
+    source_terminal: Optional[str] = None       # "A" | "B": whose reading set the loop
+    agree: Optional[bool] = None                # both terminals read the same phases
+    weak_infeed_terminals: List[str] = []
+    reason: str = ""
+
+
 class DoubleEndedSuggestShiftRequest(BaseModel):
     analysis_id_a: str
     analysis_id_b: str
@@ -492,6 +515,16 @@ class DoubleEndedComputeResponse(BaseModel):
     inception_time_b_s: float
     active_tag_a: Optional[str]
     active_tag_b: Optional[str]
+    # F7.4: |I_A + I_B| in the solved quantity over the positive-sequence
+    # current drawn at the fault. Under 0.2 the fault draws no current in it
+    # and the result is not valid (loop_carries_fault False; None when the
+    # records lack a phase to check with). Per end, the fault contribution over
+    # the load current; an end under 2x is a weak-infeed end (F4.7).
+    fault_point_ratio: Optional[float] = None
+    fault_contribution_ratio_a: Optional[float] = None
+    fault_contribution_ratio_b: Optional[float] = None
+    loop_carries_fault: Optional[bool] = None
+    weak_infeed_terminals: List[str] = []
     warnings: List[str] = []
     single_ended_a: Optional[DoubleEndedSingleEndedResult] = None
     single_ended_b: Optional[DoubleEndedSingleEndedResult] = None

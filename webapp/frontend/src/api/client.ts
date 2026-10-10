@@ -290,11 +290,64 @@ export interface CanonicalRecordAnalysis {
   protection_operations: ProtectionOperation[];
   electrical_measurements: ElectricalMeasurements;
   analog_trace?: Partial<AnalogTrace>;
+  /** The record's reasoning chain (webapp/api/fault_reasoning.py); absent in older snapshots. */
+  reasoning?: RecordReasoning;
   observed_facts: Record<string, unknown>;
   protection_interpretation: Record<string, unknown>;
   cause_hypotheses: Array<Record<string, unknown>>;
   missing_evidence: Array<{ type: string; description: string }>;
   provenance: Record<string, unknown>;
+}
+
+/**
+ * One conclusion of the reasoning chain: a ledger row. Rule IDs follow
+ * docs/fault-reasoning-rules.md. Confidence "flag" marks a row for review;
+ * "ai" marks the AI's statistical reading.
+ */
+export interface ReasoningRow {
+  key: string;
+  step: number;
+  label: string;
+  title: string;
+  evidence: string[];
+  rules: string[];
+  confidence: "high" | "medium" | "low" | "flag" | "ai";
+  value: Record<string, unknown>;
+  conflicts: string[];
+}
+
+export interface SignalEvent {
+  t_ms: number;
+  channel: string;
+  role: string;
+  change: string;
+  /** Contact bounce, shown but not part of the sequence. */
+  muted?: boolean;
+}
+
+export interface RecordReasoning {
+  schema: string;
+  has_fault: boolean;
+  fault_start_ms: number | null;
+  conclusions: ReasoningRow[];
+  flag_count: number;
+  conflict_count: number;
+  signals: {
+    /** "fault_start": times are ms after the fault starts; "record_start": after the first sample. */
+    reference: "fault_start" | "record_start";
+    events: SignalEvent[];
+    silent: Array<{ channel: string; role: string | null }>;
+    channel_count: number;
+  };
+}
+
+/** A fault's ledger in a reconstructed incident (episode.interpretation.reasoning). */
+export interface EpisodeReasoning {
+  fault_record_id: string;
+  fault_start_ms: number | null;
+  rows: ReasoningRow[];
+  flag_count: number;
+  conflict_count: number;
 }
 
 export async function fetchCanonicalAnalysis(analysisId: string) {
@@ -393,6 +446,26 @@ export async function fetchDoubleEndedAlignEstimate(analysisIdA: string, analysi
   return data;
 }
 
+/** The loop each terminal's reasoning chain points to (rule F7.4). */
+export interface DoubleEndedLoopSuggestion {
+  /** Null when no terminal found the faulted phases. */
+  loop: string | null;
+  /** PLN phase label, e.g. "S-T". */
+  label: string | null;
+  source_terminal: "A" | "B" | null;
+  agree: boolean | null;
+  weak_infeed_terminals: string[];
+  reason: string;
+}
+
+export async function fetchDoubleEndedLoopSuggestion(analysisIdA: string, analysisIdB: string) {
+  const { data } = await api.post<DoubleEndedLoopSuggestion>("/api/analyze/21de/loop-suggestion", {
+    analysis_id_a: analysisIdA,
+    analysis_id_b: analysisIdB,
+  });
+  return data;
+}
+
 export interface DoubleEndedSuggestShiftRequest {
   analysisIdA: string;
   analysisIdB: string;
@@ -472,6 +545,14 @@ export interface DoubleEndedComputeResult {
   inception_time_b_s: number;
   active_tag_a: string | null;
   active_tag_b: string | null;
+  /** F7.4: |I_A + I_B| in the solved quantity over the positive-sequence current drawn at the fault. */
+  fault_point_ratio?: number | null;
+  /** Per end: fault contribution over load current; under 2× is weak infeed. */
+  fault_contribution_ratio_a?: number | null;
+  fault_contribution_ratio_b?: number | null;
+  /** False when the fault draws no current in the solved quantity: the result is not valid. */
+  loop_carries_fault?: boolean | null;
+  weak_infeed_terminals?: string[];
   warnings: string[];
   single_ended_a: DoubleEndedSingleEndedResult | null;
   single_ended_b: DoubleEndedSingleEndedResult | null;
@@ -598,6 +679,21 @@ export async function diffRestraint87L(analysisId: string, params: unknown) {
 
 export async function aiFaultAnalysis87L(analysisId: string, params: unknown) {
   const { data } = await api.post("/api/analyze/87l/ai-analysis", { analysis_id: analysisId, params, relay_type: "87L" });
+  return data;
+}
+
+/** F5.8: whether a record carries line-differential (87L) evidence. */
+export interface LineDiffEvidence {
+  has_87l: boolean;
+  diff_data_mode: "TWO_TERMINAL" | "TWO_TERMINAL_RAW" | "LOCAL_ONLY";
+  /** Differential operate channels recorded, and the ones that asserted. */
+  operate_channels: string[];
+  operated_channels: string[];
+  evidence: string[];
+}
+
+export async function fetchLineDiffEvidence(analysisId: string) {
+  const { data } = await api.post<LineDiffEvidence>("/api/analyze/87l/evidence", { analysis_id: analysisId });
   return data;
 }
 
@@ -1345,7 +1441,7 @@ export interface FaultEpisodeOut {
   relationship_to_previous: RelationshipType | null;
   confidence: number;
   observed_facts: Record<string, unknown>;
-  interpretation: { event_classes?: string[]; [key: string]: unknown };
+  interpretation: { event_classes?: string[]; reasoning?: EpisodeReasoning; [key: string]: unknown };
   missing_evidence: Array<{ type: string; description: string }>;
   provenance: Record<string, unknown>;
 }

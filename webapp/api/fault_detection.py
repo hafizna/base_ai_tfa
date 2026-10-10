@@ -57,6 +57,16 @@ def _find_ch(channels: list, candidates: set[str]) -> Optional[np.ndarray]:
     return None
 
 
+def _live_voltage_floor(channels: list) -> float:
+    """Smallest prefault phase-voltage RMS that means the VT reads a live
+    system rather than noise, in the record's own voltage unit."""
+    unit = next(
+        (str(ch.get("unit") or "").strip().lower() for ch in channels if ch.get("measurement") == "voltage"),
+        "",
+    )
+    return {"kv": 1.0, "mv": 0.001}.get(unit, 10.0)
+
+
 def _fundamental_phasor(seg: np.ndarray) -> complex:
     n = len(seg)
     if n < 2:
@@ -170,6 +180,7 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
 
     # 3) Voltage sag (deepest phase).
     sag_pu = 0.0
+    voltage_live = False
     v_channels = [v for v in (va, vb, vc) if v is not None]
     if v_channels:
         pre_rms, fault_rms = [], []
@@ -186,6 +197,8 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
             pre_mean = float(np.mean(pre_rms))
             if pre_mean > 0:
                 sag_pu = max(0.0, (pre_mean - min(fault_rms)) / pre_mean)
+            # A VT reading only noise before the event carries no sag evidence.
+            voltage_live = pre_mean >= _live_voltage_floor(channels)
     has_sag = sag_pu >= VOLTAGE_SAG_PU
     has_hard_sag = sag_pu >= HARD_VOLTAGE_SAG_PU
     if has_sag:
@@ -219,16 +232,30 @@ def detect_fault_presence(payload: dict) -> FaultDetection:
     # itself. Sync/teleprotection/GPS disturbances can create exactly that kind
     # of analog blip while the SOE contains no protection operate. Only hard
     # evidence, or a strong combination of analog evidence, opens the gate.
+    #
+    # Rule F1.1 (docs/fault-reasoning-rules.md): a fault always pulls its
+    # phase voltage down at the relay, so when the record has voltage channels
+    # a current step counts only together with a sag. A step on normal
+    # voltage is load or switching — e.g. a DFR triggered as a feeder current
+    # rose from 3 A to 70 A with the breaker closed throughout.
+    current_step_is_fault = has_current_step and (not voltage_live or has_sag)
+    if has_current_step and not current_step_is_fault:
+        reasons = [r for r in reasons if not r.startswith("lonjakan arus")]
     analog_hard_fault = (
-        has_current_step
+        current_step_is_fault
         or (has_hard_sag and (has_hard_unbalance or peak_ratio >= 1.8))
         or (has_sag and has_hard_unbalance)
     )
     is_fault = protection_operated or analog_hard_fault
     if not is_fault:
+        current_text = (
+            f"arus naik {peak_ratio:.2f}x prefault tanpa voltage sag — beban/switching, bukan gangguan"
+            if has_current_step else
+            f"arus tidak menunjukkan lonjakan gangguan sustained (peak {peak_ratio:.2f}x, RMS {rms_step_ratio:.2f}x prefault)"
+        )
         reasons = [
             "tidak ada proteksi beroperasi",
-            f"arus tidak menunjukkan lonjakan gangguan sustained (peak {peak_ratio:.2f}x, RMS {rms_step_ratio:.2f}x prefault)",
+            current_text,
             f"tidak ada voltage sag kuat ({sag_pu * 100:.1f}%)",
             f"sistem seimbang (I0/I1 {i0_i1 * 100:.1f}%, I2/I1 {i2_i1 * 100:.1f}%)",
         ]

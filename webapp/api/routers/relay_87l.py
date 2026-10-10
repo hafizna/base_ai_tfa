@@ -13,15 +13,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from ..schemas import (
     AIFaultResult,
+    AnalysisRequestBase,
     DiffRestraintAnalysisRequest,
     DiffRestraintResponse,
     DiffRestraintSample,
+    LineDiffEvidence,
     TripMarker,
     PhaseClassification,
 )
 from ..storage import load_analysis
 from ..ml_predict import run_ml_prediction
 from ..fault_detection import detect_fault_presence
+from core.line_selection import scope_payload
+from core.protection_router import differential_operate_channels
 
 router = APIRouter(prefix="/api/analyze/87l", tags=["relay-87l"])
 
@@ -551,6 +555,40 @@ def _classify_phases(
     return out
 
 
+def _line_diff_evidence(payload: dict) -> dict:
+    """F5.8: the 87L evidence a record carries. Read on the disturbed line
+    only, so a DFR wired to two circuits cannot pair one circuit's currents
+    with the other's as local and remote."""
+    scoped = scope_payload(payload)
+    mode = _detect_diff_mode(scoped.get("analog_channels", []), scoped.get("time", []), scoped.get("frequency", 50.0))
+    status = scoped.get("status_channels", [])
+    # "Inactive" matches the operate keyword ACT but says the element is off.
+    operate = [
+        name for name in differential_operate_channels([str(ch.get("name", "")) for ch in status])
+        if "INACTIVE" not in name.upper()
+    ]
+    asserted = {
+        str(ch.get("name", "")) for ch in status
+        if np.any(np.asarray(ch.get("samples") or [], dtype=float) > 0.5)
+    }
+    operated = [name for name in operate if name in asserted]
+
+    evidence = []
+    if mode == "TWO_TERMINAL":
+        evidence.append("arus differential dan restraint dari relay")
+    elif mode == "TWO_TERMINAL_RAW":
+        evidence.append("arus terminal lokal dan remote")
+    if operated:
+        evidence.append("87L operate: " + ", ".join(operated))
+    return {
+        "has_87l": mode in ("TWO_TERMINAL", "TWO_TERMINAL_RAW") or bool(operated),
+        "diff_data_mode": mode,
+        "operate_channels": operate,
+        "operated_channels": operated,
+        "evidence": evidence,
+    }
+
+
 def _load_analysis_or_404(analysis_id: str) -> dict:
     payload = load_analysis(analysis_id)
     if payload is None:
@@ -592,6 +630,15 @@ async def diff_restraint(body: DiffRestraintAnalysisRequest):
         no_fault=False,
         no_fault_reasons=[],
     )
+
+
+@router.post("/evidence", response_model=LineDiffEvidence)
+async def line_diff_evidence(body: AnalysisRequestBase):
+    """F5.8: whether this record carries 87L evidence, so a line workspace
+    shows the 87L panels only for a record that has something to show."""
+    payload = _load_analysis_or_404(body.analysis_id)
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _line_diff_evidence, payload)
 
 
 @router.post("/ai-analysis", response_model=AIFaultResult)

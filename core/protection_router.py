@@ -383,6 +383,17 @@ def _check_transformer_diff_operate(
 
 def _check_differential_operate(status_names: List[str], status_dict: dict) -> bool:
     """Check if 87L differential operated (issued trip command)."""
+    for name in differential_operate_channels(status_names):
+        samples = status_dict.get(name, [])
+        if len(samples) > 0 and samples.sum() > 0:
+            logger.debug(f"87L operated: {name} ({samples.sum()} samples)")
+            return True
+    return False
+
+
+def differential_operate_channels(status_names: List[str]) -> List[str]:
+    """Status channels that carry a differential operate/trip, whether or not
+    they asserted in this record."""
     # Siemens: "87L:I-DIFF*:Operate"
     # ABB REL: "DIFL*:OPERATE", "L3D-TRL1/2/3" (line 3-terminal differential)
     # DFR: "DIFF TRIP", "87 TRIP", "MAIN PROT" (if from differential relay)
@@ -398,19 +409,15 @@ def _check_differential_operate(status_names: List[str], status_dict: dict) -> b
                         'TRL',    # ABB REL: "L3D-TRL1" (trip per phase)
                         ]
 
+    matched = []
     for name in status_names:
         variants = _name_variants(name)
         # Must have both diff pattern AND operate keyword
         has_diff = any(p in v for v in variants for p in patterns)
         has_operate = any(k in v for v in variants for k in operate_keywords)
-
         if has_diff and has_operate:
-            samples = status_dict.get(name, [])
-            if len(samples) > 0 and samples.sum() > 0:
-                logger.debug(f"87L operated: {name} ({samples.sum()} samples)")
-                return True
-
-    return False
+            matched.append(name)
+    return matched
 
 
 def _extract_phase_from_name(name_upper: str) -> Optional[str]:

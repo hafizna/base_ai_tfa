@@ -91,18 +91,34 @@ describe("IncidentWorkspace", () => {
     expect(reconstruct).not.toHaveBeenCalled();
   });
 
-  it("keeps every technical panel under Detail teknis", async () => {
+  it("keeps the technical details in four tabs, collapsed until asked for", async () => {
     mockApi();
 
     renderWorkspace(bringin.incident.incident_id);
 
     const toggle = await screen.findByRole("button", { name: /^Detail teknis/ });
-    expect(screen.queryByText("Relationship inspector")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Penalaran" })).not.toBeInTheDocument();
     fireEvent.click(toggle);
-    expect(screen.getByText("Attached records")).toBeInTheDocument();
-    expect(screen.getByText("Relationship inspector")).toBeInTheDocument();
-    expect(screen.getByText("Physical-cause evidence")).toBeInTheDocument();
-    expect(screen.getByText("Record collection summary")).toBeInTheDocument();
+    for (const tab of ["Penalaran", "Urutan sinyal", "Rekaman", "Data insiden"]) {
+      expect(screen.getByRole("button", { name: tab })).toBeInTheDocument();
+    }
+    // Records attached before the reasoning chain existed offer to be analysed again.
+    expect(await screen.findByText("Penalaran belum tersedia untuk gangguan ini")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Muat ulang analisa rekaman" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sembunyikan" }));
+    expect(screen.queryByRole("button", { name: "Penalaran" })).not.toBeInTheDocument();
+  });
+
+  it("analyses the records again and rebuilds when asked to", async () => {
+    const reconstruct = mockApi();
+    const refresh = vi.spyOn(client, "refreshIncidentSnapshots").mockResolvedValue(bringin.incident.records);
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Detail teknis/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Muat ulang analisa rekaman" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledWith(bringin.incident.incident_id));
+    await waitFor(() => expect(reconstruct).toHaveBeenCalledTimes(1));
   });
 
   it("hides the story and uploads when the multi-COMTRADE feature is disabled", async () => {
@@ -118,7 +134,8 @@ describe("IncidentWorkspace", () => {
     await waitFor(() => expect(screen.getByText(/Rekonstruksi multi-COMTRADE nonaktif/)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Tambah rekaman" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Detail teknis/ }));
-    expect(screen.getByText("Attached records")).toBeInTheDocument();
-    expect(screen.queryByText("Relationship inspector")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Rekaman" }));
+    expect(screen.getByText("ZQ6D")).toBeInTheDocument();
+    expect(screen.getByText(/Belum ada\. Hubungan/)).toBeInTheDocument();
   });
 });

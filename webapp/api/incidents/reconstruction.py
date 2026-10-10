@@ -28,6 +28,7 @@ from .. import ml_predict
 from ..storage import load_analysis
 from . import storage as incident_storage
 from .alignment import assess_alignment
+from .episode_reasoning import build_episode_reasoning
 from .episodes import group_episodes
 from .episodes import _reclose_outcome as _record_reclose_outcome
 from .models import (
@@ -825,6 +826,14 @@ def run_reconstruction(
     observed_facts = _observed_incident_facts(records, episodes, axis)
     interpretation = _protection_sequence_interpretation(episodes, relationships)
     hypotheses = _incident_hypotheses(episodes, relationships)
+
+    # Each fault's reasoning ledger: its record's chain, completed with what
+    # only the incident shows (reclose file, the other end, cause evidence).
+    records_by_id = {r.incident_record_id: r for r in records}
+    for episode in episodes:
+        ledger = build_episode_reasoning(episode, records_by_id, physical_cause, hypotheses)
+        if ledger is not None:
+            episode.interpretation["reasoning"] = ledger
 
     narrative = build_narrative(
         episodes,
