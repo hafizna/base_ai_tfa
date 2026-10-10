@@ -16,6 +16,7 @@ from core.comtrade_parser import ComtradeRecord, parse_comtrade
 from core.protection_router import ProtectionType, determine_protection
 from ..json_safety import replace_non_finite_numbers
 from ..record_analysis import build_record_analysis
+from ..record_payload import record_to_payload as _record_to_out
 from ..schemas import AnalysisCreatedResponse, AnalysisSummaryOut, ComtradeOut, RecalcByIdRequest
 from ..storage import load_analysis, save_analysis, update_analysis
 from ..training_retention import RetainedUploadFile, retain_upload
@@ -29,50 +30,6 @@ _PROTECTION_TO_RELAY: dict[ProtectionType, str] = {
 
 router = APIRouter(prefix="/api", tags=["upload"])
 logger = logging.getLogger("uvicorn")
-
-
-def _record_to_out(record: ComtradeRecord) -> dict:
-    payload = {
-        "station_name": record.station_name,
-        "rec_dev_id": record.rec_dev_id,
-        "rev_year": record.rev_year,
-        "sampling_rates": record.sampling_rates,
-        "trigger_time": record.trigger_time,
-        "start_time_iso": record.start_time_iso,
-        "trigger_time_iso": record.trigger_time_iso,
-        "trigger_offset_s": record.trigger_offset_s,
-        "time_code": record.time_code,
-        "local_code": record.local_code,
-        "clock_quality": record.clock_quality,
-        "total_samples": record.total_samples,
-        "frequency": record.frequency,
-        "time": record.time.tolist(),
-        "analog_channels": [
-            {
-                "id": ch.id,
-                "name": ch.name,
-                "canonical_name": ch.canonical_name,
-                "unit": ch.unit,
-                "phase": ch.phase,
-                "measurement": ch.measurement,
-                "ct_primary": ch.ct_primary,
-                "ct_secondary": ch.ct_secondary,
-                "pors": ch.pors,
-                "samples": ch.samples.tolist(),
-            }
-            for ch in record.analog_channels
-        ],
-        "status_channels": [
-            {
-                "id": ch.id,
-                "name": ch.name,
-                "samples": ch.samples.tolist(),
-            }
-            for ch in record.status_channels
-        ],
-        "warnings": record.warnings,
-    }
-    return replace_non_finite_numbers(payload)
 
 
 def _status_transition_count(samples: list[int]) -> int:

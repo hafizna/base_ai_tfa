@@ -198,6 +198,19 @@ export interface CanonicalEventWindow {
     source?: string;
   }>;
   warnings: string[];
+  sequence?: RecordSequence;
+}
+
+export interface RecordSequence {
+  episode_count: number;
+  mechanical_close_confirmed: boolean;
+  restoration_outcome: "successful" | "failed" | "unknown";
+  refault_after_reclose: boolean;
+  sotf_after_reclose: boolean;
+  reclose_times_ms: number[];
+  sotf_trips: Array<{ time_ms: number; channel: string }>;
+  timeline: Array<{ kind: string; time_ms: number; episode_index?: number; channel?: string }>;
+  interpretation: string;
 }
 
 /** Per-phase values keyed "A" | "B" | "C" (null where the window had no data). */
@@ -350,9 +363,16 @@ export interface EpisodeReasoning {
   conflict_count: number;
 }
 
-export async function fetchCanonicalAnalysis(analysisId: string) {
-  const { data } = await api.get<CanonicalRecordAnalysis>(`/api/analysis/${analysisId}/canonical`);
-  return data;
+const canonicalRequests = new Map<string, Promise<CanonicalRecordAnalysis>>();
+
+export function fetchCanonicalAnalysis(analysisId: string, revision = 0) {
+  const key = `${analysisId}:${revision}`;
+  const existing = canonicalRequests.get(key);
+  if (existing) return existing;
+  const request = api.get<CanonicalRecordAnalysis>(`/api/analysis/${analysisId}/canonical`)
+    .then(({ data }) => data).finally(() => canonicalRequests.delete(key));
+  canonicalRequests.set(key, request);
+  return request;
 }
 
 export async function recalculateRatio(analysisId: string, ratios: unknown[]) {
@@ -877,6 +897,12 @@ export interface TrainingFeedbackRequest {
   actual_episode_count?: number | null;
   protection_interpretation_correct?: boolean | null;
   actual_event_class?: string;
+  scheme_correct?: boolean | null;
+  actual_scheme?: string;
+  trip_path_correct?: boolean | null;
+  actual_trip_path?: string;
+  sotf_correct?: boolean | null;
+  actual_sotf_after_reclose?: boolean | null;
   cause_correct?: boolean | null;
   actual_cause?: string;
   ground_truth_source?: GroundTruthSource[];

@@ -180,7 +180,7 @@ export default function AIFaultResultView({
             aria-label={`Overall confidence ${confidence.toFixed(0)}%`}
           >
             <span>{confidence.toFixed(0)}%</span>
-            <small>Pattern-match confidence</small>
+            <small>{result.cause_ranking.length === 0 && result.tier1?.fired ? "Keyakinan pembacaan kejadian" : "Pattern-match confidence"}</small>
           </div>
         </section>
       )}

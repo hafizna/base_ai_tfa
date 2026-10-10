@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.record_identity import fingerprint_files
+
 
 TRAINING_DATA_DIR = Path(os.getenv("TRAINING_DATA_DIR", "training-data")).resolve()
 RETENTION_ENABLED = os.getenv("TRAINING_RETENTION_ENABLED", "0").strip().lower() in {
@@ -66,6 +68,12 @@ FEEDBACK_COLUMNS = [
     "actual_episode_count",
     "protection_interpretation_correct",
     "actual_event_class",
+    "scheme_correct",
+    "actual_scheme",
+    "trip_path_correct",
+    "actual_trip_path",
+    "sotf_correct",
+    "actual_sotf_after_reclose",
     "cause_correct",
     "actual_cause",
     "ground_truth_source",
@@ -164,12 +172,30 @@ def retain_upload(
         "created_at_utc": created_at.isoformat(),
         "files": manifest_files,
         "metadata": metadata,
+        "record_fingerprint": fingerprint_files([
+            {"suffix": Path(f["stored_name"]).suffix, "sha256": f["sha256"]}
+            for f in manifest_files
+        ]),
     }
     (record_dir / "metadata.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False, default=_json_default),
         encoding="utf-8",
     )
     return record_dir
+
+
+def retained_fingerprint(analysis_id: str) -> str | None:
+    """Resolve feedback to immutable upload bytes even after a session expires."""
+    if not RAW_DIR.exists():
+        return None
+    for path in RAW_DIR.glob(f"*_{analysis_id[:12]}/metadata.json"):
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        if manifest.get("analysis_id") == analysis_id:
+            return manifest.get("record_fingerprint") or fingerprint_files([
+                {"suffix": Path(f["stored_name"]).suffix, "sha256": f["sha256"]}
+                for f in manifest.get("files", [])
+            ])
+    return None
 
 
 def _bool_cell(value: Any) -> str:
@@ -211,6 +237,12 @@ def append_feedback(feedback: dict[str, Any]) -> dict[str, Any]:
         "actual_episode_count": "" if feedback.get("actual_episode_count") is None else str(feedback.get("actual_episode_count")),
         "protection_interpretation_correct": _bool_cell(feedback.get("protection_interpretation_correct")),
         "actual_event_class": str(feedback.get("actual_event_class") or ""),
+        "scheme_correct": _bool_cell(feedback.get("scheme_correct")),
+        "actual_scheme": str(feedback.get("actual_scheme") or ""),
+        "trip_path_correct": _bool_cell(feedback.get("trip_path_correct")),
+        "actual_trip_path": str(feedback.get("actual_trip_path") or ""),
+        "sotf_correct": _bool_cell(feedback.get("sotf_correct")),
+        "actual_sotf_after_reclose": _bool_cell(feedback.get("actual_sotf_after_reclose")),
         "cause_correct": _bool_cell(feedback.get("cause_correct")),
         "actual_cause": str(feedback.get("actual_cause") or ""),
         "ground_truth_source": "+".join(feedback.get("ground_truth_source") or []),
@@ -219,8 +251,12 @@ def append_feedback(feedback: dict[str, Any]) -> dict[str, Any]:
 
     csv_path = LABELS_DIR / "feedback.csv"
     write_header = not csv_path.exists()
+    columns = FEEDBACK_COLUMNS
+    if not write_header:
+        with csv_path.open("r", encoding="utf-8", newline="") as existing:
+            columns = next(csv.reader(existing), FEEDBACK_COLUMNS)
     with csv_path.open("a", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FEEDBACK_COLUMNS)
+        writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
         if write_header:
             writer.writeheader()
         writer.writerow(row)

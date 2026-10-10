@@ -566,27 +566,10 @@ def _extract_features_from_payload(payload: dict) -> dict:
 
     pre_end = min(2 * cycle_n, len(i) // 4)
     pre_rms = float(np.sqrt(np.mean(i[:pre_end] ** 2))) if pre_end > 1 else 0.0
-    threshold = max(pre_rms, np.max(np.abs(i)) * 0.05, 0.05)
-
-    # Canonical inception/clearing — single source of truth shared with
-    # electrical-params, locus-events, full-soe, and AI feature extraction.
     inception_idx, _timing_source, _timing_confidence = _canonical_inception_idx(payload, time)
-
-    extinction_idx = len(i) - 1
-    for k in range(inception_idx + cycle_n, len(i)):
-        s = max(0, k - cycle_n // 2)
-        if float(np.sqrt(np.mean(i[s : k + 1] ** 2))) < threshold * 0.6:
-            extinction_idx = k
-            break
-    fault_duration_ms = float((time[extinction_idx] - time[inception_idx]) * 1000)
-
-    # FIA: sine of normalised voltage at inception → degrees
-    fia_deg = 0.0
-    if v is not None and inception_idx < len(v):
-        v_peak = float(np.max(np.abs(v[:inception_idx]))) if inception_idx > 0 else float(np.max(np.abs(v)))
-        if v_peak > 0:
-            ratio = float(np.clip(v[inception_idx] / v_peak, -1.0, 1.0))
-            fia_deg = float(np.degrees(np.arcsin(ratio)))
+    shared = extract_ml_features(payload, "21")
+    fault_duration_ms = shared["fault_duration_ms"]
+    fia_deg = shared["inception_angle_degrees"]
 
     # DC offset and asymmetry from first fault cycle
     fw = i[inception_idx : inception_idx + cycle_n]
@@ -673,6 +656,10 @@ def _compute_electrical_params(payload: dict) -> dict:
             if float(np.sqrt(np.mean(i_ref[start : idx + 1] ** 2))) < threshold * 0.6:
                 extinction_idx = idx
                 break
+
+    canonical_window = build_event_window(payload)
+    if canonical_window.clearing_idx is not None:
+        extinction_idx = canonical_window.clearing_idx
 
     fault_slice = slice(inception_idx, min(extinction_idx + 1, len(time)))
 

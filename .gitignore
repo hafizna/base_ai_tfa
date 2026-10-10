@@ -25,6 +25,11 @@ Thumbs.db
 # Runtime data not committed (used by the FastAPI history fallback)
 webapp/history.csv
 training-data/
+data/features/labeled_features_v2*
+models/candidates/
+data/training-runs/
+tmp/
+output/pdf/
 
 # Node / Vite
 node_modules/

@@ -43,6 +43,8 @@ class EventWindow:
     confidence: float                # 0-1
     faulted_phases: list[str] = field(default_factory=list)
     reclose_events: list[dict] = field(default_factory=list)
+    fault_episodes: list[dict] = field(default_factory=list)
+    sequence: dict = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -64,6 +66,8 @@ class EventWindow:
             "confidence": self.confidence,
             "faulted_phases": self.faulted_phases,
             "reclose_events": self.reclose_events,
+            "fault_episodes": self.fault_episodes,
+            "sequence": self.sequence,
             "warnings": self.warnings,
         }
 
@@ -198,7 +202,7 @@ def build_event_window(payload: dict) -> EventWindow:
     if fault.duration_ms == 0.0 and fault.clearing_idx is None:
         warnings.append("Fault clearing evidence not available - duration left unset rather than guessed")
 
-    return EventWindow(
+    result = EventWindow(
         record_start_ms=record_start_ms,
         trigger_time_ms=trigger_time_ms if trigger_time_ms else None,
         inception_idx=int(fault.inception_idx) if fault.inception_idx is not None else None,
@@ -212,3 +216,37 @@ def build_event_window(payload: dict) -> EventWindow:
         reclose_events=list(fault.reclose_events or []),
         warnings=warnings,
     )
+    if result.method != "dead_time_recording" and result.inception_time_ms is not None:
+        result.fault_episodes.append({
+            "episode_index": 0, "inception_time_ms": result.inception_time_ms,
+            "clearing_time_ms": result.clearing_time_ms, "fault_duration_ms": result.fault_duration_ms,
+            "faulted_phases": result.faulted_phases, "detection_method": result.method,
+            "confidence": result.confidence, "reclose_events": result.reclose_events,
+        })
+        # Reuse the same waveform segmentation consumed by incident analysis.
+        # Only inspect a later fault after a verified failed reclose, never a
+        # normal load return/inrush or an unverified waveform-only reclose.
+        closes = [e["time"] * 1000 for e in result.reclose_events
+                  if e.get("success") is False and not (e.get("cb_open_verified") is False)]
+        if closes:
+            from .analog_trace import trace_payload
+            from .line_selection import scope_payload
+            trace = trace_payload(scope_payload(payload))
+            if trace:
+                for d in trace.summary.get("disturbances", []):
+                    start = d["start_ms"]
+                    if (d["kind"] != "fault" or d.get("clearing_ms") is None
+                            or start <= (result.clearing_time_ms or result.inception_time_ms)
+                            or not any(close - 2 * trace.cycle_ms <= start <= close + 1000 for close in closes)):
+                        continue
+                    result.fault_episodes.append({
+                        "episode_index": len(result.fault_episodes), "inception_time_ms": start,
+                        "clearing_time_ms": d["clearing_ms"],
+                        "fault_duration_ms": d["clearing_ms"] - start,
+                        "faulted_phases": d.get("sagged_phases") or d.get("high_current_phases") or [],
+                        "detection_method": "waveform_after_reclose", "confidence": 0.8,
+                        "reclose_events": [], "after_reclose": True,
+                    })
+    from .record_sequence import record_sequence
+    result.sequence = record_sequence(payload, result)
+    return result

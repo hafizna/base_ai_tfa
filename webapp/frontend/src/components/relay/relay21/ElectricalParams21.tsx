@@ -95,7 +95,7 @@ export default function ElectricalParams21({ analysisId, dataRevision = 0 }: Pro
             <Param label="I puncak fasa B" value={params.i_peak_ib_a} unit="A" />
             <Param label="I puncak fasa C" value={params.i_peak_ic_a} unit="A" />
             {params.v_sag_pct !== undefined && (
-              <Param label="Tegangan Sag" value={params.v_sag_pct} unit="%" highlight={params.v_sag_pct > 30} />
+              <Param label="Tegangan Sag Fasa A" value={params.v_sag_pct} unit="%" highlight={params.v_sag_pct > 30} />
             )}
           </Section>
 
@@ -109,7 +109,7 @@ export default function ElectricalParams21({ analysisId, dataRevision = 0 }: Pro
 
           {hasImpedance && (
             <Section title="Impedansi Gangguan">
-              <Param label="|Z| saat Inception" value={params.z_at_inception_ohm} unit="ohm" highlight />
+              <Param label="|Z_A| saat Inception" value={params.z_at_inception_ohm} unit="ohm" highlight />
               <Param label="|Z| minimum" value={zMin} unit="ohm" highlight />
               <Param label="R (resistif)" value={params.r_at_fault_ohm} unit="ohm" />
               <Param label="X (reaktif)" value={params.x_at_fault_ohm} unit="ohm" />

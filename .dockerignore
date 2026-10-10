@@ -14,3 +14,10 @@ raw_data
 training-data
 webapp/frontend/node_modules
 webapp/frontend/dist
+models/candidates
+data/training-runs
+data/features/labeled_features_v2*
+tmp
+output
+.claude
+.tmp_pptx

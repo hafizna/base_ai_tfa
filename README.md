@@ -101,7 +101,7 @@ Bila file berasal dari DFR eksternal (Qualitrol, Toshiba standalone) tanpa sinya
 | `core/transformer_channel_mapper.py` | Pemetaan channel trafo HV/LV/diff/restraint |
 | `core/transformer_feature_extractor.py` | Ekstraksi fitur trafo (H2, H5, slope, DC offset) |
 | `models/rules.py` | Tier 1: aturan deterministik KONDUKTOR/PERMANEN (sekarang juga dipanggil dari UI endpoint) |
-| `models/train.py` | Training **LightGBM** 7-kelas (input: labeled_features.csv); CV report otomatis |
+| `models/train.py` | Kandidat **LightGBM** 7-kelas dari reader bersama; paired grouped CV dan gate promosi |
 | `models/calibrate.py` | Fit Platt/isotonic probability calibrator pada held-out split → `proba_calibrator.pkl`. Dipakai webapp inference jika tersedia, else fallback ke temperature T=1.5 |
 | `models/predict.py` | Inference end-to-end + PETIR sub-mechanism (SF/BFO) classifier |
 | `models/transformer_classifier.py` | Klasifikasi event trafo berbasis pengetahuan (6 kelas) — **standalone / batch only**; belum dipanggil dari FastAPI router |
@@ -165,17 +165,16 @@ python extract_all.py
 
 ### Batch ekstraksi fitur
 ```bash
-python batch_extract.py
-# output: data/features/labeled_features.csv
-#         data/features/labeled_features_87l.csv
-#         data/features/extraction_errors.csv
+python -m models.build_dataset --training-dir training-data
+# --training-dir opsional jika hanya re-extract korpus lama
+# output: data/features/labeled_features_v2.csv dan .audit.json
 ```
 
 ### Training ulang model
 ```bash
-python models/train.py
-# membaca: data/features/labeled_features.csv
-# output:  models/fault_classifier.pkl
+python -m models.retrain
+# output: kandidat dan evaluasi di models/candidates/
+# model aktif hanya diganti oleh --promote jika gate evaluasi lolos
 ```
 
 ### Fit probability calibrator (opsional)
@@ -301,9 +300,16 @@ cd ~/base_ai_tfa
 bash scripts/clear_training_archive.sh --yes
 ```
 
-Workflow retraining tetap lokal: download ZIP, kurasi label, regenerate
-`data/features/labeled_features.csv`, jalankan `python models/train.py` dan
-`python models/calibrate.py`, commit model baru, lalu deploy ulang EC2.
+Workflow lengkap: [Feedback, konteks kejadian, dan training model](TRAINING_PIPELINE.md).
+Konteks dan urutan kejadian menjadi keluaran utama workspace/PDF. Satu COMTRADE
+lengkap dapat memuat beberapa episode, dan PMT berhasil menutup tidak sama dengan
+pemulihan berhasil. Feedback konteks (episode, reclose, trip path, scheme, SOTF)
+mempunyai target training sendiri; classifier penyebab tetap 7 kelas.
+
+Reader training dan analisis kini sama. Feedback CONFIRMED/PROBABLE diterapkan
+saat dataset dibangun; menyimpan feedback atau deploy kode saja tidak melatih
+ulang model. Kandidat dibandingkan dengan baseline pada grouped CV yang sama
+sebelum boleh dipromosikan.
 
 ### Profiling (Opsi A step #1)
 ```powershell
@@ -326,7 +332,7 @@ python -m pip install --user py-spy
 | Kelas | PETIR, LAYANG, POHON, HEWAN, BENDA_ASING, KONDUKTOR, PERALATAN (7) |
 | Sampel training | ~450+ baris (setelah quality filter + Tier 1 exclusion) |
 | Fitur | **17** (lihat `models/train.py:FEATURE_COLS`) |
-| CV F1 macro | 0.407 (LGBM) vs 0.352 (RF) — primary metric karena class imbalance |
+| CV F1 macro (historis; bukan grouped CV baru) | 0.407 (LGBM) vs 0.352 (RF) — primary metric karena class imbalance |
 | CV F1 weighted | 0.757 (LGBM) vs 0.738 (RF) |
 | CV accuracy | 0.778 (LGBM) — kurang relevan karena imbalance |
 | Kalibrasi | Default: temperature scaling T=1.5. Override otomatis bila `models/proba_calibrator.pkl` tersedia (Platt/isotonic dari held-out split, hasilkan via `python models/calibrate.py`). Tetap dilengkapi ceiling 92% + cap 0.65/0.72 saat voltage absent |

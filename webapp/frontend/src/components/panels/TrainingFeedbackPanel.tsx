@@ -148,6 +148,12 @@ export default function TrainingFeedbackPanel({
   const [actualEpisodeCount, setActualEpisodeCount] = useState("");
   const [protectionInterpretationCorrect, setProtectionInterpretationCorrect] = useState<boolean | null>(null);
   const [actualEventClass, setActualEventClass] = useState("");
+  const [schemeCorrect, setSchemeCorrect] = useState<boolean | null>(null);
+  const [actualScheme, setActualScheme] = useState("");
+  const [tripPathCorrect, setTripPathCorrect] = useState<boolean | null>(null);
+  const [actualTripPath, setActualTripPath] = useState("");
+  const [sotfCorrect, setSotfCorrect] = useState<boolean | null>(null);
+  const [actualSotf, setActualSotf] = useState("");
   const [causeCorrect, setCauseCorrect] = useState<boolean | null>(null);
   const [actualCause, setActualCause] = useState("");
   const [groundTruthSource, setGroundTruthSource] = useState<GroundTruthSource[]>([]);
@@ -221,12 +227,22 @@ export default function TrainingFeedbackPanel({
         actual_episode_count: actualEpisodeCount.trim() ? Number(actualEpisodeCount) : null,
         protection_interpretation_correct: protectionInterpretationCorrect,
         actual_event_class: actualEventClass,
+        scheme_correct: schemeCorrect,
+        actual_scheme: actualScheme,
+        trip_path_correct: tripPathCorrect,
+        actual_trip_path: actualTripPath,
+        sotf_correct: sotfCorrect,
+        actual_sotf_after_reclose: actualSotf === "" ? null : actualSotf === "true",
         cause_correct: causeCorrect,
         actual_cause: actualCause,
         ground_truth_source: groundTruthSource,
         ground_truth_confidence: groundTruthConfidence,
       });
-      setMessage("Feedback saved for the training dataset.");
+      setMessage(!includeForTraining
+        ? "Feedback saved. This case is excluded from training."
+        : groundTruthConfidence === "CONFIRMED" || groundTruthConfidence === "PROBABLE"
+          ? "Feedback saved for the next validated training run."
+          : "Feedback saved for review. Set confidence to CONFIRMED or PROBABLE to use corrections in training.");
       setNotes("");
       await refreshStatus();
     } catch (err: unknown) {
@@ -502,6 +518,25 @@ export default function TrainingFeedbackPanel({
               onChange={(e) => setActualEventClass(e.target.value)}
               disabled={protectionInterpretationCorrect !== false}
             />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Protection scheme correct</span>
+            <TriState value={schemeCorrect} onChange={setSchemeCorrect} />
+            <input className={styles.miniInput} placeholder="e.g. PUTT / POTT" value={actualScheme}
+              onChange={(e) => setActualScheme(e.target.value)} disabled={schemeCorrect !== false} />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>Trip path correct</span>
+            <TriState value={tripPathCorrect} onChange={setTripPathCorrect} />
+            <input className={styles.miniInput} placeholder="e.g. z1 / z2_aided / sotf" value={actualTripPath}
+              onChange={(e) => setActualTripPath(e.target.value)} disabled={tripPathCorrect !== false} />
+          </div>
+          <div className={styles.correctionRow}>
+            <span className={styles.correctionLabel}>SOTF after reclose correct</span>
+            <TriState value={sotfCorrect} onChange={setSotfCorrect} />
+            <select className={styles.miniInput} value={actualSotf} onChange={(e) => setActualSotf(e.target.value)} disabled={sotfCorrect !== false}>
+              <option value="">Actual result</option><option value="true">Yes</option><option value="false">No</option>
+            </select>
           </div>
           <div className={styles.correctionRow}>
             <span className={styles.correctionLabel}>Cause correct</span>

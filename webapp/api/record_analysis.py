@@ -217,6 +217,7 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         "faulted_phases": event_window.faulted_phases if event_window else [],
         "reclose_attempted": bool(event_window.reclose_events) if event_window else False,
         "reclose_events": event_window.reclose_events if event_window else [],
+        "sequence": event_window.sequence if event_window else {},
     }
 
     protection_interpretation: dict[str, Any] = {}
@@ -251,9 +252,10 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
             "confidence": event_window.confidence,
             "reclose_events": event_window.reclose_events,
         }
-        fault_episodes.append(episode)
+        fault_episodes = event_window.fault_episodes or [episode]
         protection_interpretation = {
-            "event_class": "TRANSIENT_LINE_FAULT" if event_window.reclose_events else "FAULT_EVENT",
+            "event_class": "PERMANENT_LINE_FAULT" if event_window.sequence.get("restoration_outcome") == "failed"
+                else "TRANSIENT_LINE_FAULT" if event_window.sequence.get("restoration_outcome") == "successful" else "FAULT_EVENT",
             "summary": "Fault detected from available waveform/status evidence.",
         }
     else:
