@@ -905,7 +905,77 @@ def _detect_reclose_from_status(record, inception_idx):
                 success = False
             reclose_events.append({'time': reclose_time, 'success': success})
 
+    if not reclose_events:
+        reclose_events = _breaker_position_reclose(record, inception_idx, failure_times)
+
     return reclose_events
+
+
+# A breaker position contact: closed-state ("CB Closed C ph", "52A") or
+# open-state ("CB Open", "52B"). Health, spring, gas and command channels are
+# not positions.
+_BREAKER_POSITION_TOKENS = frozenset({"CB", "52A", "52B", "PMT", "BREAKER"})
+_NOT_A_POSITION = ("HEALTH", "ALARM", "FAIL", "SPRING", "GAS", "SF6", "LOCK", "BLOCK", "TRIP", "SUPERV",
+                   "CMD", "COMMAND", "READY")
+# An auto-reclose dead time lasts hundreds of ms; a shorter opening is not one.
+_MIN_DEAD_TIME_S = 0.1
+_REOPEN_WINDOW_S = 0.5
+
+
+def _stable_changes(samples: np.ndarray, time: np.ndarray, start_idx: int, min_hold_s: float = 0.005) -> list:
+    """Indices after ``start_idx`` where the contact changes state and holds
+    the new state for at least ``min_hold_s`` (contact bounce removed)."""
+    state = bool(samples[start_idx])
+    edges = np.flatnonzero(np.diff(samples[start_idx:].astype(int)) != 0) + start_idx + 1
+    out = []
+    for k, idx in enumerate(edges):
+        new_state = bool(samples[idx])
+        until = edges[k + 1] if k + 1 < len(edges) else len(samples) - 1
+        if new_state != state and float(time[until] - time[idx]) >= min_hold_s:
+            out.append(int(idx))
+            state = new_state
+    return out
+
+
+def _breaker_position_reclose(record, inception_idx, failure_times) -> list:
+    """A breaker contact that left its prefault position after the fault and
+    came back to it: the breaker reclosed. Reading the return to the prefault
+    state works for closed-state (52A) and open-state (52B) contacts alike,
+    and for a single pole as well as three — the waveform reading cannot see a
+    single-pole dead time, since the healthy phases stay energised.
+
+    The reclose failed when the breaker opens again, or a failure channel
+    asserts, shortly after; it is undetermined when the record ends first."""
+    time = np.asarray(record.time, dtype=float)
+    returns = []
+    for ch in record.status_channels:
+        name = _normalize_status_name(ch.name)
+        tokens = set(re.split(r"[^A-Z0-9]+", name))
+        # "CB CLOSE" is a close command pulse; "CB CLOSED" is the position.
+        if (not tokens & _BREAKER_POSITION_TOKENS or "CLOSE" in tokens
+                or any(word in name for word in _NOT_A_POSITION)):
+            continue
+        samples = np.asarray(ch.samples) != 0
+        if inception_idx >= len(samples) - 1 or len(samples) != len(time):
+            continue
+        changes = _stable_changes(samples, time, inception_idx)
+        if len(changes) < 2:
+            continue
+        opened, closed = changes[0], changes[1]
+        if float(time[closed] - time[opened]) < _MIN_DEAD_TIME_S:
+            continue
+        reclose_time = float(time[closed])
+        reopened = len(changes) > 2 and float(time[changes[2]]) - reclose_time < _REOPEN_WINDOW_S
+        failed = any(reclose_time - 0.05 < ft < reclose_time + _REOPEN_WINDOW_S for ft in failure_times)
+        if reopened or failed:
+            success = False
+        elif float(time[-1]) - reclose_time < _MIN_DEAD_TIME_S:
+            success = None  # the record ends before the outcome shows
+        else:
+            success = True
+        returns.append({'time': reclose_time, 'success': success, 'source': 'breaker_position'})
+    # One reclose: several contacts of one breaker return within milliseconds.
+    return sorted(returns, key=lambda e: e['time'])[:1]
 
 
 def _detect_cb_open_window(va, vb, vc, ia, ib, ic, time, search_start_idx, dt):

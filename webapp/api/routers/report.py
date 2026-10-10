@@ -56,7 +56,7 @@ from ..storage import load_analysis
 from ..fault_detection import detect_fault_presence
 from core.line_selection import scope_payload
 from .relay_21 import _compute_electrical_params, _compute_fault_classification
-from .relay_87l import _compute_diff_restraint
+from .relay_87l import _compute_diff_restraint, _line_diff_evidence
 from .relay_87t import _compute_87t
 from .relay_ocr import _find_max_current, _trip_time
 
@@ -1356,6 +1356,10 @@ def _build_ocr_section(styles: dict, payload: dict, settings: Optional[dict]) ->
 
 
 def _build_relay_specific_section(styles: dict, payload: dict, relay_type: str, settings: Optional[dict]) -> list:
+    if relay_type == "LINE" and not _line_diff_evidence(payload)["has_87l"]:
+        # F5.8, as in the line workspace: no 87L summary without 87L evidence
+        # (computed from local currents alone it reads as a huge Idiff).
+        return []
     if relay_type in ("LINE", "87L", "CCP", "87T", "REF"):
         return _build_diff_relay_section(styles, payload, relay_type, settings)
     if relay_type in ("OCR", "SBEF"):

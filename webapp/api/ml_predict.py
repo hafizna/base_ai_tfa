@@ -501,6 +501,7 @@ def _is_ar_status_name(name: str) -> bool:
         bool(re.search(r"\bA\s*/?\s*R\b", name.upper()))
         or "RECLOS" in compact
         or "RECLOSE" in compact
+        or "AUTOCLOSE" in compact
         or compact.startswith("AR")
         or "AR1P" in compact
         or "AR3P" in compact
@@ -567,6 +568,18 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
             and ("CONT" in name or "CONTACT" in name or re.search(r"\b52A\b", name) is not None)
             and not any(block in name for block in ("TRIP", "ALARM", "FAIL", "LOCK", "BLOCK"))
         )
+        # Position channels named for the closed state ("CB Closed C ph") or a
+        # bare 52A contact ("L3 Status 52A T") read the same way, when the
+        # breaker was closed at the fault.
+        is_cb_closed_state = (
+            not is_cb_closed_contact
+            and phase is not None
+            and 0 <= start_idx < len(samples) and int(samples[start_idx]) == 1
+            and ((breaker_id is not None and re.search(r"\bCLOSED\b", name) is not None)
+                 or re.search(r"\b52A\b", name) is not None)
+            and not any(block in name for block in (
+                "TRIP", "ALARM", "FAIL", "LOCK", "BLOCK", "HEALTH", "CMD", "COMMAND"))
+        )
         # "Phase select(or)" channels (e.g. Siemens/generic "Phase Select A",
         # PCS900 "PhS[ABC]") are a distance relay's own authoritative
         # single-pole fault-phase determination — exactly the kind of
@@ -595,13 +608,16 @@ def _digital_sequence_features(status_channels: list, time: np.ndarray, inceptio
                 close_ms = _first_stable_edge_ms_after(samples, time, rise_idx, 1, 0)
                 if close_ms is not None:
                     cb_close_phases[phase] = min(close_ms, cb_close_phases.get(phase, close_ms))
-            if is_cb_closed_contact:
+            if is_cb_closed_contact or is_cb_closed_state:
                 # Closed-contact channels (e.g. CB1.CONT.A): 1=CB closed,
                 # 1->0=open/trip, 0->1=reclose. This is common in 1.5 breaker bays
                 # where no explicit AR/CB-open bit is recorded.
                 open_ms = _first_stable_edge_ms_after(samples, time, start_idx - 1, 1, 0)
                 if open_ms is not None:
-                    cb_contact_breakers.add(breaker_id)
+                    if is_cb_closed_contact:
+                        # Only named breakers count towards the 1.5-breaker hint:
+                        # "CB Closed" and "52A" can be two contacts of one breaker.
+                        cb_contact_breakers.add(breaker_id)
                     cb_open_phases[phase] = min(open_ms, cb_open_phases.get(phase, open_ms))
                     cb_contact_open_phases[phase] = min(open_ms, cb_contact_open_phases.get(phase, open_ms))
                     open_idx = _index_for_ms(time, open_ms)

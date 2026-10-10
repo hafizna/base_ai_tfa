@@ -46,6 +46,11 @@ N = 20
         ("21 OPERATE", ("trip", None, None)),
         ("67N", ("protection", None, None)),
         ("79 IN PROGRESS", ("reclose", None, None)),
+        # RWALO-PLTU #1: position contacts and the AR close command
+        ("CB Closed C ph", ("breaker", None, "C")),
+        ("L3 Status 52A T", ("breaker", None, "C")),
+        ("Auto Close", ("reclose", None, None)),
+        ("L5 CB Healthy", (None, None, None)),
     ],
 )
 def test_classify_status_channel(name, expected):
