@@ -7,9 +7,12 @@ import {
   fetchDoubleEndedAlignEstimate,
   fetchDoubleEndedLoopSuggestion,
   fetchDoubleEndedSuggestShift,
+  generateDoubleEndedReport,
   uploadComtrade,
   type DoubleEndedComputeResult,
   type DoubleEndedLoopSuggestion,
+  type DoubleEndedReportRequest,
+  type ReportChart,
 } from "../api/client";
 import type { ComtradeData } from "../context/AnalysisContext";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
@@ -47,6 +50,23 @@ const LOOP_OPTIONS = [
   { value: "ZBC", label: "B-C (phase)" },
   { value: "ZCA", label: "C-A (phase)" },
 ];
+
+type PlotlyToImageFn = (
+  gd: HTMLElement,
+  opts: { format: "png"; width: number; height: number; scale: number },
+) => Promise<string>;
+
+function getPlotlyToImage(): PlotlyToImageFn | null {
+  const plotly = (window as unknown as { Plotly?: { toImage?: PlotlyToImageFn } }).Plotly;
+  return plotly?.toImage ?? null;
+}
+
+/** The inputs a result was computed with — what the printed report recomputes. */
+type ComputedInputs = Pick<
+  DoubleEndedReportRequest,
+  | "analysisIdA" | "analysisIdB" | "loop" | "lineLenKm" | "r1OhmPerKm" | "x1OhmPerKm" | "manualShiftMs"
+  | "invertIA" | "invertIB" | "invertPhaseSequenceA" | "invertPhaseSequenceB"
+>;
 
 function fileExt(file: File) {
   return file.name.split(".").pop()?.toLowerCase() ?? "";
@@ -124,6 +144,16 @@ export default function DoubleEndedFL() {
   const [x1, setX1] = useState<string>("0.4");
 
   const [manualShiftMs, setManualShiftMs] = useState<number>(0);
+  // Where the shift came from, and whether the user checked it on the overlay
+  // (rule F7.4: a location is reported only on a confirmed sync). Any change
+  // of the shift clears the confirmation.
+  const [shiftSource, setShiftSource] = useState<DoubleEndedReportRequest["shiftSource"]>("manual");
+  const [syncConfirmed, setSyncConfirmed] = useState(false);
+  function changeShift(value: number, source: DoubleEndedReportRequest["shiftSource"]) {
+    setManualShiftMs(value);
+    setShiftSource(source);
+    setSyncConfirmed(false);
+  }
   const [estimateNote, setEstimateNote] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
   const [detectedInceptionAS, setDetectedInceptionAS] = useState<number | null>(null);
@@ -140,6 +170,8 @@ export default function DoubleEndedFL() {
   const [computing, setComputing] = useState(false);
   const [computeError, setComputeError] = useState<string | null>(null);
   const [result, setResult] = useState<DoubleEndedComputeResult | null>(null);
+  const [computedWith, setComputedWith] = useState<ComputedInputs | null>(null);
+  const [printing, setPrinting] = useState(false);
 
   const bothUploaded = Boolean(terminalA.comtrade && terminalB.comtrade);
 
@@ -166,6 +198,7 @@ export default function DoubleEndedFL() {
       const comtrade = await fetchAnalysis(uploaded.analysis_id);
       setState((prev) => ({
         ...prev,
+        file: cff ?? cfg,
         loading: false,
         analysisId: uploaded.analysis_id,
         comtrade,
@@ -212,6 +245,8 @@ export default function DoubleEndedFL() {
         Math.abs(est.estimated_shift_ms) <= PLAUSIBLE_SHIFT_MS
       ) {
         setManualShiftMs(Math.round(est.estimated_shift_ms * 10) / 10);
+        setShiftSource("estimate");
+        setSyncConfirmed(false);
         setEstimateNote(est.estimate_reason);
       } else if (est.estimate_available && est.estimated_shift_ms != null) {
         setEstimateNote(
@@ -320,7 +355,7 @@ export default function DoubleEndedFL() {
         invertPhaseSequenceB: terminalB.invertPhaseSequence,
       });
       if (res.shift_ms != null) {
-        setManualShiftMs(Math.round(res.shift_ms * 100) / 100);
+        changeShift(Math.round(res.shift_ms * 100) / 100, "residual_search");
       }
       setShiftSearchNote(res.reason);
     } catch (err: unknown) {
@@ -348,26 +383,90 @@ export default function DoubleEndedFL() {
     setComputing(true);
     setComputeError(null);
     setResult(null);
+    const inputs: ComputedInputs = {
+      analysisIdA: terminalA.analysisId,
+      analysisIdB: terminalB.analysisId,
+      loop,
+      lineLenKm: lineLen,
+      r1OhmPerKm: r1v,
+      x1OhmPerKm: x1v,
+      manualShiftMs,
+      invertIA: terminalA.invertCurrent,
+      invertIB: terminalB.invertCurrent,
+      invertPhaseSequenceA: terminalA.invertPhaseSequence,
+      invertPhaseSequenceB: terminalB.invertPhaseSequence,
+    };
     try {
-      const res = await computeDoubleEndedFL({
-        analysisIdA: terminalA.analysisId,
-        analysisIdB: terminalB.analysisId,
-        loop,
-        lineLenKm: lineLen,
-        r1OhmPerKm: r1v,
-        x1OhmPerKm: x1v,
-        manualShiftMs,
-        invertIA: terminalA.invertCurrent,
-        invertIB: terminalB.invertCurrent,
-        invertPhaseSequenceA: terminalA.invertPhaseSequence,
-        invertPhaseSequenceB: terminalB.invertPhaseSequence,
-      });
+      const res = await computeDoubleEndedFL(inputs);
       setResult(res);
+      setComputedWith(inputs);
     } catch (err: unknown) {
       const response = (err as { response?: { data?: { detail?: string } } }).response;
       setComputeError(response?.data?.detail ?? "Computation failed — check inputs and synchronization.");
     } finally {
       setComputing(false);
+    }
+  }
+
+  // The report recomputes from the inputs the shown result came from, so it
+  // prints only while those are still the page's inputs.
+  const inputsUnchanged = Boolean(
+    computedWith &&
+      computedWith.loop === loop &&
+      computedWith.lineLenKm === parseFloat(lineLenKm) &&
+      computedWith.r1OhmPerKm === parseFloat(r1) &&
+      computedWith.x1OhmPerKm === parseFloat(x1) &&
+      computedWith.manualShiftMs === manualShiftMs &&
+      computedWith.invertIA === terminalA.invertCurrent &&
+      computedWith.invertIB === terminalB.invertCurrent &&
+      computedWith.invertPhaseSequenceA === terminalA.invertPhaseSequence &&
+      computedWith.invertPhaseSequenceB === terminalB.invertPhaseSequence,
+  );
+
+  async function captureHistogram(): Promise<ReportChart[]> {
+    const toImage = getPlotlyToImage();
+    const node = document.querySelector<HTMLElement>('[data-pdf-chart-id="defl_histogram"] .js-plotly-plot');
+    if (!toImage || !node) return [];
+    try {
+      const dataUrl = await toImage(node, { format: "png", width: 1400, height: 700, scale: 2 });
+      return [{
+        id: "defl_histogram",
+        title: "Jarak dua ujung per jendela evaluasi",
+        image_b64: String(dataUrl).replace(/^data:image\/png;base64,/, ""),
+      }];
+    } catch (err) {
+      console.warn("Failed to export the distance histogram:", err);
+      return [];
+    }
+  }
+
+  async function handlePrint() {
+    if (!computedWith || !inputsUnchanged || printing) return;
+    setPrinting(true);
+    try {
+      const stem = (file: File | null) => (file ? file.name.replace(/\.[^.]+$/, "") : null);
+      const blob = await generateDoubleEndedReport({
+        ...computedWith,
+        recordNameA: stem(terminalA.file),
+        recordNameB: stem(terminalB.file),
+        shiftSource,
+        syncConfirmed,
+        suggestedLoop: loopSuggestion?.loop ?? null,
+        charts: await captureHistogram(),
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `laporan_defl_${computedWith.analysisIdA.slice(0, 8)}_${computedWith.analysisIdB.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to generate the DE-FL report:", err);
+      alert("Gagal membuat laporan PDF DE-FL. Cek console untuk detail.");
+    } finally {
+      setPrinting(false);
     }
   }
 
@@ -549,7 +648,7 @@ export default function DoubleEndedFL() {
                 type="number"
                 step="0.1"
                 value={manualShiftMs}
-                onChange={(e) => setManualShiftMs(parseFloat(e.target.value) || 0)}
+                onChange={(e) => changeShift(parseFloat(e.target.value) || 0, "manual")}
               />
             </div>
             <span className={styles.shiftBadge}>{manualShiftMs.toFixed(1)} ms</span>
@@ -573,6 +672,11 @@ export default function DoubleEndedFL() {
             physics the final result relies on, unlike the coarse estimate above. Still only a suggestion:
             confirm it against the waveform overlay before trusting it.
           </p>
+          <label className={styles.toggleRow} style={{ marginTop: 8 }}>
+            <input type="checkbox" checked={syncConfirmed} onChange={(e) => setSyncConfirmed(e.target.checked)} />
+            I checked this shift on the overlay: terminal B's current step lines up with terminal A's. A printed
+            report calls the location reliable only with this confirmed (rule F7.4).
+          </label>
         </div>
       )}
 
@@ -700,14 +804,36 @@ export default function DoubleEndedFL() {
             </ul>
           )}
           {result.distance_histogram_km.length > 0 && (
-            <FaultLocatorHistogram
-              histogram={result.distance_histogram_km}
-              lineLenKm={parseFloat(lineLenKm)}
-              twoEnded={{ distanceKm: result.distance_km, faultCurrentA: result.fault_current_a, loop: result.loop }}
-              singleEndedA={result.single_ended_a}
-              singleEndedB={result.single_ended_b}
-            />
+            <div data-pdf-chart-id="defl_histogram">
+              <FaultLocatorHistogram
+                histogram={result.distance_histogram_km}
+                lineLenKm={parseFloat(lineLenKm)}
+                twoEnded={{ distanceKm: result.distance_km, faultCurrentA: result.fault_current_a, loop: result.loop }}
+                singleEndedA={result.single_ended_a}
+                singleEndedB={result.single_ended_b}
+              />
+            </div>
           )}
+          <div className={styles.syncReadout} style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => void handlePrint()}
+              disabled={printing || !inputsUnchanged}
+            >
+              {printing ? "Generating…" : "Print PDF"}
+            </button>
+            {!inputsUnchanged && (
+              <span className={styles.estimateHint}>
+                The inputs changed since this result — run the locator again to print it.
+              </span>
+            )}
+            {inputsUnchanged && !syncConfirmed && (
+              <span className={styles.estimateHint}>
+                The shift is not confirmed in step 3, so the report marks this location as not yet reliable.
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -221,11 +221,24 @@ def _solve_fault(
     loop: str, fault_from_a: dict, fault_from_b: dict, m0: float = 0.4, line_len_km: float = 20.0,
     load_a: float = 100.0, charging: float = 5.0,
 ) -> dict:
+    payload_a, payload_b = _fault_payloads(fault_from_a, fault_from_b, m0, line_len_km, load_a, charging)
+    return _compute_double_ended(
+        payload_a, payload_b, loop, line_len_km, 0.05, 0.4,
+        manual_shift_ms=0.0,
+        invert_i_a=False, invert_i_b=False,
+        invert_phase_sequence_a=False, invert_phase_sequence_b=False,
+    )
+
+
+def _fault_payloads(
+    fault_from_a: dict, fault_from_b: dict, m0: float = 0.4, line_len_km: float = 20.0,
+    load_a: float = 100.0, charging: float = 5.0,
+) -> tuple[dict, dict]:
     """Two terminals of a line carrying ``load_a`` from A to B, with a fault at
     ``m0`` drawing ``fault_from_a``/``fault_from_b`` (phase -> amps) from each
     end, plus the line's ``charging`` current on every phase. Phases are
     uncoupled (Z0 = Z1), so every phase drops Z times its own current and each
-    phase's KVL holds exactly."""
+    phase's KVL holds exactly. Line impedance 0.05 + j0.4 ohm/km."""
     z_line = complex(0.05, 0.4) * line_len_km
     v_nom = 87_000.0
     inception = int(round(SR * (PRE_FAULT_CYCLES / FREQ)))
@@ -244,12 +257,7 @@ def _solve_fault(
     payload_b = _abc_payload(
         v_pre, load_b, [v_f[k] + (1.0 - m0) * z_line * i_b[k] for k in range(3)], i_b, inception, "GI-B",
     )
-    return _compute_double_ended(
-        payload_a, payload_b, loop, line_len_km, 0.05, 0.4,
-        manual_shift_ms=0.0,
-        invert_i_a=False, invert_i_b=False,
-        invert_phase_sequence_a=False, invert_phase_sequence_b=False,
-    )
+    return payload_a, payload_b
 
 
 _FAULT_ANGLE = cmath.exp(-1.3j)

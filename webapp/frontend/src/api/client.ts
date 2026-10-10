@@ -781,6 +781,55 @@ export async function generateReport(analysisId: string, body: ReportRequest): P
   return data;
 }
 
+/** The DE-FL location report: the server recomputes the result from these
+ * inputs; the page adds what only it knows. */
+export interface DoubleEndedReportRequest {
+  analysisIdA: string;
+  analysisIdB: string;
+  loop: string;
+  lineLenKm: number;
+  r1OhmPerKm: number;
+  x1OhmPerKm: number;
+  manualShiftMs: number;
+  invertIA?: boolean;
+  invertIB?: boolean;
+  invertPhaseSequenceA?: boolean;
+  invertPhaseSequenceB?: boolean;
+  recordNameA?: string | null;
+  recordNameB?: string | null;
+  shiftSource: "estimate" | "residual_search" | "manual";
+  syncConfirmed: boolean;
+  suggestedLoop?: string | null;
+  charts: ReportChart[];
+}
+
+export async function generateDoubleEndedReport(req: DoubleEndedReportRequest): Promise<Blob> {
+  const { data } = await api.post(
+    "/api/location-report/de-fl",
+    {
+      analysis_id_a: req.analysisIdA,
+      analysis_id_b: req.analysisIdB,
+      loop: req.loop,
+      line_len_km: req.lineLenKm,
+      r1_ohm_per_km: req.r1OhmPerKm,
+      x1_ohm_per_km: req.x1OhmPerKm,
+      manual_shift_ms: req.manualShiftMs,
+      invert_i_a: req.invertIA ?? false,
+      invert_i_b: req.invertIB ?? false,
+      invert_phase_sequence_a: req.invertPhaseSequenceA ?? false,
+      invert_phase_sequence_b: req.invertPhaseSequenceB ?? false,
+      record_name_a: req.recordNameA ?? null,
+      record_name_b: req.recordNameB ?? null,
+      shift_source: req.shiftSource,
+      sync_confirmed: req.syncConfirmed,
+      suggested_loop: req.suggestedLoop ?? null,
+      charts: req.charts,
+    },
+    { responseType: "blob", timeout: 120000 },
+  );
+  return data;
+}
+
 export type GroundTruthSource =
   | "RELAY_EVENT_REPORT"
   | "OPERATOR_SOE"
