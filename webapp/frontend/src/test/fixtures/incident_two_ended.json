@@ -1,6 +1,6 @@
 {
  "incident": {
-  "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+  "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
   "title": "two_ended fixture",
   "status": "DRAFT",
   "station_name": "GI BRINGIN",
@@ -15,12 +15,12 @@
   "clock_assessment": "UNKNOWN",
   "clock_assessment_reason": null,
   "record_ids": [
-   "aa493201841e4cc4a2192e2fe5faa1ee",
-   "8ee30ae8bcc44dc1972160d9e7b70059",
-   "30478964cf7f44c184f36ea6fa653dd9",
-   "a61016829d734511a21c080161d7a439",
-   "e9b0da5623d14626936e1c8a7a64cd05",
-   "b8ee0d431749459f9eb0801b56576716"
+   "bd821043e8bb41e9bbb0b4f94e8dbf00",
+   "12507eedf47e4b038998d914dc3631e8",
+   "abe0891e03ad4266adcabfe66660520c",
+   "d02ec15d8d3244e0ad5dbf7211f72ccc",
+   "9495c0960b7942168ee3689db95657ef",
+   "deb800c1f177484fa3f64c2dd84aaa67"
   ],
   "evidence_ids": [],
   "observed_summary": {
@@ -61,37 +61,37 @@
    ],
    "cause_hypotheses_per_record": [
     {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
     },
     {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
     },
     {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
     },
     {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
     },
     {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
     },
     {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
@@ -110,14 +110,14 @@
    }
   ],
   "operator_notes": null,
-  "created_at": "2026-10-09T21:46:23.913639+00:00",
-  "updated_at": "2026-10-09T21:47:14.101037+00:00",
+  "created_at": "2026-10-10T08:14:41.309328+00:00",
+  "updated_at": "2026-10-10T08:14:55.399921+00:00",
   "schema_version": "stage2",
   "records": [
    {
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
     "source_filename": "ZQ6D.cfg",
     "station_name": "GI BRINGIN",
     "bay_name": null,
@@ -134,7 +134,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "record_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
      "source_metadata": {
       "duration_s": 3.009896,
       "station_name": "GI BRINGIN",
@@ -563,6 +563,391 @@
       },
       "warnings": []
      },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": true,
+      "fault_start_ms": 118.5416653752327,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dengan proteksi bekerja",
+        "evidence": [
+         "Arus S naik ke 9,2 kA puncak (prefault 443 A rms).",
+         "Tegangan T turun ke 0,64 pu.",
+         "Proteksi operate: TRIP R MJSNG2 +45,1 ms."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": true,
+         "protection_operated": true
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "S-T, antar fasa, tidak ke tanah",
+        "evidence": [
+         "Tegangan S 0,66; T 0,64 pu; R 0,97 pu.",
+         "Loop S-T 6,3 \u03a9; loop lain \u2265 20 \u03a9. I0/I1 0,04.",
+         "Arus gangguan (tanpa beban) S 5,6 kA dan T 5,4 kA, beda sudut 178\u00b0.",
+         "Trip 3-pole tidak dipakai sebagai bukti fasa."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3",
+         "F4.5",
+         "F4.7"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "B",
+          "C"
+         ],
+         "ground": false,
+         "label": "S-T",
+         "voltage_pu": {
+          "A": 0.974,
+          "B": 0.664,
+          "C": 0.637
+         },
+         "loops_ohm": {
+          "AB": 20.496,
+          "BC": 6.337,
+          "CA": 26.626
+         },
+         "i0_i1": 0.044,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": false,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "77 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Trip +45,1 ms \u2192 arus S/T nol \u00b177 ms \u2192 CB OPEN MJSNG2 +112,4 ms.",
+         "Waktu interupsi PMT 31 ms (wajar 30\u201380 ms)."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.3",
+         "F3.4",
+         "F3.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "fct_ms": 76.5,
+         "clearing_ms": 76.6,
+         "trip_ms": 45.1,
+         "interruption_ms": 31.5,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Z1, seketika",
+        "evidence": [
+         "Trip 3-pole +45,1 ms; TRIP Z1 MJSNG2 +48,2 ms."
+        ],
+        "rules": [
+         "F5.1",
+         "F5.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "kind": "z1",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "receive_at_trip": null,
+         "send_active": null,
+         "sotf_active": null,
+         "trip_zones": [
+          1
+         ]
+        },
+        "conflicts": []
+       },
+       {
+        "key": "location",
+        "step": 5,
+        "label": "Lokasi",
+        "title": "Dalam jangkauan Z1 GI ini",
+        "evidence": [
+         "Z1 umumnya menjangkau \u00b180% panjang line dari GI ini."
+        ],
+        "rules": [
+         "F5.7"
+        ],
+        "confidence": "medium",
+        "value": {
+         "zone_reach": "within_z1"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Trip 3-pole; reclose tidak terekam di rekaman ini",
+        "evidence": [
+         "CB OPEN MJSNG2 +112,4 ms.",
+         "Konsisten: gangguan multi-fasa \u2192 trip 3-pole."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": "3P",
+         "poles": [
+          "A",
+          "B",
+          "C"
+         ],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null
+        },
+        "conflicts": []
+       }
+      ],
+      "flag_count": 0,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "fault_start",
+       "events": [
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 45.1,
+         "channel": "TRIP R MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip pole R"
+        },
+        {
+         "t_ms": 45.4,
+         "channel": "TRIP R MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,1 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 45.7,
+         "channel": "TRIP T MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip pole T"
+        },
+        {
+         "t_ms": 46.0,
+         "channel": "TRIP T MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,2 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 47.9,
+         "channel": "TRIP S MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip pole S"
+        },
+        {
+         "t_ms": 48.2,
+         "channel": "TRIP S MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,3 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 48.2,
+         "channel": "TRIP Z1 MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip"
+        },
+        {
+         "t_ms": 48.5,
+         "channel": "TRIP Z1 MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,2 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 59.4,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 76.4,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 76.6,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 91.4,
+         "channel": "Tegangan fasa S",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 91.4,
+         "channel": "Tegangan fasa T",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 101.4,
+         "channel": "Tegangan fasa R",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 106.6,
+         "channel": "TRIP Z1 MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 109.8,
+         "channel": "TRIP S MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 109.8,
+         "channel": "TRIP T MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 109.9,
+         "channel": "TRIP R MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 112.4,
+         "channel": "CB OPEN MJSNG2",
+         "role": "PMT",
+         "change": "Aktif"
+        },
+        {
+         "t_ms": 112.6,
+         "channel": "CB OPEN MJSNG2",
+         "role": "PMT",
+         "change": "Bounce 0,3 ms, diabaikan",
+         "muted": true
+        }
+       ],
+       "silent": [
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "OC OPRT MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "AR OPRT MJSNG2",
+         "role": "Reclose"
+        },
+        {
+         "channel": "PRES ALRM MJSNG2",
+         "role": null
+        },
+        {
+         "channel": "TRIP Z2/3 MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "LP SEND MJSNG2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "LP RCV MJSNG2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        }
+       ],
+       "channel_count": 21
+      }
+     },
      "observed_facts": {
       "faulted_phases": [
        "B",
@@ -641,12 +1026,12 @@
      }
     },
     "attachment_warnings": [],
-    "created_at": "2026-10-09T21:46:27.685704+00:00"
+    "created_at": "2026-10-10T08:14:42.800176+00:00"
    },
    {
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "analysis_id": "12507eedf47e4b038998d914dc3631e8",
     "source_filename": "ZQ6E.cfg",
     "station_name": "GI BRINGIN",
     "bay_name": null,
@@ -663,7 +1048,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "record_id": "12507eedf47e4b038998d914dc3631e8",
      "source_metadata": {
       "duration_s": 2.239896,
       "station_name": "GI BRINGIN",
@@ -990,6 +1375,194 @@
       },
       "warnings": []
      },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": false,
+      "fault_start_ms": null,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Rekaman reclose, bukan gangguan",
+        "evidence": [
+         "Rekaman dimulai saat PMT terbuka (dead time) dan hanya menangkap reclose.",
+         "Penyebab tidak diklasifikasi dari rekaman ini."
+        ],
+        "rules": [
+         "F1.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": false,
+         "class": "reclose_capture"
+        },
+        "conflicts": []
+       }
+      ],
+      "flag_count": 0,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "record_start",
+       "events": [
+        {
+         "t_ms": 134.7,
+         "channel": "CB OPEN MJSNG2",
+         "role": "PMT",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 139.9,
+         "channel": "Tegangan fasa R",
+         "role": "Gelombang",
+         "change": "Tegangan kembali"
+        },
+        {
+         "t_ms": 139.9,
+         "channel": "Tegangan fasa T",
+         "role": "Gelombang",
+         "change": "Tegangan kembali"
+        },
+        {
+         "t_ms": 145.7,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Line diberi tegangan"
+        },
+        {
+         "t_ms": 145.7,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Line diberi tegangan"
+        },
+        {
+         "t_ms": 145.7,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Line diberi tegangan"
+        },
+        {
+         "t_ms": 146.9,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus kembali"
+        },
+        {
+         "t_ms": 146.9,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus kembali"
+        },
+        {
+         "t_ms": 147.0,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus kembali"
+        },
+        {
+         "t_ms": 159.9,
+         "channel": "Tegangan fasa S",
+         "role": "Gelombang",
+         "change": "Tegangan kembali"
+        },
+        {
+         "t_ms": 169.9,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus kembali ke beban"
+        },
+        {
+         "t_ms": 179.9,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus kembali ke beban"
+        }
+       ],
+       "silent": [
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "OC OPRT MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "AR OPRT MJSNG2",
+         "role": "Reclose"
+        },
+        {
+         "channel": "TRIP R MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "TRIP S MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "TRIP T MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "PRES ALRM MJSNG2",
+         "role": null
+        },
+        {
+         "channel": "TRIP Z1 MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "TRIP Z2/3 MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "LP SEND MJSNG2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "LP RCV MJSNG2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        }
+       ],
+       "channel_count": 21
+      }
+     },
      "observed_facts": {
       "faulted_phases": [],
       "reclose_attempted": true,
@@ -1070,12 +1643,12 @@
      }
     },
     "attachment_warnings": [],
-    "created_at": "2026-10-09T21:46:29.605684+00:00"
+    "created_at": "2026-10-10T08:14:43.565747+00:00"
    },
    {
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "analysis_id": "abe0891e03ad4266adcabfe66660520c",
     "source_filename": "ZQ6F.cfg",
     "station_name": "GI BRINGIN",
     "bay_name": null,
@@ -1092,7 +1665,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "record_id": "abe0891e03ad4266adcabfe66660520c",
      "source_metadata": {
       "duration_s": 3.009896,
       "station_name": "GI BRINGIN",
@@ -1553,6 +2126,391 @@
       },
       "warnings": []
      },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": true,
+      "fault_start_ms": 124.47916716337204,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dengan proteksi bekerja",
+        "evidence": [
+         "Arus S naik ke 8,9 kA puncak (prefault 285 A rms).",
+         "Tegangan T turun ke 0,63 pu.",
+         "Proteksi operate: TRIP R MJSNG2 +42,0 ms."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": true,
+         "protection_operated": true
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "S-T, antar fasa, tidak ke tanah",
+        "evidence": [
+         "Tegangan S 0,67; T 0,63 pu; R 0,99 pu.",
+         "Loop S-T 6,4 \u03a9; loop lain \u2265 22 \u03a9. I0/I1 0,05.",
+         "Arus gangguan (tanpa beban) S 5,7 kA dan T 5,6 kA, beda sudut 176\u00b0.",
+         "Trip 3-pole tidak dipakai sebagai bukti fasa."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3",
+         "F4.5",
+         "F4.7"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "B",
+          "C"
+         ],
+         "ground": false,
+         "label": "S-T",
+         "voltage_pu": {
+          "A": 0.986,
+          "B": 0.672,
+          "C": 0.635
+         },
+         "loops_ohm": {
+          "AB": 21.778,
+          "BC": 6.381,
+          "CA": 25.87
+         },
+         "i0_i1": 0.045,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": false,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "78 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Trip +42,0 ms \u2192 arus S/T nol \u00b178 ms \u2192 CB OPEN MJSNG2 +108,4 ms.",
+         "Waktu interupsi PMT 36 ms (wajar 30\u201380 ms)."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.3",
+         "F3.4",
+         "F3.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "fct_ms": 78.1,
+         "clearing_ms": 78.2,
+         "trip_ms": 42.0,
+         "interruption_ms": 36.2,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Z1, seketika",
+        "evidence": [
+         "Trip 3-pole +42,0 ms; TRIP Z1 MJSNG2 +45,1 ms."
+        ],
+        "rules": [
+         "F5.1",
+         "F5.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "kind": "z1",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "receive_at_trip": null,
+         "send_active": null,
+         "sotf_active": null,
+         "trip_zones": [
+          1
+         ]
+        },
+        "conflicts": []
+       },
+       {
+        "key": "location",
+        "step": 5,
+        "label": "Lokasi",
+        "title": "Dalam jangkauan Z1 GI ini",
+        "evidence": [
+         "Z1 umumnya menjangkau \u00b180% panjang line dari GI ini."
+        ],
+        "rules": [
+         "F5.7"
+        ],
+        "confidence": "medium",
+        "value": {
+         "zone_reach": "within_z1"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Trip 3-pole; reclose tidak terekam di rekaman ini",
+        "evidence": [
+         "CB OPEN MJSNG2 +108,4 ms.",
+         "Konsisten: gangguan multi-fasa \u2192 trip 3-pole."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": "3P",
+         "poles": [
+          "A",
+          "B",
+          "C"
+         ],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null
+        },
+        "conflicts": []
+       }
+      ],
+      "flag_count": 0,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "fault_start",
+       "events": [
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 42.0,
+         "channel": "TRIP R MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip pole R"
+        },
+        {
+         "t_ms": 42.3,
+         "channel": "TRIP R MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,1 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 42.9,
+         "channel": "TRIP T MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip pole T"
+        },
+        {
+         "t_ms": 43.2,
+         "channel": "TRIP T MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,2 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 44.0,
+         "channel": "TRIP S MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip pole S"
+        },
+        {
+         "t_ms": 44.5,
+         "channel": "TRIP S MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,2 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 45.1,
+         "channel": "TRIP Z1 MJSNG2",
+         "role": "Trip",
+         "change": "Aktif: trip"
+        },
+        {
+         "t_ms": 45.4,
+         "channel": "TRIP Z1 MJSNG2",
+         "role": "Trip",
+         "change": "Bounce 0,1 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 69.0,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 78.1,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 78.2,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 85.4,
+         "channel": "Tegangan fasa S",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 95.4,
+         "channel": "Tegangan fasa T",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 97.5,
+         "channel": "TRIP Z1 MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 105.4,
+         "channel": "Tegangan fasa R",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 107.6,
+         "channel": "TRIP S MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 107.6,
+         "channel": "TRIP T MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 107.9,
+         "channel": "TRIP R MJSNG2",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 108.4,
+         "channel": "CB OPEN MJSNG2",
+         "role": "PMT",
+         "change": "Aktif"
+        },
+        {
+         "t_ms": 108.6,
+         "channel": "CB OPEN MJSNG2",
+         "role": "PMT",
+         "change": "Bounce 0,2 ms, diabaikan",
+         "muted": true
+        }
+       ],
+       "silent": [
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "OC OPRT MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "AR OPRT MJSNG2",
+         "role": "Reclose"
+        },
+        {
+         "channel": "PRES ALRM MJSNG2",
+         "role": null
+        },
+        {
+         "channel": "TRIP Z2/3 MJSNG2",
+         "role": "Trip"
+        },
+        {
+         "channel": "LP SEND MJSNG2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "LP RCV MJSNG2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        }
+       ],
+       "channel_count": 21
+      }
+     },
      "observed_facts": {
       "faulted_phases": [
        "B",
@@ -1631,12 +2589,12 @@
      }
     },
     "attachment_warnings": [],
-    "created_at": "2026-10-09T21:46:34.367059+00:00"
+    "created_at": "2026-10-10T08:14:44.996645+00:00"
    },
    {
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "analysis_id": "a61016829d734511a21c080161d7a439",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
     "source_filename": "230821,081503670,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg",
     "station_name": "GI MOJOSONGO",
     "bay_name": null,
@@ -1653,7 +2611,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "a61016829d734511a21c080161d7a439",
+     "record_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
      "source_metadata": {
       "duration_s": 0.709961,
       "station_name": "GI MOJOSONGO",
@@ -2069,6 +3027,444 @@
       },
       "warnings": []
      },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": true,
+      "fault_start_ms": 68.04687529802322,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dari gelombang \u2014 tidak ada kanal trip yang aktif",
+        "evidence": [
+         "Arus T naik ke 1,6 kA puncak (prefault 400 A rms).",
+         "Tegangan T turun ke 0,43 pu."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "medium",
+        "value": {
+         "present": true,
+         "protection_operated": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "S-T, antar fasa, tidak ke tanah",
+        "evidence": [
+         "Tegangan S 0,55; T 0,43 pu; R 0,98 pu.",
+         "Loop S-T 9,9 \u03a9; loop lain \u2265 87 \u03a9. I0/I1 0,04.",
+         "Arus gangguan (tanpa beban) S 664 A dan T 723 A, beda sudut 167\u00b0.",
+         "Kontribusi arus gangguan hanya 723 A, kurang dari 2\u00d7 arus beban 418 A: ujung weak infeed, fasa dibaca dari tegangan."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3",
+         "F4.7",
+         "F7.4"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "B",
+          "C"
+         ],
+         "ground": false,
+         "label": "S-T",
+         "voltage_pu": {
+          "A": 0.975,
+          "B": 0.549,
+          "C": 0.432
+         },
+         "loops_ohm": {
+          "AB": 463.196,
+          "BC": 9.938,
+          "CA": 86.967
+         },
+         "i0_i1": 0.036,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": true,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "59 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Arus S/T nol \u00b159 ms."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.5"
+        ],
+        "confidence": "medium",
+        "value": {
+         "fct_ms": 59.3,
+         "clearing_ms": 59.4,
+         "trip_ms": null,
+         "interruption_ms": null,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Echo teleproteksi lalu PMT terbuka \u00b159 ms (trip tidak terekam)",
+        "evidence": [
+         "Kanal trip direkam tetapi tidak aktif, padahal arus padam \u00b159 ms: trip PMT tidak tercatat di DFR ini.",
+         "DIST RECEIVE BRINGIN 2 +50,2 ms lalu DIST SEND BRINGIN 2 +54,2 ms: sinyal dipantulkan (echo), pola skema POTT dari ujung weak infeed. Trip kemungkinan dari logika weak infeed yang tidak dipetakan ke DFR."
+        ],
+        "rules": [
+         "F5.1",
+         "F5.4"
+        ],
+        "confidence": "medium",
+        "value": {
+         "kind": "no_trip",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "echo": {
+          "receive_ms": 50.2,
+          "send_ms": 54.2
+         }
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Trip 3-pole; reclose tidak terekam di rekaman ini",
+        "evidence": [
+         "Ketiga arus padam bersamaan (dari gelombang; kanal trip tidak aktif).",
+         "Konsisten: gangguan multi-fasa \u2192 trip 3-pole."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": "3P",
+         "poles": [],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null
+        },
+        "conflicts": []
+       }
+      ],
+      "flag_count": 0,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "fault_start",
+       "events": [
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 50.2,
+         "channel": "DIST RECEIVE BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal diterima"
+        },
+        {
+         "t_ms": 54.2,
+         "channel": "DIST SEND BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal dikirim"
+        },
+        {
+         "t_ms": 59.1,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 59.4,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 59.5,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 63.7,
+         "channel": "DIST SEND BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 92.0,
+         "channel": "Tegangan fasa S",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 92.0,
+         "channel": "Tegangan fasa T",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 112.0,
+         "channel": "Tegangan fasa R",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 316.2,
+         "channel": "DIST RECEIVE BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        }
+       ],
+       "silent": [
+        {
+         "channel": "D - CH6",
+         "role": null
+        },
+        {
+         "channel": "D - CH7",
+         "role": null
+        },
+        {
+         "channel": "D - CH8",
+         "role": null
+        },
+        {
+         "channel": "D - CH9",
+         "role": null
+        },
+        {
+         "channel": "D - CH10",
+         "role": null
+        },
+        {
+         "channel": "D - CH11",
+         "role": null
+        },
+        {
+         "channel": "D - CH17",
+         "role": null
+        },
+        {
+         "channel": "D - CH18",
+         "role": null
+        },
+        {
+         "channel": "D - CH19",
+         "role": null
+        },
+        {
+         "channel": "D - CH20",
+         "role": null
+        },
+        {
+         "channel": "D - CH21",
+         "role": null
+        },
+        {
+         "channel": "D - CH22",
+         "role": null
+        },
+        {
+         "channel": "D - CH23",
+         "role": null
+        },
+        {
+         "channel": "D - CH24",
+         "role": null
+        },
+        {
+         "channel": "D - CH25",
+         "role": null
+        },
+        {
+         "channel": "D - CH26",
+         "role": null
+        },
+        {
+         "channel": "D - CH27",
+         "role": null
+        },
+        {
+         "channel": "D - CH28",
+         "role": null
+        },
+        {
+         "channel": "D - CH29",
+         "role": null
+        },
+        {
+         "channel": "D - CH30",
+         "role": null
+        },
+        {
+         "channel": "D - CH31",
+         "role": null
+        },
+        {
+         "channel": "D - CH32",
+         "role": null
+        },
+        {
+         "channel": "DIST Z1 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "DIST Z2 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "DIST Z3 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "OCR TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "GFR TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "D - CH38",
+         "role": null
+        },
+        {
+         "channel": "D - CH39",
+         "role": null
+        },
+        {
+         "channel": "D - CH40",
+         "role": null
+        },
+        {
+         "channel": "D - CH41",
+         "role": null
+        },
+        {
+         "channel": "D - CH42",
+         "role": null
+        },
+        {
+         "channel": "D - CH43",
+         "role": null
+        },
+        {
+         "channel": "CB TRIP BRINGIN 2",
+         "role": "PMT"
+        },
+        {
+         "channel": "PRESSURE STEP 2 BRINGIN 2",
+         "role": null
+        },
+        {
+         "channel": "AUTO RECLOSE BRINGIN 2",
+         "role": "Reclose"
+        },
+        {
+         "channel": "D - CH49",
+         "role": null
+        },
+        {
+         "channel": "D - CH50",
+         "role": null
+        },
+        {
+         "channel": "D - CH51",
+         "role": null
+        },
+        {
+         "channel": "D - CH52",
+         "role": null
+        },
+        {
+         "channel": "D - CH53",
+         "role": null
+        },
+        {
+         "channel": "D - CH54",
+         "role": null
+        },
+        {
+         "channel": "D - CH55",
+         "role": null
+        },
+        {
+         "channel": "D - CH56",
+         "role": null
+        },
+        {
+         "channel": "D - CH57",
+         "role": null
+        },
+        {
+         "channel": "D - CH58",
+         "role": null
+        },
+        {
+         "channel": "D - CH59",
+         "role": null
+        },
+        {
+         "channel": "D - CH60",
+         "role": null
+        },
+        {
+         "channel": "D - CH61",
+         "role": null
+        },
+        {
+         "channel": "D - CH62",
+         "role": null
+        },
+        {
+         "channel": "D - CH63",
+         "role": null
+        },
+        {
+         "channel": "D - CH64",
+         "role": null
+        }
+       ],
+       "channel_count": 54
+      }
+     },
      "observed_facts": {
       "faulted_phases": [
        "B",
@@ -2158,12 +3554,12 @@
       "overridden": true
      }
     ],
-    "created_at": "2026-10-09T21:46:36.613293+00:00"
+    "created_at": "2026-10-10T08:14:45.870130+00:00"
    },
    {
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "analysis_id": "9495c0960b7942168ee3689db95657ef",
     "source_filename": "230821,081508780,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg",
     "station_name": "GI MOJOSONGO",
     "bay_name": null,
@@ -2180,7 +3576,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "record_id": "9495c0960b7942168ee3689db95657ef",
      "source_metadata": {
       "duration_s": 0.599961,
       "station_name": "GI MOJOSONGO",
@@ -2488,6 +3884,324 @@
       },
       "warnings": []
      },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": false,
+      "fault_start_ms": null,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Rekaman reclose, bukan gangguan",
+        "evidence": [
+         "Rekaman dimulai saat PMT terbuka (dead time) dan hanya menangkap reclose.",
+         "Penyebab tidak diklasifikasi dari rekaman ini."
+        ],
+        "rules": [
+         "F1.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": false,
+         "class": "reclose_capture"
+        },
+        "conflicts": []
+       }
+      ],
+      "flag_count": 0,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "record_start",
+       "events": [
+        {
+         "t_ms": 60.0,
+         "channel": "Tegangan fasa R",
+         "role": "Gelombang",
+         "change": "Tegangan kembali"
+        },
+        {
+         "t_ms": 60.0,
+         "channel": "Tegangan fasa T",
+         "role": "Gelombang",
+         "change": "Tegangan kembali"
+        },
+        {
+         "t_ms": 65.3,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Line diberi tegangan"
+        },
+        {
+         "t_ms": 65.3,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Line diberi tegangan"
+        },
+        {
+         "t_ms": 65.3,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Line diberi tegangan"
+        },
+        {
+         "t_ms": 66.3,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus kembali"
+        },
+        {
+         "t_ms": 66.4,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus kembali"
+        },
+        {
+         "t_ms": 70.0,
+         "channel": "Tegangan fasa S",
+         "role": "Gelombang",
+         "change": "Tegangan kembali"
+        },
+        {
+         "t_ms": 70.5,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus kembali"
+        },
+        {
+         "t_ms": 90.0,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus kembali ke beban"
+        },
+        {
+         "t_ms": 90.0,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus kembali ke beban"
+        }
+       ],
+       "silent": [
+        {
+         "channel": "D - CH6",
+         "role": null
+        },
+        {
+         "channel": "D - CH7",
+         "role": null
+        },
+        {
+         "channel": "D - CH8",
+         "role": null
+        },
+        {
+         "channel": "D - CH9",
+         "role": null
+        },
+        {
+         "channel": "D - CH10",
+         "role": null
+        },
+        {
+         "channel": "D - CH11",
+         "role": null
+        },
+        {
+         "channel": "D - CH17",
+         "role": null
+        },
+        {
+         "channel": "D - CH18",
+         "role": null
+        },
+        {
+         "channel": "D - CH19",
+         "role": null
+        },
+        {
+         "channel": "D - CH20",
+         "role": null
+        },
+        {
+         "channel": "D - CH21",
+         "role": null
+        },
+        {
+         "channel": "D - CH22",
+         "role": null
+        },
+        {
+         "channel": "D - CH23",
+         "role": null
+        },
+        {
+         "channel": "D - CH24",
+         "role": null
+        },
+        {
+         "channel": "D - CH25",
+         "role": null
+        },
+        {
+         "channel": "D - CH26",
+         "role": null
+        },
+        {
+         "channel": "D - CH27",
+         "role": null
+        },
+        {
+         "channel": "D - CH28",
+         "role": null
+        },
+        {
+         "channel": "D - CH29",
+         "role": null
+        },
+        {
+         "channel": "D - CH30",
+         "role": null
+        },
+        {
+         "channel": "D - CH31",
+         "role": null
+        },
+        {
+         "channel": "D - CH32",
+         "role": null
+        },
+        {
+         "channel": "DIST Z1 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "DIST Z2 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "DIST Z3 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "OCR TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "GFR TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "D - CH38",
+         "role": null
+        },
+        {
+         "channel": "D - CH39",
+         "role": null
+        },
+        {
+         "channel": "D - CH40",
+         "role": null
+        },
+        {
+         "channel": "D - CH41",
+         "role": null
+        },
+        {
+         "channel": "D - CH42",
+         "role": null
+        },
+        {
+         "channel": "D - CH43",
+         "role": null
+        },
+        {
+         "channel": "DIST SEND BRINGIN 2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "DIST RECEIVE BRINGIN 2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "CB TRIP BRINGIN 2",
+         "role": "PMT"
+        },
+        {
+         "channel": "PRESSURE STEP 2 BRINGIN 2",
+         "role": null
+        },
+        {
+         "channel": "AUTO RECLOSE BRINGIN 2",
+         "role": "Reclose"
+        },
+        {
+         "channel": "D - CH49",
+         "role": null
+        },
+        {
+         "channel": "D - CH50",
+         "role": null
+        },
+        {
+         "channel": "D - CH51",
+         "role": null
+        },
+        {
+         "channel": "D - CH52",
+         "role": null
+        },
+        {
+         "channel": "D - CH53",
+         "role": null
+        },
+        {
+         "channel": "D - CH54",
+         "role": null
+        },
+        {
+         "channel": "D - CH55",
+         "role": null
+        },
+        {
+         "channel": "D - CH56",
+         "role": null
+        },
+        {
+         "channel": "D - CH57",
+         "role": null
+        },
+        {
+         "channel": "D - CH58",
+         "role": null
+        },
+        {
+         "channel": "D - CH59",
+         "role": null
+        },
+        {
+         "channel": "D - CH60",
+         "role": null
+        },
+        {
+         "channel": "D - CH61",
+         "role": null
+        },
+        {
+         "channel": "D - CH62",
+         "role": null
+        },
+        {
+         "channel": "D - CH63",
+         "role": null
+        },
+        {
+         "channel": "D - CH64",
+         "role": null
+        }
+       ],
+       "channel_count": 54
+      }
+     },
      "observed_facts": {
       "faulted_phases": [],
       "reclose_attempted": true,
@@ -2575,12 +4289,12 @@
       "overridden": true
      }
     ],
-    "created_at": "2026-10-09T21:46:38.414197+00:00"
+    "created_at": "2026-10-10T08:14:46.552518+00:00"
    },
    {
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
     "source_filename": "230821,081514490,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg",
     "station_name": "GI MOJOSONGO",
     "bay_name": null,
@@ -2597,7 +4311,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "b8ee0d431749459f9eb0801b56576716",
+     "record_id": "deb800c1f177484fa3f64c2dd84aaa67",
      "source_metadata": {
       "duration_s": 0.709961,
       "station_name": "GI MOJOSONGO",
@@ -2996,6 +4710,444 @@
       },
       "warnings": []
      },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": true,
+      "fault_start_ms": 73.98437708616257,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dari gelombang \u2014 tidak ada kanal trip yang aktif",
+        "evidence": [
+         "Arus T naik ke 1,8 kA puncak (prefault 287 A rms).",
+         "Tegangan T turun ke 0,48 pu."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "medium",
+        "value": {
+         "present": true,
+         "protection_operated": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "S-T, antar fasa, tidak ke tanah",
+        "evidence": [
+         "Tegangan S 0,52; T 0,48 pu; R 1,00 pu.",
+         "Loop S-T 22,1 \u03a9; loop lain \u2265 233 \u03a9. I0/I1 0,07.",
+         "Arus gangguan (tanpa beban) S 270 A dan T 261 A, beda sudut 167\u00b0.",
+         "Kontribusi arus gangguan hanya 270 A, kurang dari 2\u00d7 arus beban 300 A: ujung weak infeed, fasa dibaca dari tegangan."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3",
+         "F4.7",
+         "F7.4"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "B",
+          "C"
+         ],
+         "ground": false,
+         "label": "S-T",
+         "voltage_pu": {
+          "A": 0.997,
+          "B": 0.516,
+          "C": 0.48
+         },
+         "loops_ohm": {
+          "AB": 308.194,
+          "BC": 22.083,
+          "CA": 232.822
+         },
+         "i0_i1": 0.074,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": true,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "79 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Arus S/T nol \u00b179 ms."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.5"
+        ],
+        "confidence": "medium",
+        "value": {
+         "fct_ms": 78.9,
+         "clearing_ms": 79.0,
+         "trip_ms": null,
+         "interruption_ms": null,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Echo teleproteksi lalu PMT terbuka \u00b179 ms (trip tidak terekam)",
+        "evidence": [
+         "Kanal trip direkam tetapi tidak aktif, padahal arus padam \u00b179 ms: trip PMT tidak tercatat di DFR ini.",
+         "DIST RECEIVE BRINGIN 2 +46,7 ms lalu DIST SEND BRINGIN 2 +58,7 ms: sinyal dipantulkan (echo), pola skema POTT dari ujung weak infeed. Trip kemungkinan dari logika weak infeed yang tidak dipetakan ke DFR."
+        ],
+        "rules": [
+         "F5.1",
+         "F5.4"
+        ],
+        "confidence": "medium",
+        "value": {
+         "kind": "no_trip",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "echo": {
+          "receive_ms": 46.7,
+          "send_ms": 58.7
+         }
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Trip 3-pole; reclose tidak terekam di rekaman ini",
+        "evidence": [
+         "Ketiga arus padam bersamaan (dari gelombang; kanal trip tidak aktif).",
+         "Konsisten: gangguan multi-fasa \u2192 trip 3-pole."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": "3P",
+         "poles": [],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null
+        },
+        "conflicts": []
+       }
+      ],
+      "flag_count": 0,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "fault_start",
+       "events": [
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 46.7,
+         "channel": "DIST RECEIVE BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal diterima"
+        },
+        {
+         "t_ms": 58.7,
+         "channel": "DIST SEND BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal dikirim"
+        },
+        {
+         "t_ms": 78.9,
+         "channel": "Arus fasa T",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 79.0,
+         "channel": "Arus fasa S",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 80.0,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 85.2,
+         "channel": "DIST SEND BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 96.0,
+         "channel": "Tegangan fasa S",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 96.0,
+         "channel": "Tegangan fasa T",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 106.0,
+         "channel": "Tegangan fasa R",
+         "role": "Gelombang",
+         "change": "Tegangan hilang"
+        },
+        {
+         "t_ms": 310.2,
+         "channel": "DIST RECEIVE BRINGIN 2",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        }
+       ],
+       "silent": [
+        {
+         "channel": "D - CH6",
+         "role": null
+        },
+        {
+         "channel": "D - CH7",
+         "role": null
+        },
+        {
+         "channel": "D - CH8",
+         "role": null
+        },
+        {
+         "channel": "D - CH9",
+         "role": null
+        },
+        {
+         "channel": "D - CH10",
+         "role": null
+        },
+        {
+         "channel": "D - CH11",
+         "role": null
+        },
+        {
+         "channel": "D - CH17",
+         "role": null
+        },
+        {
+         "channel": "D - CH18",
+         "role": null
+        },
+        {
+         "channel": "D - CH19",
+         "role": null
+        },
+        {
+         "channel": "D - CH20",
+         "role": null
+        },
+        {
+         "channel": "D - CH21",
+         "role": null
+        },
+        {
+         "channel": "D - CH22",
+         "role": null
+        },
+        {
+         "channel": "D - CH23",
+         "role": null
+        },
+        {
+         "channel": "D - CH24",
+         "role": null
+        },
+        {
+         "channel": "D - CH25",
+         "role": null
+        },
+        {
+         "channel": "D - CH26",
+         "role": null
+        },
+        {
+         "channel": "D - CH27",
+         "role": null
+        },
+        {
+         "channel": "D - CH28",
+         "role": null
+        },
+        {
+         "channel": "D - CH29",
+         "role": null
+        },
+        {
+         "channel": "D - CH30",
+         "role": null
+        },
+        {
+         "channel": "D - CH31",
+         "role": null
+        },
+        {
+         "channel": "D - CH32",
+         "role": null
+        },
+        {
+         "channel": "DIST Z1 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "DIST Z2 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "DIST Z3 TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "OCR TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "GFR TRIP BRINGIN 2",
+         "role": "Trip"
+        },
+        {
+         "channel": "D - CH38",
+         "role": null
+        },
+        {
+         "channel": "D - CH39",
+         "role": null
+        },
+        {
+         "channel": "D - CH40",
+         "role": null
+        },
+        {
+         "channel": "D - CH41",
+         "role": null
+        },
+        {
+         "channel": "D - CH42",
+         "role": null
+        },
+        {
+         "channel": "D - CH43",
+         "role": null
+        },
+        {
+         "channel": "CB TRIP BRINGIN 2",
+         "role": "PMT"
+        },
+        {
+         "channel": "PRESSURE STEP 2 BRINGIN 2",
+         "role": null
+        },
+        {
+         "channel": "AUTO RECLOSE BRINGIN 2",
+         "role": "Reclose"
+        },
+        {
+         "channel": "D - CH49",
+         "role": null
+        },
+        {
+         "channel": "D - CH50",
+         "role": null
+        },
+        {
+         "channel": "D - CH51",
+         "role": null
+        },
+        {
+         "channel": "D - CH52",
+         "role": null
+        },
+        {
+         "channel": "D - CH53",
+         "role": null
+        },
+        {
+         "channel": "D - CH54",
+         "role": null
+        },
+        {
+         "channel": "D - CH55",
+         "role": null
+        },
+        {
+         "channel": "D - CH56",
+         "role": null
+        },
+        {
+         "channel": "D - CH57",
+         "role": null
+        },
+        {
+         "channel": "D - CH58",
+         "role": null
+        },
+        {
+         "channel": "D - CH59",
+         "role": null
+        },
+        {
+         "channel": "D - CH60",
+         "role": null
+        },
+        {
+         "channel": "D - CH61",
+         "role": null
+        },
+        {
+         "channel": "D - CH62",
+         "role": null
+        },
+        {
+         "channel": "D - CH63",
+         "role": null
+        },
+        {
+         "channel": "D - CH64",
+         "role": null
+        }
+       ],
+       "channel_count": 54
+      }
+     },
      "observed_facts": {
       "faulted_phases": [
        "A",
@@ -3086,7 +5238,7 @@
       "overridden": true
      }
     ],
-    "created_at": "2026-10-09T21:46:41.018288+00:00"
+    "created_at": "2026-10-10T08:14:47.384383+00:00"
    }
   ],
   "provenance": {
@@ -3094,55 +5246,55 @@
    "incident_engine_version": "stage1.0",
    "record_snapshot_versions": [
     {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "status_waveform_aligned"
     },
     {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "dead_time_recording"
     },
     {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "status_waveform_aligned"
     },
     {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "current_derivative"
     },
     {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "dead_time_recording"
     },
     {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "current_derivative"
     }
    ],
-   "created_at": "2026-10-09T21:46:23.913639+00:00",
-   "updated_at": "2026-10-09T21:47:14.101037+00:00"
+   "created_at": "2026-10-10T08:14:41.309328+00:00",
+   "updated_at": "2026-10-10T08:14:55.399921+00:00"
   }
  },
  "reconstruction": {
-  "reconstruction_id": "79f074fa94ad442990c68b28c43b9382",
-  "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+  "reconstruction_id": "a7a201433ce74064aa30ce3e3c25a5f6",
+  "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
   "engine_version": "stage2.0",
   "schema_version": "stage2",
   "same_bay_status": "CONFIRMED_SAME_BAY",
@@ -3166,38 +5318,38 @@
    "confidence": 0.55,
    "order_source": "ABSOLUTE_TIME",
    "record_order": [
-    "eb94077a9d6145aab7ca2a7a8c8070d6",
-    "e30074ebe97146f18bfa0001e226cb31",
-    "c6334963874749cb931cb215c40a236c",
-    "73bddc4bc3a64201b13bb480a4aec209",
-    "41f6c51a79ca4e459d8fe1204b8afb65",
-    "d47e1e0f37cb4eea854ba2a329102631"
+    "7bbe4933157448aca0312a7a761e5769",
+    "69dc97b3b55340ab81181ef22f649171",
+    "a3c41156423e4d92b3c80b2b70d68923",
+    "a811f2baae6542a29bc1f5bafaa3334c",
+    "c4d3fd3ee649448ca1c1c7b84d04139c",
+    "11bdc65b59a54bee873d2ede3e90b81f"
    ],
    "pairwise_gaps_ms": [
     {
-     "left_incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-     "right_incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "left_incident_record_id": "7bbe4933157448aca0312a7a761e5769",
+     "right_incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "gap_ms": 5104.2,
      "precise": false,
      "data_gap_ms": 2070.1
     },
     {
-     "left_incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
-     "right_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "left_incident_record_id": "69dc97b3b55340ab81181ef22f649171",
+     "right_incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "gap_ms": 5110.0,
      "precise": false,
      "data_gap_ms": 4400.0
     },
     {
-     "left_incident_record_id": "c6334963874749cb931cb215c40a236c",
-     "right_incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "left_incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
+     "right_incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "gap_ms": 5715.8,
      "precise": false,
      "data_gap_ms": 3500.1
     },
     {
-     "left_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
-     "right_incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "left_incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
+     "right_incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "gap_ms": 5710.0,
      "precise": false,
      "data_gap_ms": 5110.0
@@ -3221,7 +5373,7 @@
     "zero_iso": "2023-08-21T15:15:03.619791",
     "records": [
      {
-      "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+      "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
       "clock_group": "GI BRINGIN | Bay Mojosongo 1-2",
       "method": "reference_clock",
       "correction_s": 0.0,
@@ -3233,7 +5385,7 @@
       "span_s": 3.009896
      },
      {
-      "incident_record_id": "c6334963874749cb931cb215c40a236c",
+      "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
       "clock_group": "GI BRINGIN | Bay Mojosongo 1-2",
       "method": "reference_clock",
       "correction_s": 0.0,
@@ -3245,7 +5397,7 @@
       "span_s": 2.239896
      },
      {
-      "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+      "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
       "clock_group": "GI BRINGIN | Bay Mojosongo 1-2",
       "method": "reference_clock",
       "correction_s": 0.0,
@@ -3257,15 +5409,15 @@
       "span_s": 3.009896
      },
      {
-      "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+      "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
       "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
       "method": "fault_aligned",
       "correction_s": 25199.999988,
       "zone_offset_h": -7.0,
       "clock_offset_ms": 0.012,
       "aligned_on": {
-       "reference_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-       "record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "reference_record_id": "7bbe4933157448aca0312a7a761e5769",
+       "record_id": "69dc97b3b55340ab81181ef22f649171",
        "agreeing_pairs": 2,
        "candidate_pairs": 2
       },
@@ -3274,15 +5426,15 @@
       "span_s": 0.709961
      },
      {
-      "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+      "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
       "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
       "method": "fault_aligned",
       "correction_s": 25199.999988,
       "zone_offset_h": -7.0,
       "clock_offset_ms": 0.012,
       "aligned_on": {
-       "reference_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-       "record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "reference_record_id": "7bbe4933157448aca0312a7a761e5769",
+       "record_id": "69dc97b3b55340ab81181ef22f649171",
        "agreeing_pairs": 2,
        "candidate_pairs": 2
       },
@@ -3291,15 +5443,15 @@
       "span_s": 0.599961
      },
      {
-      "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+      "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
       "clock_group": "GI MOJOSONGO | BRINGIN 1-2",
       "method": "fault_aligned",
       "correction_s": 25199.999988,
       "zone_offset_h": -7.0,
       "clock_offset_ms": 0.012,
       "aligned_on": {
-       "reference_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-       "record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "reference_record_id": "7bbe4933157448aca0312a7a761e5769",
+       "record_id": "69dc97b3b55340ab81181ef22f649171",
        "agreeing_pairs": 2,
        "candidate_pairs": 2
       },
@@ -3319,70 +5471,70 @@
    }
   },
   "timeline_event_ids": [
-   "79f074fa94ad442990c68b28c43b9382-1",
-   "79f074fa94ad442990c68b28c43b9382-7",
-   "79f074fa94ad442990c68b28c43b9382-2",
-   "79f074fa94ad442990c68b28c43b9382-3",
-   "79f074fa94ad442990c68b28c43b9382-9",
-   "79f074fa94ad442990c68b28c43b9382-10",
-   "79f074fa94ad442990c68b28c43b9382-8",
-   "79f074fa94ad442990c68b28c43b9382-11",
-   "79f074fa94ad442990c68b28c43b9382-4",
-   "79f074fa94ad442990c68b28c43b9382-17",
-   "79f074fa94ad442990c68b28c43b9382-19",
-   "79f074fa94ad442990c68b28c43b9382-25",
-   "79f074fa94ad442990c68b28c43b9382-27",
-   "79f074fa94ad442990c68b28c43b9382-18",
-   "79f074fa94ad442990c68b28c43b9382-20",
-   "79f074fa94ad442990c68b28c43b9382-28",
-   "79f074fa94ad442990c68b28c43b9382-26",
-   "79f074fa94ad442990c68b28c43b9382-33",
-   "79f074fa94ad442990c68b28c43b9382-39",
-   "79f074fa94ad442990c68b28c43b9382-34",
-   "79f074fa94ad442990c68b28c43b9382-35",
-   "79f074fa94ad442990c68b28c43b9382-41",
-   "79f074fa94ad442990c68b28c43b9382-42",
-   "79f074fa94ad442990c68b28c43b9382-43",
-   "79f074fa94ad442990c68b28c43b9382-40",
-   "79f074fa94ad442990c68b28c43b9382-36",
-   "79f074fa94ad442990c68b28c43b9382-5",
-   "79f074fa94ad442990c68b28c43b9382-6",
-   "79f074fa94ad442990c68b28c43b9382-12",
-   "79f074fa94ad442990c68b28c43b9382-13",
-   "79f074fa94ad442990c68b28c43b9382-14",
-   "79f074fa94ad442990c68b28c43b9382-15",
-   "79f074fa94ad442990c68b28c43b9382-16",
-   "79f074fa94ad442990c68b28c43b9382-21",
-   "79f074fa94ad442990c68b28c43b9382-22",
-   "79f074fa94ad442990c68b28c43b9382-23",
-   "79f074fa94ad442990c68b28c43b9382-24",
-   "79f074fa94ad442990c68b28c43b9382-29",
-   "79f074fa94ad442990c68b28c43b9382-30",
-   "79f074fa94ad442990c68b28c43b9382-31",
-   "79f074fa94ad442990c68b28c43b9382-32",
-   "79f074fa94ad442990c68b28c43b9382-37",
-   "79f074fa94ad442990c68b28c43b9382-38",
-   "79f074fa94ad442990c68b28c43b9382-44",
-   "79f074fa94ad442990c68b28c43b9382-45",
-   "79f074fa94ad442990c68b28c43b9382-46",
-   "79f074fa94ad442990c68b28c43b9382-47",
-   "79f074fa94ad442990c68b28c43b9382-48",
-   "79f074fa94ad442990c68b28c43b9382-49",
-   "79f074fa94ad442990c68b28c43b9382-50",
-   "79f074fa94ad442990c68b28c43b9382-51"
+   "a7a201433ce74064aa30ce3e3c25a5f6-1",
+   "a7a201433ce74064aa30ce3e3c25a5f6-7",
+   "a7a201433ce74064aa30ce3e3c25a5f6-2",
+   "a7a201433ce74064aa30ce3e3c25a5f6-3",
+   "a7a201433ce74064aa30ce3e3c25a5f6-9",
+   "a7a201433ce74064aa30ce3e3c25a5f6-10",
+   "a7a201433ce74064aa30ce3e3c25a5f6-8",
+   "a7a201433ce74064aa30ce3e3c25a5f6-11",
+   "a7a201433ce74064aa30ce3e3c25a5f6-4",
+   "a7a201433ce74064aa30ce3e3c25a5f6-17",
+   "a7a201433ce74064aa30ce3e3c25a5f6-19",
+   "a7a201433ce74064aa30ce3e3c25a5f6-25",
+   "a7a201433ce74064aa30ce3e3c25a5f6-27",
+   "a7a201433ce74064aa30ce3e3c25a5f6-18",
+   "a7a201433ce74064aa30ce3e3c25a5f6-20",
+   "a7a201433ce74064aa30ce3e3c25a5f6-28",
+   "a7a201433ce74064aa30ce3e3c25a5f6-26",
+   "a7a201433ce74064aa30ce3e3c25a5f6-33",
+   "a7a201433ce74064aa30ce3e3c25a5f6-39",
+   "a7a201433ce74064aa30ce3e3c25a5f6-34",
+   "a7a201433ce74064aa30ce3e3c25a5f6-35",
+   "a7a201433ce74064aa30ce3e3c25a5f6-41",
+   "a7a201433ce74064aa30ce3e3c25a5f6-42",
+   "a7a201433ce74064aa30ce3e3c25a5f6-43",
+   "a7a201433ce74064aa30ce3e3c25a5f6-40",
+   "a7a201433ce74064aa30ce3e3c25a5f6-36",
+   "a7a201433ce74064aa30ce3e3c25a5f6-5",
+   "a7a201433ce74064aa30ce3e3c25a5f6-6",
+   "a7a201433ce74064aa30ce3e3c25a5f6-12",
+   "a7a201433ce74064aa30ce3e3c25a5f6-13",
+   "a7a201433ce74064aa30ce3e3c25a5f6-14",
+   "a7a201433ce74064aa30ce3e3c25a5f6-15",
+   "a7a201433ce74064aa30ce3e3c25a5f6-16",
+   "a7a201433ce74064aa30ce3e3c25a5f6-21",
+   "a7a201433ce74064aa30ce3e3c25a5f6-22",
+   "a7a201433ce74064aa30ce3e3c25a5f6-23",
+   "a7a201433ce74064aa30ce3e3c25a5f6-24",
+   "a7a201433ce74064aa30ce3e3c25a5f6-29",
+   "a7a201433ce74064aa30ce3e3c25a5f6-30",
+   "a7a201433ce74064aa30ce3e3c25a5f6-31",
+   "a7a201433ce74064aa30ce3e3c25a5f6-32",
+   "a7a201433ce74064aa30ce3e3c25a5f6-37",
+   "a7a201433ce74064aa30ce3e3c25a5f6-38",
+   "a7a201433ce74064aa30ce3e3c25a5f6-44",
+   "a7a201433ce74064aa30ce3e3c25a5f6-45",
+   "a7a201433ce74064aa30ce3e3c25a5f6-46",
+   "a7a201433ce74064aa30ce3e3c25a5f6-47",
+   "a7a201433ce74064aa30ce3e3c25a5f6-48",
+   "a7a201433ce74064aa30ce3e3c25a5f6-49",
+   "a7a201433ce74064aa30ce3e3c25a5f6-50",
+   "a7a201433ce74064aa30ce3e3c25a5f6-51"
   ],
   "relationship_ids": [
-   "79f074fa94ad442990c68b28c43b9382-52",
-   "79f074fa94ad442990c68b28c43b9382-53",
-   "79f074fa94ad442990c68b28c43b9382-54",
-   "79f074fa94ad442990c68b28c43b9382-55",
-   "79f074fa94ad442990c68b28c43b9382-56",
-   "79f074fa94ad442990c68b28c43b9382-57",
-   "79f074fa94ad442990c68b28c43b9382-58"
+   "a7a201433ce74064aa30ce3e3c25a5f6-52",
+   "a7a201433ce74064aa30ce3e3c25a5f6-53",
+   "a7a201433ce74064aa30ce3e3c25a5f6-54",
+   "a7a201433ce74064aa30ce3e3c25a5f6-55",
+   "a7a201433ce74064aa30ce3e3c25a5f6-56",
+   "a7a201433ce74064aa30ce3e3c25a5f6-57",
+   "a7a201433ce74064aa30ce3e3c25a5f6-58"
   ],
   "episode_ids": [
-   "79f074fa94ad442990c68b28c43b9382-59",
-   "79f074fa94ad442990c68b28c43b9382-60"
+   "a7a201433ce74064aa30ce3e3c25a5f6-59",
+   "a7a201433ce74064aa30ce3e3c25a5f6-60"
   ],
   "observed_incident_facts": {
    "record_count": 6,
@@ -3429,8 +5581,8 @@
    "scope": "RECORD_LOCAL_SIGNATURES",
    "records": [
     {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+     "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
      "top_hypothesis": "PETIR",
      "confidence": 0.82,
      "cause_ranking": [
@@ -3513,8 +5665,8 @@
      "requires_review": true
     },
     {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "top_hypothesis": null,
      "confidence": null,
      "cause_ranking": [],
@@ -3531,8 +5683,8 @@
      "skip_reason": "reclose_capture"
     },
     {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+     "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "top_hypothesis": "PETIR",
      "confidence": 0.349,
      "cause_ranking": [
@@ -3601,8 +5753,8 @@
      "skip_reason": null
     },
     {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "top_hypothesis": "LAYANG",
      "confidence": 0.594,
      "cause_ranking": [
@@ -3671,8 +5823,8 @@
      "skip_reason": null
     },
     {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "top_hypothesis": null,
      "confidence": null,
      "cause_ranking": [],
@@ -3689,8 +5841,8 @@
      "skip_reason": "reclose_capture"
     },
     {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "top_hypothesis": "PETIR",
      "confidence": 0.92,
      "cause_ranking": [
@@ -3772,48 +5924,48 @@
   "narrative": "6 COMTRADE records from the same bay were reconstructed into 2 fault episodes over 11 seconds.\n\nEpisode 1 was a phase-to-phase (or double-line-to-ground) (B-C fault), lasting 65 ms. Reclose was successful after a 5.0 s dead time. (4 records captured this episode.)\nEpisode 2 was a phase-to-phase (or double-line-to-ground) (B-C fault), lasting 66 ms. This episode is a new fault 5.7 s after the previous episode's successful reclose \u2014 the reclose did not hold. (2 records captured this episode.)\n\nThe line was reclosed successfully but faulted again within seconds, so the cause of the first fault did not go away at the trip. A fault that comes back this quickly is more consistent with something still near the conductor than with a one-off transient \u2014 a pattern-based reading, not a confirmed conclusion.\nThe per-record physical-cause signatures are consistent with each other.\nThe physical initiating cause remains unconfirmed from local COMTRADE evidence alone; external evidence (field inspection, lightning detection, protection engineer review) is needed to confirm it.",
   "record_snapshot_versions": [
    {
-    "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
     "timing_source": "status_waveform_aligned"
    },
    {
-    "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
     "timing_source": "dead_time_recording"
    },
    {
-    "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
     "timing_source": "status_waveform_aligned"
    },
    {
-    "analysis_id": "a61016829d734511a21c080161d7a439",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
     "timing_source": "current_derivative"
    },
    {
-    "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "analysis_id": "9495c0960b7942168ee3689db95657ef",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
     "timing_source": "dead_time_recording"
    },
    {
-    "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
@@ -3822,12 +5974,12 @@
   ],
   "is_latest": true,
   "supersedes": null,
-  "created_at": "2026-10-09T21:47:13.669838+00:00",
+  "created_at": "2026-10-10T08:14:55.212998+00:00",
   "timeline": [
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-1",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-1",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:03.619791",
@@ -3836,20 +5988,20 @@
     "source": "canonical_event_window",
     "label": "Record start (ZQ6D.cfg)",
     "details": {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee"
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+     "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-7",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-7",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:03.670291",
@@ -3858,20 +6010,20 @@
     "source": "canonical_event_window",
     "label": "Record start (230821,081503670,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg)",
     "details": {
-     "analysis_id": "a61016829d734511a21c080161d7a439"
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-2",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-2",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:03.729687",
@@ -3882,16 +6034,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+     "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-3",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-3",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:03.738333",
@@ -3907,16 +6059,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+     "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-9",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-9",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:03.738338",
@@ -3932,16 +6084,16 @@
     },
     "confidence": 0.8,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-10",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-10",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "FAULT_CLEARING",
     "absolute_time_iso": "2023-08-21T15:15:03.753299",
@@ -3954,16 +6106,16 @@
     },
     "confidence": 0.8,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-8",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-8",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:03.770291",
@@ -3974,16 +6126,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-11",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-11",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "RECLOSE_SUCCESS",
     "absolute_time_iso": "2023-08-21T15:15:03.843924",
@@ -3996,16 +6148,16 @@
     },
     "confidence": 0.7,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-4",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-4",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
     "episode_id": null,
     "event_type": "FAULT_CLEARING",
     "absolute_time_iso": "2023-08-21T15:15:03.848228",
@@ -4018,16 +6170,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+     "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-17",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-17",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:08.699791",
@@ -4036,20 +6188,20 @@
     "source": "canonical_event_window",
     "label": "Record start (ZQ6E.cfg)",
     "details": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059"
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-19",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-19",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:08.699791",
@@ -4062,16 +6214,16 @@
     },
     "confidence": 0.6,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-25",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-25",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:08.780289",
@@ -4080,20 +6232,20 @@
     "source": "canonical_event_window",
     "label": "Record start (230821,081508780,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg)",
     "details": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05"
+     "analysis_id": "9495c0960b7942168ee3689db95657ef"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-27",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-27",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:08.780289",
@@ -4106,16 +6258,16 @@
     },
     "confidence": 0.55,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-18",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-18",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:08.833854",
@@ -4126,16 +6278,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-20",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-20",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "RECLOSE_SUCCESS",
     "absolute_time_iso": "2023-08-21T15:15:08.834478",
@@ -4148,16 +6300,16 @@
     },
     "confidence": 0.7,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-28",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-28",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "RECLOSE_SUCCESS",
     "absolute_time_iso": "2023-08-21T15:15:08.844469",
@@ -4170,16 +6322,16 @@
     },
     "confidence": 0.7,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-26",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-26",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:08.880289",
@@ -4190,16 +6342,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-33",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-33",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:14.439791",
@@ -4208,20 +6360,20 @@
     "source": "canonical_event_window",
     "label": "Record start (ZQ6F.cfg)",
     "details": {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9"
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+     "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-39",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-39",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:14.490294",
@@ -4230,20 +6382,20 @@
     "source": "canonical_event_window",
     "label": "Record start (230821,081514490,+7h0,GI MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg)",
     "details": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716"
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-34",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-34",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:14.549687",
@@ -4254,16 +6406,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+     "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-35",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-35",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:14.564270",
@@ -4279,16 +6431,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+     "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-41",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-41",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:14.564278",
@@ -4305,16 +6457,16 @@
     },
     "confidence": 0.8,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-42",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-42",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "FAULT_CLEARING",
     "absolute_time_iso": "2023-08-21T15:15:14.574278",
@@ -4327,16 +6479,16 @@
     },
     "confidence": 0.8,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-43",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-43",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "RECLOSE_SUCCESS",
     "absolute_time_iso": "2023-08-21T15:15:14.576310",
@@ -4349,16 +6501,16 @@
     },
     "confidence": 0.7,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-40",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-40",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:14.590294",
@@ -4369,16 +6521,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-36",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-36",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "episode_id": null,
     "event_type": "FAULT_CLEARING",
     "absolute_time_iso": "2023-08-21T15:15:14.672187",
@@ -4391,16 +6543,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+     "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-12",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-12",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4411,16 +6563,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-13",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-13",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4431,16 +6583,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-14",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-14",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4451,16 +6603,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-15",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-15",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4471,16 +6623,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-16",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-16",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4491,16 +6643,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "a61016829d734511a21c080161d7a439",
-     "incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
+     "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
+     "incident_record_id": "69dc97b3b55340ab81181ef22f649171",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-21",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-21",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4511,16 +6663,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-22",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-22",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4531,16 +6683,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-23",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-23",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4551,16 +6703,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-24",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "c6334963874749cb931cb215c40a236c",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-24",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4571,16 +6723,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
-     "incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "analysis_id": "12507eedf47e4b038998d914dc3631e8",
+     "incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-29",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-29",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4591,16 +6743,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-30",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-30",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4611,16 +6763,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-31",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-31",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4631,16 +6783,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-32",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-32",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4651,16 +6803,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
-     "incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "analysis_id": "9495c0960b7942168ee3689db95657ef",
+     "incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-37",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-37",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4671,16 +6823,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+     "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-38",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-38",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4691,16 +6843,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
-     "incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "analysis_id": "abe0891e03ad4266adcabfe66660520c",
+     "incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-44",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-44",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4711,16 +6863,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-45",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-45",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4731,16 +6883,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-46",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-46",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4751,16 +6903,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-47",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-47",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4771,15 +6923,15 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "b8ee0d431749459f9eb0801b56576716",
-     "incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
+     "incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "canonical_schema_version": "stage0",
      "timing_source": "current_derivative"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-48",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-48",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
     "incident_record_id": null,
     "episode_id": null,
     "event_type": "DATA_GAP",
@@ -4789,8 +6941,8 @@
     "source": "alignment_assessment",
     "label": "Gap of 2.1s between records",
     "details": {
-     "left_incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-     "right_incident_record_id": "c6334963874749cb931cb215c40a236c",
+     "left_incident_record_id": "7bbe4933157448aca0312a7a761e5769",
+     "right_incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
      "gap_ms": 5104.2,
      "precise": false,
      "data_gap_ms": 2070.1
@@ -4801,8 +6953,8 @@
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-49",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-49",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
     "incident_record_id": null,
     "episode_id": null,
     "event_type": "DATA_GAP",
@@ -4812,8 +6964,8 @@
     "source": "alignment_assessment",
     "label": "Gap of 4.4s between records",
     "details": {
-     "left_incident_record_id": "e30074ebe97146f18bfa0001e226cb31",
-     "right_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+     "left_incident_record_id": "69dc97b3b55340ab81181ef22f649171",
+     "right_incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
      "gap_ms": 5110.0,
      "precise": false,
      "data_gap_ms": 4400.0
@@ -4824,9 +6976,9 @@
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-5",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-5",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4837,15 +6989,15 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+     "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-50",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-50",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
     "incident_record_id": null,
     "episode_id": null,
     "event_type": "DATA_GAP",
@@ -4855,8 +7007,8 @@
     "source": "alignment_assessment",
     "label": "Gap of 3.5s between records",
     "details": {
-     "left_incident_record_id": "c6334963874749cb931cb215c40a236c",
-     "right_incident_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+     "left_incident_record_id": "a3c41156423e4d92b3c80b2b70d68923",
+     "right_incident_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
      "gap_ms": 5715.8,
      "precise": false,
      "data_gap_ms": 3500.1
@@ -4867,8 +7019,8 @@
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-51",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-51",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
     "incident_record_id": null,
     "episode_id": null,
     "event_type": "DATA_GAP",
@@ -4878,8 +7030,8 @@
     "source": "alignment_assessment",
     "label": "Gap of 5.1s between records",
     "details": {
-     "left_incident_record_id": "73bddc4bc3a64201b13bb480a4aec209",
-     "right_incident_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+     "left_incident_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
+     "right_incident_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
      "gap_ms": 5710.0,
      "precise": false,
      "data_gap_ms": 5110.0
@@ -4890,9 +7042,9 @@
     }
    },
    {
-    "timeline_event_id": "79f074fa94ad442990c68b28c43b9382-6",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+    "timeline_event_id": "a7a201433ce74064aa30ce3e3c25a5f6-6",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -4903,8 +7055,8 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
-     "incident_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
+     "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
+     "incident_record_id": "7bbe4933157448aca0312a7a761e5769",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
@@ -4912,10 +7064,10 @@
   ],
   "relationships": [
    {
-    "relationship_id": "79f074fa94ad442990c68b28c43b9382-52",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "left_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-    "right_record_id": "e30074ebe97146f18bfa0001e226cb31",
+    "relationship_id": "a7a201433ce74064aa30ce3e3c25a5f6-52",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "left_record_id": "7bbe4933157448aca0312a7a761e5769",
+    "right_record_id": "69dc97b3b55340ab81181ef22f649171",
     "relationship_type": "REMOTE_END_CAPTURE",
     "confidence": 0.85,
     "evidence_for": [
@@ -4963,10 +7115,10 @@
     "reconstruction_version": null
    },
    {
-    "relationship_id": "79f074fa94ad442990c68b28c43b9382-53",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "left_record_id": "eb94077a9d6145aab7ca2a7a8c8070d6",
-    "right_record_id": "c6334963874749cb931cb215c40a236c",
+    "relationship_id": "a7a201433ce74064aa30ce3e3c25a5f6-53",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "left_record_id": "7bbe4933157448aca0312a7a761e5769",
+    "right_record_id": "a3c41156423e4d92b3c80b2b70d68923",
     "relationship_type": "RECLOSE_SEQUENCE",
     "confidence": 0.85,
     "evidence_for": [
@@ -5005,10 +7157,10 @@
     "reconstruction_version": null
    },
    {
-    "relationship_id": "79f074fa94ad442990c68b28c43b9382-54",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "left_record_id": "e30074ebe97146f18bfa0001e226cb31",
-    "right_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "relationship_id": "a7a201433ce74064aa30ce3e3c25a5f6-54",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "left_record_id": "69dc97b3b55340ab81181ef22f649171",
+    "right_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "relationship_type": "RECLOSE_SEQUENCE",
     "confidence": 0.85,
     "evidence_for": [
@@ -5047,10 +7199,10 @@
     "reconstruction_version": null
    },
    {
-    "relationship_id": "79f074fa94ad442990c68b28c43b9382-55",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "left_record_id": "c6334963874749cb931cb215c40a236c",
-    "right_record_id": "73bddc4bc3a64201b13bb480a4aec209",
+    "relationship_id": "a7a201433ce74064aa30ce3e3c25a5f6-55",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "left_record_id": "a3c41156423e4d92b3c80b2b70d68923",
+    "right_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
     "relationship_type": "REMOTE_END_CAPTURE",
     "confidence": 0.85,
     "evidence_for": [
@@ -5086,10 +7238,10 @@
     "reconstruction_version": null
    },
    {
-    "relationship_id": "79f074fa94ad442990c68b28c43b9382-56",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "left_record_id": "c6334963874749cb931cb215c40a236c",
-    "right_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
+    "relationship_id": "a7a201433ce74064aa30ce3e3c25a5f6-56",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "left_record_id": "a3c41156423e4d92b3c80b2b70d68923",
+    "right_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
     "relationship_type": "REFAULT_AFTER_RECLOSE",
     "confidence": 0.8,
     "evidence_for": [
@@ -5128,10 +7280,10 @@
     "reconstruction_version": null
    },
    {
-    "relationship_id": "79f074fa94ad442990c68b28c43b9382-57",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "left_record_id": "73bddc4bc3a64201b13bb480a4aec209",
-    "right_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "relationship_id": "a7a201433ce74064aa30ce3e3c25a5f6-57",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "left_record_id": "a811f2baae6542a29bc1f5bafaa3334c",
+    "right_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "relationship_type": "REFAULT_AFTER_RECLOSE",
     "confidence": 0.8,
     "evidence_for": [
@@ -5175,10 +7327,10 @@
     "reconstruction_version": null
    },
    {
-    "relationship_id": "79f074fa94ad442990c68b28c43b9382-58",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
-    "left_record_id": "41f6c51a79ca4e459d8fe1204b8afb65",
-    "right_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+    "relationship_id": "a7a201433ce74064aa30ce3e3c25a5f6-58",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
+    "left_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
+    "right_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
     "relationship_type": "REMOTE_END_CAPTURE",
     "confidence": 0.85,
     "evidence_for": [
@@ -5228,13 +7380,13 @@
   ],
   "episodes": [
    {
-    "episode_id": "79f074fa94ad442990c68b28c43b9382-59",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "episode_id": "a7a201433ce74064aa30ce3e3c25a5f6-59",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
     "member_record_ids": [
-     "eb94077a9d6145aab7ca2a7a8c8070d6",
-     "c6334963874749cb931cb215c40a236c",
-     "e30074ebe97146f18bfa0001e226cb31",
-     "73bddc4bc3a64201b13bb480a4aec209"
+     "7bbe4933157448aca0312a7a761e5769",
+     "a3c41156423e4d92b3c80b2b70d68923",
+     "69dc97b3b55340ab81181ef22f649171",
+     "a811f2baae6542a29bc1f5bafaa3334c"
     ],
     "episode_index": 0,
     "start_iso": "2023-08-21T15:15:03.729687",
@@ -5251,7 +7403,7 @@
     "electrical_summary": {},
     "local_cause_hypotheses": [
      {
-      "analysis_id": "aa493201841e4cc4a2192e2fe5faa1ee",
+      "analysis_id": "bd821043e8bb41e9bbb0b4f94e8dbf00",
       "top_hypothesis": "PETIR",
       "confidence": 0.82,
       "cause_ranking": [
@@ -5300,7 +7452,7 @@
       "skip_reason": null
      },
      {
-      "analysis_id": "8ee30ae8bcc44dc1972160d9e7b70059",
+      "analysis_id": "12507eedf47e4b038998d914dc3631e8",
       "top_hypothesis": null,
       "confidence": null,
       "cause_ranking": [],
@@ -5313,7 +7465,7 @@
       "skip_reason": "reclose_capture"
      },
      {
-      "analysis_id": "a61016829d734511a21c080161d7a439",
+      "analysis_id": "d02ec15d8d3244e0ad5dbf7211f72ccc",
       "top_hypothesis": "LAYANG",
       "confidence": 0.594,
       "cause_ranking": [
@@ -5362,7 +7514,7 @@
       "skip_reason": null
      },
      {
-      "analysis_id": "e9b0da5623d14626936e1c8a7a64cd05",
+      "analysis_id": "9495c0960b7942168ee3689db95657ef",
       "top_hypothesis": null,
       "confidence": null,
       "cause_ranking": [],
@@ -5379,10 +7531,10 @@
     "confidence": 0.6,
     "observed_facts": {
      "member_record_ids": [
-      "eb94077a9d6145aab7ca2a7a8c8070d6",
-      "c6334963874749cb931cb215c40a236c",
-      "e30074ebe97146f18bfa0001e226cb31",
-      "73bddc4bc3a64201b13bb480a4aec209"
+      "7bbe4933157448aca0312a7a761e5769",
+      "a3c41156423e4d92b3c80b2b70d68923",
+      "69dc97b3b55340ab81181ef22f649171",
+      "a811f2baae6542a29bc1f5bafaa3334c"
      ],
      "faulted_phases": [
       "B",
@@ -5397,13 +7549,13 @@
        "station": "GI MOJOSONGO",
        "same_station": false,
        "member_record_ids": [
-        "e30074ebe97146f18bfa0001e226cb31",
-        "73bddc4bc3a64201b13bb480a4aec209"
+        "69dc97b3b55340ab81181ef22f649171",
+        "a811f2baae6542a29bc1f5bafaa3334c"
        ],
        "relationship_types": [
         "REMOTE_END_CAPTURE"
        ],
-       "fault_record_id": "e30074ebe97146f18bfa0001e226cb31",
+       "fault_record_id": "69dc97b3b55340ab81181ef22f649171",
        "faulted_phases": [
         "B",
         "C"
@@ -5424,30 +7576,270 @@
      "event_classes": [
       "FAULT_EVENT",
       "RECLOSE_CAPTURE"
-     ]
+     ],
+     "reasoning": {
+      "fault_record_id": "7bbe4933157448aca0312a7a761e5769",
+      "fault_start_ms": 118.5416653752327,
+      "rows": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dengan proteksi bekerja",
+        "evidence": [
+         "Arus S naik ke 9,2 kA puncak (prefault 443 A rms).",
+         "Tegangan T turun ke 0,64 pu.",
+         "Proteksi operate: TRIP R MJSNG2 +45,1 ms."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": true,
+         "protection_operated": true
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "S-T, antar fasa, tidak ke tanah",
+        "evidence": [
+         "Tegangan S 0,66; T 0,64 pu; R 0,97 pu.",
+         "Loop S-T 6,3 \u03a9; loop lain \u2265 20 \u03a9. I0/I1 0,04.",
+         "Arus gangguan (tanpa beban) S 5,6 kA dan T 5,4 kA, beda sudut 178\u00b0.",
+         "Trip 3-pole tidak dipakai sebagai bukti fasa."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3",
+         "F4.5",
+         "F4.7"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "B",
+          "C"
+         ],
+         "ground": false,
+         "label": "S-T",
+         "voltage_pu": {
+          "A": 0.974,
+          "B": 0.664,
+          "C": 0.637
+         },
+         "loops_ohm": {
+          "AB": 20.496,
+          "BC": 6.337,
+          "CA": 26.626
+         },
+         "i0_i1": 0.044,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": false,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "77 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Trip +45,1 ms \u2192 arus S/T nol \u00b177 ms \u2192 CB OPEN MJSNG2 +112,4 ms.",
+         "Waktu interupsi PMT 31 ms (wajar 30\u201380 ms)."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.3",
+         "F3.4",
+         "F3.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "fct_ms": 76.5,
+         "clearing_ms": 76.6,
+         "trip_ms": 45.1,
+         "interruption_ms": 31.5,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Z1, seketika",
+        "evidence": [
+         "Trip 3-pole +45,1 ms; TRIP Z1 MJSNG2 +48,2 ms."
+        ],
+        "rules": [
+         "F5.1",
+         "F5.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "kind": "z1",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "receive_at_trip": null,
+         "send_active": null,
+         "sotf_active": null,
+         "trip_zones": [
+          1
+         ]
+        },
+        "conflicts": []
+       },
+       {
+        "key": "location",
+        "step": 5,
+        "label": "Lokasi",
+        "title": "Dalam jangkauan Z1 GI ini",
+        "evidence": [
+         "Z1 umumnya menjangkau \u00b180% panjang line dari GI ini."
+        ],
+        "rules": [
+         "F5.7"
+        ],
+        "confidence": "medium",
+        "value": {
+         "zone_reach": "within_z1"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Trip 3-pole, reclose berhasil setelah 5,0 s (rekaman ZQ6E)",
+        "evidence": [
+         "Reclose terekam di ZQ6E: rekaman dimulai saat PMT terbuka dan menangkap PMT menutup.",
+         "CB OPEN MJSNG2 +112,4 ms.",
+         "Konsisten: gangguan multi-fasa \u2192 trip 3-pole."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2",
+         "F6.4",
+         "F6.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": "3P",
+         "poles": [
+          "A",
+          "B",
+          "C"
+         ],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null
+        },
+        "conflicts": []
+       },
+       {
+        "key": "other_end",
+        "step": 7,
+        "label": "Ujung lain",
+        "title": "GI MOJOSONGO: fasa S-T, padam 59 ms",
+        "evidence": [
+         "Kontribusi arus gangguan hanya 723 A, kurang dari 2\u00d7 arus beban 418 A: ujung weak infeed, fasa dibaca dari tegangan.",
+         "Fasa sama di kedua ujung.",
+         "Jalur trip di sana: Echo teleproteksi lalu PMT terbuka \u00b159 ms (trip tidak terekam).",
+         "GI MOJOSONGO menerima sinyal +50,2 ms lalu memantulkannya +54,2 ms: pola echo weak infeed pada skema POTT.",
+         "Reclose berhasil setelah dead time 5,1 s.",
+         "Jam perekam diselaraskan pada awal gangguan (koreksi \u22127 jam)."
+        ],
+        "rules": [
+         "F5.4",
+         "F7.3"
+        ],
+        "confidence": "high",
+        "value": {
+         "station": "GI MOJOSONGO",
+         "record_id": "69dc97b3b55340ab81181ef22f649171"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "cause",
+        "step": 8,
+        "label": "Penyebab",
+        "title": "Petir 82% (bacaan AI)",
+        "evidence": [
+         "Bacaan AI per rekaman; tidak mengubah fakta di atas.",
+         "Sub-mekanisme (SF/BFO) tidak dapat ditentukan tanpa data LDS.",
+         "Pola urutan: Gangguan berulang setelah reclose berhasil: indikasi kontak fisik."
+        ],
+        "rules": [
+         "F8.1",
+         "F8.2",
+         "F8.3"
+        ],
+        "confidence": "ai",
+        "value": {
+         "top_hypothesis": "PETIR"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "flag_send_silent",
+        "step": 9,
+        "label": "Ditandai",
+        "title": "GI lawan menerima sinyal, kanal Send di GI ini tidak aktif",
+        "evidence": [
+         "GI MOJOSONGO menerima sinyal +50,2 ms, tetapi LP SEND MJSNG2 di rekaman GI ini tidak pernah aktif.",
+         "Kanal Send di DFR ini kemungkinan bukan dari relay yang mengirim, atau tidak terhubung \u2014 cek pemetaan kanal teleproteksi."
+        ],
+        "rules": [
+         "F5.4",
+         "F7.3"
+        ],
+        "confidence": "flag",
+        "value": {},
+        "conflicts": []
+       }
+      ],
+      "flag_count": 1,
+      "conflict_count": 0
+     }
     },
     "missing_evidence": [
      {
       "type": "MULTIPLE_RECORDS_ONE_EPISODE",
-      "description": "This episode spans 4 records (eb94077a9d6145aab7ca2a7a8c8070d6, c6334963874749cb931cb215c40a236c, e30074ebe97146f18bfa0001e226cb31, 73bddc4bc3a64201b13bb480a4aec209): the fault and its trip/reclose sequence captured in separate files, and the other line end's recordings of them. Only the record holding the fault inception is cause evidence."
+      "description": "This episode spans 4 records (7bbe4933157448aca0312a7a761e5769, a3c41156423e4d92b3c80b2b70d68923, 69dc97b3b55340ab81181ef22f649171, a811f2baae6542a29bc1f5bafaa3334c): the fault and its trip/reclose sequence captured in separate files, and the other line end's recordings of them. Only the record holding the fault inception is cause evidence."
      }
     ],
     "provenance": {
      "member_analysis_ids": [
-      "aa493201841e4cc4a2192e2fe5faa1ee",
-      "8ee30ae8bcc44dc1972160d9e7b70059",
-      "a61016829d734511a21c080161d7a439",
-      "e9b0da5623d14626936e1c8a7a64cd05"
+      "bd821043e8bb41e9bbb0b4f94e8dbf00",
+      "12507eedf47e4b038998d914dc3631e8",
+      "d02ec15d8d3244e0ad5dbf7211f72ccc",
+      "9495c0960b7942168ee3689db95657ef"
      ],
      "recorder": "GI BRINGIN | Bay Mojosongo 1-2"
     }
    },
    {
-    "episode_id": "79f074fa94ad442990c68b28c43b9382-60",
-    "incident_id": "2fe753cb64ce4188b75cd7344261518e",
+    "episode_id": "a7a201433ce74064aa30ce3e3c25a5f6-60",
+    "incident_id": "ae3c67be809842eb9a80f1e30f9f4cd6",
     "member_record_ids": [
-     "41f6c51a79ca4e459d8fe1204b8afb65",
-     "d47e1e0f37cb4eea854ba2a329102631"
+     "c4d3fd3ee649448ca1c1c7b84d04139c",
+     "11bdc65b59a54bee873d2ede3e90b81f"
     ],
     "episode_index": 1,
     "start_iso": "2023-08-21T15:15:14.549687",
@@ -5464,7 +7856,7 @@
     "electrical_summary": {},
     "local_cause_hypotheses": [
      {
-      "analysis_id": "30478964cf7f44c184f36ea6fa653dd9",
+      "analysis_id": "abe0891e03ad4266adcabfe66660520c",
       "top_hypothesis": "PETIR",
       "confidence": 0.349,
       "cause_ranking": [
@@ -5513,7 +7905,7 @@
       "skip_reason": null
      },
      {
-      "analysis_id": "b8ee0d431749459f9eb0801b56576716",
+      "analysis_id": "deb800c1f177484fa3f64c2dd84aaa67",
       "top_hypothesis": "PETIR",
       "confidence": 0.92,
       "cause_ranking": [
@@ -5566,8 +7958,8 @@
     "confidence": 0.9,
     "observed_facts": {
      "member_record_ids": [
-      "41f6c51a79ca4e459d8fe1204b8afb65",
-      "d47e1e0f37cb4eea854ba2a329102631"
+      "c4d3fd3ee649448ca1c1c7b84d04139c",
+      "11bdc65b59a54bee873d2ede3e90b81f"
      ],
      "faulted_phases": [
       "B",
@@ -5581,12 +7973,12 @@
        "station": "GI MOJOSONGO",
        "same_station": false,
        "member_record_ids": [
-        "d47e1e0f37cb4eea854ba2a329102631"
+        "11bdc65b59a54bee873d2ede3e90b81f"
        ],
        "relationship_types": [
         "REMOTE_END_CAPTURE"
        ],
-       "fault_record_id": "d47e1e0f37cb4eea854ba2a329102631",
+       "fault_record_id": "11bdc65b59a54bee873d2ede3e90b81f",
        "faulted_phases": [
         "B",
         "C"
@@ -5606,18 +7998,255 @@
     "interpretation": {
      "event_classes": [
       "FAULT_EVENT"
-     ]
+     ],
+     "reasoning": {
+      "fault_record_id": "c4d3fd3ee649448ca1c1c7b84d04139c",
+      "fault_start_ms": 124.47916716337204,
+      "rows": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dengan proteksi bekerja",
+        "evidence": [
+         "Arus S naik ke 8,9 kA puncak (prefault 285 A rms).",
+         "Tegangan T turun ke 0,63 pu.",
+         "Proteksi operate: TRIP R MJSNG2 +42,0 ms."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": true,
+         "protection_operated": true
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "S-T, antar fasa, tidak ke tanah",
+        "evidence": [
+         "Tegangan S 0,67; T 0,63 pu; R 0,99 pu.",
+         "Loop S-T 6,4 \u03a9; loop lain \u2265 22 \u03a9. I0/I1 0,05.",
+         "Arus gangguan (tanpa beban) S 5,7 kA dan T 5,6 kA, beda sudut 176\u00b0.",
+         "Trip 3-pole tidak dipakai sebagai bukti fasa."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3",
+         "F4.5",
+         "F4.7"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "B",
+          "C"
+         ],
+         "ground": false,
+         "label": "S-T",
+         "voltage_pu": {
+          "A": 0.986,
+          "B": 0.672,
+          "C": 0.635
+         },
+         "loops_ohm": {
+          "AB": 21.778,
+          "BC": 6.381,
+          "CA": 25.87
+         },
+         "i0_i1": 0.045,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": false,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "78 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Trip +42,0 ms \u2192 arus S/T nol \u00b178 ms \u2192 CB OPEN MJSNG2 +108,4 ms.",
+         "Waktu interupsi PMT 36 ms (wajar 30\u201380 ms)."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.3",
+         "F3.4",
+         "F3.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "fct_ms": 78.1,
+         "clearing_ms": 78.2,
+         "trip_ms": 42.0,
+         "interruption_ms": 36.2,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Z1, seketika",
+        "evidence": [
+         "Trip 3-pole +42,0 ms; TRIP Z1 MJSNG2 +45,1 ms."
+        ],
+        "rules": [
+         "F5.1",
+         "F5.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "kind": "z1",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "receive_at_trip": null,
+         "send_active": null,
+         "sotf_active": null,
+         "trip_zones": [
+          1
+         ]
+        },
+        "conflicts": []
+       },
+       {
+        "key": "location",
+        "step": 5,
+        "label": "Lokasi",
+        "title": "Dalam jangkauan Z1 GI ini",
+        "evidence": [
+         "Z1 umumnya menjangkau \u00b180% panjang line dari GI ini."
+        ],
+        "rules": [
+         "F5.7"
+        ],
+        "confidence": "medium",
+        "value": {
+         "zone_reach": "within_z1"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Trip 3-pole; tidak ada reclose yang terekam di insiden ini",
+        "evidence": [
+         "CB OPEN MJSNG2 +108,4 ms.",
+         "Konsisten: gangguan multi-fasa \u2192 trip 3-pole."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": "3P",
+         "poles": [
+          "A",
+          "B",
+          "C"
+         ],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null
+        },
+        "conflicts": []
+       },
+       {
+        "key": "other_end",
+        "step": 7,
+        "label": "Ujung lain",
+        "title": "GI MOJOSONGO: fasa S-T, padam 79 ms",
+        "evidence": [
+         "Kontribusi arus gangguan hanya 270 A, kurang dari 2\u00d7 arus beban 300 A: ujung weak infeed, fasa dibaca dari tegangan.",
+         "Fasa sama di kedua ujung.",
+         "Jalur trip di sana: Echo teleproteksi lalu PMT terbuka \u00b179 ms (trip tidak terekam).",
+         "GI MOJOSONGO menerima sinyal +46,7 ms lalu memantulkannya +58,7 ms: pola echo weak infeed pada skema POTT.",
+         "Jam perekam diselaraskan pada awal gangguan (koreksi \u22127 jam)."
+        ],
+        "rules": [
+         "F5.4",
+         "F7.3"
+        ],
+        "confidence": "high",
+        "value": {
+         "station": "GI MOJOSONGO",
+         "record_id": "11bdc65b59a54bee873d2ede3e90b81f"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "cause",
+        "step": 8,
+        "label": "Penyebab",
+        "title": "Tidak ada penyebab yang dominan (bacaan AI)",
+        "evidence": [
+         "Kandidat: Petir 35%, Benda asing 32%, Layang-layang 31%.",
+         "Bacaan AI per rekaman; tidak mengubah fakta di atas.",
+         "Sub-mekanisme (SF/BFO) tidak dapat ditentukan tanpa data LDS.",
+         "Pola urutan: Gangguan berulang setelah reclose berhasil: indikasi kontak fisik."
+        ],
+        "rules": [
+         "F8.1",
+         "F8.2",
+         "F8.3"
+        ],
+        "confidence": "ai",
+        "value": {
+         "top_hypothesis": "PETIR"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "flag_send_silent",
+        "step": 9,
+        "label": "Ditandai",
+        "title": "GI lawan menerima sinyal, kanal Send di GI ini tidak aktif",
+        "evidence": [
+         "GI MOJOSONGO menerima sinyal +46,7 ms, tetapi LP SEND MJSNG2 di rekaman GI ini tidak pernah aktif.",
+         "Kanal Send di DFR ini kemungkinan bukan dari relay yang mengirim, atau tidak terhubung \u2014 cek pemetaan kanal teleproteksi."
+        ],
+        "rules": [
+         "F5.4",
+         "F7.3"
+        ],
+        "confidence": "flag",
+        "value": {},
+        "conflicts": []
+       }
+      ],
+      "flag_count": 1,
+      "conflict_count": 0
+     }
     },
     "missing_evidence": [
      {
       "type": "MULTIPLE_RECORDS_ONE_EPISODE",
-      "description": "This episode spans 2 records (41f6c51a79ca4e459d8fe1204b8afb65, d47e1e0f37cb4eea854ba2a329102631): the fault as recorded at both line ends. Only the record holding the fault inception is cause evidence."
+      "description": "This episode spans 2 records (c4d3fd3ee649448ca1c1c7b84d04139c, 11bdc65b59a54bee873d2ede3e90b81f): the fault as recorded at both line ends. Only the record holding the fault inception is cause evidence."
      }
     ],
     "provenance": {
      "member_analysis_ids": [
-      "30478964cf7f44c184f36ea6fa653dd9",
-      "b8ee0d431749459f9eb0801b56576716"
+      "abe0891e03ad4266adcabfe66660520c",
+      "deb800c1f177484fa3f64c2dd84aaa67"
      ],
      "recorder": "GI BRINGIN | Bay Mojosongo 1-2"
     }

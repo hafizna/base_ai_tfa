@@ -95,6 +95,14 @@ export interface RecordRow {
   note: string;
 }
 
+/** One fault of the incident, as the technical details pick it. */
+export interface FaultRef {
+  episodeId: string;
+  number: number;
+  /** Fault start on the incident clock, "15:15:03,738". */
+  time: string | null;
+}
+
 export interface IncidentStory {
   chips: Chip[];
   headline: string;
@@ -105,6 +113,9 @@ export interface IncidentStory {
   cause: CauseStory;
   checklist: ChecklistItem[];
   records: RecordRow[];
+  faults: FaultRef[];
+  /** Clock the times are on, e.g. "jam DFR GI BRINGIN". */
+  clockLabel: string;
 }
 
 // --- formatting ---------------------------------------------------------------
@@ -999,5 +1010,10 @@ export function buildIncidentStory(incident: IncidentOut, reconstruction: Recons
     cause,
     checklist: buildChecklist(incident, reconstruction, views, signal ? PATTERNS[signal.hypothesis] : null),
     records: buildRecordRows(records, views),
+    faults: views.map((v) => {
+      const at = v.fault?.inceptionAbs ?? isoToMs(v.episode.start_iso);
+      return { episodeId: v.episode.episode_id, number: v.number, time: at !== null ? formatClock(at) : null };
+    }),
+    clockLabel: station ? `jam DFR ${station}` : "jam DFR",
   };
 }

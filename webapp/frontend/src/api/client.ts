@@ -290,11 +290,64 @@ export interface CanonicalRecordAnalysis {
   protection_operations: ProtectionOperation[];
   electrical_measurements: ElectricalMeasurements;
   analog_trace?: Partial<AnalogTrace>;
+  /** The record's reasoning chain (webapp/api/fault_reasoning.py); absent in older snapshots. */
+  reasoning?: RecordReasoning;
   observed_facts: Record<string, unknown>;
   protection_interpretation: Record<string, unknown>;
   cause_hypotheses: Array<Record<string, unknown>>;
   missing_evidence: Array<{ type: string; description: string }>;
   provenance: Record<string, unknown>;
+}
+
+/**
+ * One conclusion of the reasoning chain: a ledger row. Rule IDs follow
+ * docs/fault-reasoning-rules.md. Confidence "flag" marks a row for review;
+ * "ai" marks the AI's statistical reading.
+ */
+export interface ReasoningRow {
+  key: string;
+  step: number;
+  label: string;
+  title: string;
+  evidence: string[];
+  rules: string[];
+  confidence: "high" | "medium" | "low" | "flag" | "ai";
+  value: Record<string, unknown>;
+  conflicts: string[];
+}
+
+export interface SignalEvent {
+  t_ms: number;
+  channel: string;
+  role: string;
+  change: string;
+  /** Contact bounce, shown but not part of the sequence. */
+  muted?: boolean;
+}
+
+export interface RecordReasoning {
+  schema: string;
+  has_fault: boolean;
+  fault_start_ms: number | null;
+  conclusions: ReasoningRow[];
+  flag_count: number;
+  conflict_count: number;
+  signals: {
+    /** "fault_start": times are ms after the fault starts; "record_start": after the first sample. */
+    reference: "fault_start" | "record_start";
+    events: SignalEvent[];
+    silent: Array<{ channel: string; role: string | null }>;
+    channel_count: number;
+  };
+}
+
+/** A fault's ledger in a reconstructed incident (episode.interpretation.reasoning). */
+export interface EpisodeReasoning {
+  fault_record_id: string;
+  fault_start_ms: number | null;
+  rows: ReasoningRow[];
+  flag_count: number;
+  conflict_count: number;
 }
 
 export async function fetchCanonicalAnalysis(analysisId: string) {
@@ -1345,7 +1398,7 @@ export interface FaultEpisodeOut {
   relationship_to_previous: RelationshipType | null;
   confidence: number;
   observed_facts: Record<string, unknown>;
-  interpretation: { event_classes?: string[]; [key: string]: unknown };
+  interpretation: { event_classes?: string[]; reasoning?: EpisodeReasoning; [key: string]: unknown };
   missing_evidence: Array<{ type: string; description: string }>;
   provenance: Record<string, unknown>;
 }
