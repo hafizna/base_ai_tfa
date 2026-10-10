@@ -5,10 +5,11 @@ import {
   computeDoubleEndedFL,
   fetchAnalysis,
   fetchDoubleEndedAlignEstimate,
+  fetchDoubleEndedLoopSuggestion,
   fetchDoubleEndedSuggestShift,
-  fetchFaultClassification21,
   uploadComtrade,
   type DoubleEndedComputeResult,
+  type DoubleEndedLoopSuggestion,
 } from "../api/client";
 import type { ComtradeData } from "../context/AnalysisContext";
 import CTVTRatioCorrection from "../components/panels/CTVTRatioCorrection";
@@ -46,45 +47,6 @@ const LOOP_OPTIONS = [
   { value: "ZBC", label: "B-C (phase)" },
   { value: "ZCA", label: "C-A (phase)" },
 ];
-
-interface LoopCandidates {
-  loops: string[];
-  /** True for a double line-to-ground fault, where two ground loops (e.g.
-   * ZA and ZC) are both physically valid candidates and there is no single
-   * "correct" one — unlike a clean SLG or LL fault, which map to exactly
-   * one loop. */
-  ambiguous: boolean;
-}
-
-/** Maps the existing fault-classification result (phases + to_ground) onto
- * candidate double-ended loop name(s) — same phase-pair convention as
- * relay_21.py's LOOP_CHANNELS. Returns null for anything the calculation
- * can't represent as a loop suggestion at all (3-phase faults, or no
- * phases), so the caller falls back to leaving the loop selection manual.
- * A DLG fault (2 phases + ground) has no single correct loop in distance-
- * relay practice, so it returns BOTH ground candidates rather than picking
- * one — the caller shows both and lets the user decide. */
-function loopCandidatesFromClassification(phases: string[], toGround: boolean): LoopCandidates | null {
-  const set = new Set(phases.map((p) => p.trim().toUpperCase()));
-  const groundLoop: Record<string, string> = { A: "ZA", B: "ZB", C: "ZC" };
-
-  if (set.size === 1 && toGround) {
-    const [phase] = set;
-    return groundLoop[phase] ? { loops: [groundLoop[phase]], ambiguous: false } : null;
-  }
-  if (set.size === 2 && !toGround) {
-    const key = [...set].sort().join("");
-    const phaseLoop: Record<string, string> = { AB: "ZAB", BC: "ZBC", AC: "ZCA" };
-    return phaseLoop[key] ? { loops: [phaseLoop[key]], ambiguous: false } : null;
-  }
-  if (set.size === 2 && toGround) {
-    // DLG — both single-phase ground loops for the two faulted phases are
-    // physically valid; there is no single "correct" one to pick.
-    const loops = [...set].map((phase) => groundLoop[phase]).filter((l): l is string => Boolean(l));
-    return loops.length === 2 ? { loops, ambiguous: true } : null;
-  }
-  return null;
-}
 
 function fileExt(file: File) {
   return file.name.split(".").pop()?.toLowerCase() ?? "";
@@ -156,7 +118,7 @@ export default function DoubleEndedFL() {
 
   const [loop, setLoop] = useState("ZA");
   const [loopTouchedManually, setLoopTouchedManually] = useState(false);
-  const [loopSuggestion, setLoopSuggestion] = useState<(LoopCandidates & { label: string }) | null>(null);
+  const [loopSuggestion, setLoopSuggestion] = useState<DoubleEndedLoopSuggestion | null>(null);
   const [lineLenKm, setLineLenKm] = useState<string>("");
   const [r1, setR1] = useState<string>("0.05");
   const [x1, setX1] = useState<string>("0.4");
@@ -281,38 +243,32 @@ export default function DoubleEndedFL() {
     void fetchEstimate(analysisIdA, analysisIdB);
   }, [analysisIdA, analysisIdB]);
 
-  // Suggest the loop from the existing single-ended fault classifier (reused
-  // as-is, not reimplemented) so the user isn't guessing between ZA/ZB/ZC/
-  // ZAB/ZBC/ZCA — runs against terminal A, since both terminals see the same
-  // physical fault and should classify to the same phase(s). Only ever
-  // pre-fills the field the FIRST time a suggestion arrives for this pair;
-  // once the user has touched the loop selector themselves, their choice is
-  // never overwritten.
+  // Suggest the loop from the faulted phases each terminal's reasoning chain
+  // reads (rule F7.4: only a loop that carries fault current gives a valid
+  // two-ended location). The backend prefers the strong end's reading when
+  // one end is weak infeed. Only ever pre-fills the field the FIRST time a
+  // suggestion arrives for this pair; once the user has touched the loop
+  // selector themselves, their choice is never overwritten.
   const loopSuggestionRequestedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!analysisIdA || !analysisIdB) return;
     const key = `${analysisIdA}:${analysisIdB}`;
     if (loopSuggestionRequestedFor.current === key) return;
     loopSuggestionRequestedFor.current = key;
-    fetchFaultClassification21(analysisIdA)
-      .then((cls) => {
-        if (cls.no_fault || !cls.phases.length) return;
-        const candidates = loopCandidatesFromClassification(cls.phases, cls.to_ground);
-        if (!candidates) return;
-        setLoopSuggestion({ ...candidates, label: cls.phases_label });
-        // Only pre-fill automatically when there's exactly one candidate —
-        // a DLG's two candidates are shown for the user to pick between,
-        // never silently defaulted to one.
-        if (!loopTouchedManually && !candidates.ambiguous) setLoop(candidates.loops[0]);
+    fetchDoubleEndedLoopSuggestion(analysisIdA, analysisIdB)
+      .then((suggestion) => {
+        if (!suggestion.loop) return;
+        setLoopSuggestion(suggestion);
+        if (!loopTouchedManually) setLoop(suggestion.loop);
       })
       .catch(() => {
-        // Classification is a convenience, not a requirement — leave the
+        // The suggestion is a convenience, not a requirement — leave the
         // loop selector on its default/manual value if it fails.
       });
     // loopTouchedManually intentionally omitted: this effect's identity is
     // keyed on the analysis-id pair, not on that flag — re-running it every
-    // time the user touches the selector would refetch the classification
-    // for no reason. The flag is still read fresh via closure each run.
+    // time the user touches the selector would refetch the suggestion for
+    // no reason. The flag is still read fresh via closure each run.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysisIdA, analysisIdB]);
 
@@ -641,32 +597,20 @@ export default function DoubleEndedFL() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              {loopSuggestion && !loopSuggestion.ambiguous && (
+              {loopSuggestion && (
                 <span className={styles.estimateHint}>
-                  {loopSuggestion.loops[0] === loop
-                    ? `Auto-detected from fault classification: ${loopSuggestion.label}`
-                    : `Detected fault: ${loopSuggestion.label} (loop ${loopSuggestion.loops[0]}) — you selected a different loop`}
+                  {loopSuggestion.loop === loop
+                    ? `Auto-detected: ${loopSuggestion.reason}`
+                    : `Suggested loop ${loopSuggestion.loop}: ${loopSuggestion.reason} You selected a different loop.`}
+                  {loopSuggestion.agree === false ? " The terminals disagree — check both records before trusting the loop." : ""}
                 </span>
               )}
-              {loopSuggestion && loopSuggestion.ambiguous && (
+              {loopSuggestion && loopSuggestion.weak_infeed_terminals.length > 0 && (
                 <span className={styles.estimateHint}>
-                  Detected fault: {loopSuggestion.label} — a double line-to-ground fault has no single
-                  correct loop. Pick one to try:{" "}
-                  {loopSuggestion.loops.map((candidate, i) => (
-                    <span key={candidate}>
-                      {i > 0 ? " or " : ""}
-                      <button
-                        type="button"
-                        className={styles.loopCandidateLink}
-                        onClick={() => {
-                          setLoopTouchedManually(true);
-                          setLoop(candidate);
-                        }}
-                      >
-                        {candidate}
-                      </button>
-                    </span>
-                  ))}
+                  {`Terminal ${loopSuggestion.weak_infeed_terminals.join(" and ")} is a weak-infeed end (little fault current), `}
+                  {loopSuggestion.source_terminal && !loopSuggestion.weak_infeed_terminals.includes(loopSuggestion.source_terminal)
+                    ? `so the loop comes from terminal ${loopSuggestion.source_terminal}'s reading.`
+                    : "so its faulted phases are read from the voltage sag alone."}
                 </span>
               )}
             </div>
@@ -694,7 +638,15 @@ export default function DoubleEndedFL() {
 
       {result && (
         <div className={styles.resultCard}>
-          {(Math.abs(result.m_residual_imag) > 0.15 || result.kvl_residual > 0.15) && (
+          {result.loop_carries_fault === false && (
+            <div className={styles.unreliableBanner}>
+              <strong>This is not a valid fault location.</strong> The fault draws almost no current in loop{" "}
+              {result.loop}, so the two-ended equations hold for any distance — a small residual here means
+              nothing. Pick the loop of the faulted phases in step 4 and re-run.
+            </div>
+          )}
+          {result.loop_carries_fault !== false &&
+            (Math.abs(result.m_residual_imag) > 0.15 || result.kvl_residual > 0.15) && (
             <div className={styles.unreliableBanner}>
               <strong>This result is not reliable yet.</strong> The two terminals' equations never found a
               consistent multi-window solution (RMS Im(m)={result.m_residual_imag.toFixed(3)}, KVL residual={" "}

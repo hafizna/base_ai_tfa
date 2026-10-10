@@ -446,6 +446,26 @@ export async function fetchDoubleEndedAlignEstimate(analysisIdA: string, analysi
   return data;
 }
 
+/** The loop each terminal's reasoning chain points to (rule F7.4). */
+export interface DoubleEndedLoopSuggestion {
+  /** Null when no terminal found the faulted phases. */
+  loop: string | null;
+  /** PLN phase label, e.g. "S-T". */
+  label: string | null;
+  source_terminal: "A" | "B" | null;
+  agree: boolean | null;
+  weak_infeed_terminals: string[];
+  reason: string;
+}
+
+export async function fetchDoubleEndedLoopSuggestion(analysisIdA: string, analysisIdB: string) {
+  const { data } = await api.post<DoubleEndedLoopSuggestion>("/api/analyze/21de/loop-suggestion", {
+    analysis_id_a: analysisIdA,
+    analysis_id_b: analysisIdB,
+  });
+  return data;
+}
+
 export interface DoubleEndedSuggestShiftRequest {
   analysisIdA: string;
   analysisIdB: string;
@@ -525,6 +545,14 @@ export interface DoubleEndedComputeResult {
   inception_time_b_s: number;
   active_tag_a: string | null;
   active_tag_b: string | null;
+  /** F7.4: |I_A + I_B| in the solved quantity over the positive-sequence current drawn at the fault. */
+  fault_point_ratio?: number | null;
+  /** Per end: fault contribution over load current; under 2× is weak infeed. */
+  fault_contribution_ratio_a?: number | null;
+  fault_contribution_ratio_b?: number | null;
+  /** False when the fault draws no current in the solved quantity: the result is not valid. */
+  loop_carries_fault?: boolean | null;
+  weak_infeed_terminals?: string[];
   warnings: string[];
   single_ended_a: DoubleEndedSingleEndedResult | null;
   single_ended_b: DoubleEndedSingleEndedResult | null;

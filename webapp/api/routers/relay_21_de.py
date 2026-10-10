@@ -51,13 +51,16 @@ from typing import Optional
 import numpy as np
 from fastapi import APIRouter, HTTPException
 
+from ..record_analysis import build_record_analysis
 from ..schemas import (
     DoubleEndedAlignRequest, DoubleEndedAlignResponse,
     DoubleEndedComputeRequest, DoubleEndedComputeResponse,
+    DoubleEndedLoopSuggestion,
     DoubleEndedSingleEndedResult,
     DoubleEndedSuggestShiftRequest, DoubleEndedSuggestShiftResponse,
 )
 from ..storage import load_analysis
+from core.analog_trace import trace_payload
 from core.clock_offsets import split_clock_offset
 from core.event_analysis import build_event_window
 from core.line_selection import scope_payload_with_selection
@@ -260,6 +263,75 @@ def _estimate_alignment(payload_a: dict, payload_b: dict) -> dict:
     }
 
 
+def _fault_end_idx(scoped_payload: dict, time: np.ndarray) -> Optional[int]:
+    """Sample index of this end's last fault-current zero (the analog trace's
+    clearing), or None when the trace found no fault clearing."""
+    trace = trace_payload(scoped_payload)
+    clearing_ms = (trace.summary.get("fault_clearing_ms") if trace is not None else None)
+    if clearing_ms is None or len(time) == 0:
+        return None
+    return int(np.searchsorted(time, float(clearing_ms) / 1000.0))
+
+
+# F7.4: the two-ended solve divides by the current the fault draws in the
+# solved quantity, I_A + I_B. A loop through no faulted phase (or negative
+# sequence on a balanced fault) draws none, so its distance is undefined.
+# Measured against the positive-sequence current drawn at the fault, which
+# every fault draws: a phase-phase loop through a faulted phase draws 1.5-3.5
+# times it; negative sequence draws the same on a single-phase or phase-phase
+# fault, Z0/(Z0+Z2) of it on a double-phase-to-ground fault, ~0 on a balanced
+# one; a loop through healthy phases only draws ~0.
+_FAULT_POINT_RATIO = 0.2
+# F4.7: an end whose fault contribution is under twice its load current.
+_WEAK_INFEED_RATIO = 2.0
+
+
+def _fault_point_ratio(
+    pairs: list[tuple[dict, dict]], seq_a: dict, seq_b: dict, shift_ms: float,
+) -> Optional[float]:
+    """|I_A + I_B| in the solved quantity over the positive-sequence current
+    drawn at the fault, both from the same aligned windows (medians)."""
+    shift_s = shift_ms / 1000.0
+    pos_a = {**seq_a, "basis": "positive_sequence"}
+    pos_b = {**seq_b, "basis": "positive_sequence"}
+    solved, positive = [], []
+    for term_a, term_b in pairs:
+        start_a, start_b = term_a["window_start_sample"], term_b["window_start_sample"]
+        try:
+            i1_a = _phasor_at_window_start(pos_a, start_a, aligned_start_s=float(seq_a["time"][start_a]))
+            i1_b = _phasor_at_window_start(pos_b, start_b, aligned_start_s=float(seq_b["time"][start_b]) - shift_s)
+        except HTTPException:
+            continue
+        solved.append(abs(term_a["i_primary"] + term_b["i_primary"]))
+        positive.append(abs(i1_a["i_primary"] + i1_b["i_primary"]))
+    if not positive or float(np.median(positive)) <= 0:
+        return None
+    return float(np.median(solved) / np.median(positive))
+
+
+def _fault_contribution_ratio(seq_ctx: dict) -> Optional[float]:
+    """F4.7 at one end: the largest superimposed (fault minus prefault) phase
+    current one cycle into the fault, over the largest prefault phase current."""
+    i0, win = int(seq_ctx["inception_idx"]), int(seq_ctx["win"])
+    fault_start = i0 + win
+    end = seq_ctx.get("fault_end_idx")
+    if end is not None and fault_start + win > end:
+        fault_start = i0 + win // 2
+    # Whole cycles apart, so the two windows' angles compare.
+    pre_start = fault_start - 3 * win
+    currents = seq_ctx["i_phases"]
+    if pre_start < 0 or fault_start + win > len(currents[0]):
+        return None
+    freq, sr = seq_ctx["freq"], seq_ctx["sr"]
+    pre = [_fundamental_phasor(i, pre_start, win, freq, sr, i0) for i in currents]
+    fault = [_fundamental_phasor(i, fault_start, win, freq, sr, i0) for i in currents]
+    load = max(abs(p) for p in pre)
+    contribution = max(abs(f - p) for f, p in zip(fault, pre))
+    if not (np.isfinite(load) and np.isfinite(contribution)) or load <= 0:
+        return None
+    return float(contribution / load)
+
+
 def _load_or_404(analysis_id: str) -> dict:
     payload = load_analysis(analysis_id)
     if payload is None:
@@ -315,6 +387,9 @@ def _build_terminal_context(
     timing_source = event_window.method
     sr = 1.0 / (time[1] - time[0]) if len(time) > 1 else freq * 20.0
     win = max(1, int(round(sr / freq)))  # one cycle window, same convention as _compute_locus
+    # F7.4: where this end's fault current stopped (its last current zero),
+    # so the evaluation windows stay where both ends still carry it.
+    fault_end_idx = _fault_end_idx(payload, time)
 
     active_tag = _detect_active_line_tag(channels)
     reported_line = line_selection.selected if line_selection is not None else active_tag
@@ -348,6 +423,7 @@ def _build_terminal_context(
             "win": win,
             "inception_idx": inception_idx,
             "clearing_idx": event_window.clearing_idx,
+            "fault_end_idx": fault_end_idx,
             "timing_source": timing_source,
             "active_tag": reported_line,
             "basis": "negative_sequence",
@@ -395,6 +471,7 @@ def _build_terminal_context(
         "win": win,
         "inception_idx": inception_idx,
         "clearing_idx": event_window.clearing_idx,
+        "fault_end_idx": fault_end_idx,
         "timing_source": timing_source,
         "active_tag": reported_line,
         "basis": "phase_loop",
@@ -421,8 +498,9 @@ def _phasor_at_window_start(ctx: dict, start: int, aligned_start_s: Optional[flo
             detail="Synchronization shift moves the phasor window entirely before fault inception.",
         )
 
-    if ctx.get("basis") == "negative_sequence":
+    if ctx.get("basis") in ("negative_sequence", "positive_sequence"):
         a = np.exp(1j * 2.0 * np.pi / 3.0)
+        b, c = (a ** 2, a) if ctx["basis"] == "negative_sequence" else (a, a ** 2)
         vabc = [
             _fundamental_phasor(value, start, win, ctx["freq"], ctx["sr"], inception_idx)
             for value in ctx["v_phases_scaled"]
@@ -431,8 +509,8 @@ def _phasor_at_window_start(ctx: dict, start: int, aligned_start_s: Optional[flo
             _fundamental_phasor(value, start, win, ctx["freq"], ctx["sr"], inception_idx)
             for value in ctx["i_phases"]
         ]
-        v_ph = (vabc[0] + (a ** 2) * vabc[1] + a * vabc[2]) / 3.0
-        i_ph = (iabc[0] + (a ** 2) * iabc[1] + a * iabc[2]) / 3.0
+        v_ph = (vabc[0] + b * vabc[1] + c * vabc[2]) / 3.0
+        i_ph = (iabc[0] + b * iabc[1] + c * iabc[2]) / 3.0
     else:
         v_ph = _fundamental_phasor(ctx["v_scaled"], start, win, ctx["freq"], ctx["sr"], inception_idx)
         i_ph = _fundamental_phasor(ctx["i"], start, win, ctx["freq"], ctx["sr"], inception_idx)
@@ -609,10 +687,21 @@ def _paired_fault_windows(
     *,
     n_windows: int = 17,
 ) -> list[tuple[dict, dict]]:
-    """Select simultaneous, high-current windows from the fault interval."""
+    """Select simultaneous, high-current windows from the fault interval —
+    the part of it where both ends still carry fault current (F7.4: a weak
+    end's breaker can open well before the strong end's)."""
     freq = ctx_a["freq"]
-    max_a_idx = (ctx_a.get("clearing_idx") or len(ctx_a["time"]) - 1) - ctx_a["win"]
-    max_b_idx = (ctx_b.get("clearing_idx") or len(ctx_b["time"]) - 1) - ctx_b["win"]
+
+    def last_index(ctx: dict) -> int:
+        # The last current zero (F3.2); the event window's clearing can be a
+        # trip-contact edge far from where the current actually stopped.
+        for idx in (ctx.get("fault_end_idx"), ctx.get("clearing_idx")):
+            if idx is not None:
+                return int(idx)
+        return len(ctx["time"]) - 1
+
+    max_a_idx = last_index(ctx_a) - ctx_a["win"]
+    max_b_idx = last_index(ctx_b) - ctx_b["win"]
     duration_a_s = max(0.0, (max_a_idx - ctx_a["inception_idx"]) / ctx_a["sr"])
     duration_b_s = max(0.0, (max_b_idx - ctx_b["inception_idx"]) / ctx_b["sr"])
     # Four cycles are enough to move beyond inception transients while not
@@ -621,11 +710,18 @@ def _paired_fault_windows(
     offsets = np.linspace(0.0, max_offset_s, max(3, n_windows))
 
     pairs: list[tuple[dict, dict]] = []
+    seen: set[tuple[int, int]] = set()
     for offset_s in offsets:
         try:
-            pairs.append(_aligned_terminal_pair(ctx_a, ctx_b, shift_ms, float(offset_s)))
+            pair = _aligned_terminal_pair(ctx_a, ctx_b, shift_ms, float(offset_s))
         except HTTPException:
             continue
+        # A short fault interval maps several offsets onto one sample: count
+        # each window once, so the window count and spread stay honest.
+        key = (pair[0]["window_start_sample"], pair[1]["window_start_sample"])
+        if key not in seen:
+            seen.add(key)
+            pairs.append(pair)
     if not pairs:
         return []
 
@@ -750,6 +846,40 @@ def _compute_double_ended(
             f"actually-faulted phase?), then each terminal's CT/PT ratio (step 2), then phase sequence."
         )
 
+    # F7.4: both checks read all three phases, whatever quantity is solved.
+    try:
+        seq_a = ctx_a if use_sequence else _build_terminal_context(
+            payload_a, "ZA", invert_i_a, invert_phase_sequence_a, sequence_for_ground=True,
+        )
+        seq_b = ctx_b if use_sequence else _build_terminal_context(
+            payload_b, "ZA", invert_i_b, invert_phase_sequence_b, sequence_for_ground=True,
+        )
+    except HTTPException:
+        seq_a = seq_b = None
+    fault_point_ratio = _fault_point_ratio(pairs, seq_a, seq_b, manual_shift_ms) if seq_a else None
+    contribution = {
+        "A": _fault_contribution_ratio(seq_a) if seq_a else None,
+        "B": _fault_contribution_ratio(seq_b) if seq_b else None,
+    }
+    loop_carries_fault = None if fault_point_ratio is None else fault_point_ratio >= _FAULT_POINT_RATIO
+    basis = "negative sequence" if use_sequence else f"loop {loop}"
+    if loop_carries_fault is False:
+        # On a loop that draws no fault current the equations hold for any
+        # distance, so a small residual there means nothing.
+        warnings.insert(0, (
+            f"The fault draws almost no current in {basis} (I_A + I_B is {fault_point_ratio:.2f}× the "
+            "positive-sequence current drawn at the fault). The two-ended equations then hold for any distance, "
+            "so this result is not valid — pick the loop of the faulted phases."
+        ))
+    weak_infeed = sorted(t for t, r in contribution.items() if r is not None and r < _WEAK_INFEED_RATIO)
+    for terminal in weak_infeed:
+        warnings.append(
+            f"Terminal {terminal} is a weak-infeed end: its fault contribution is only "
+            f"{contribution[terminal]:.1f}× its load current. The two-ended solve still holds, since it uses "
+            "this end's voltage, but this end's own single-ended reading is unreliable: the infeed from the other "
+            "end magnifies the fault resistance it sees."
+        )
+
     if use_sequence:
         phase_ctx_a = _build_terminal_context(
             payload_a, loop, invert_i_a, invert_phase_sequence_a,
@@ -779,6 +909,11 @@ def _compute_double_ended(
         "inception_time_b_s": term_b["inception_time_s"],
         "active_tag_a": term_a["active_tag"],
         "active_tag_b": term_b["active_tag"],
+        "fault_point_ratio": round(fault_point_ratio, 3) if fault_point_ratio is not None else None,
+        "fault_contribution_ratio_a": round(contribution["A"], 2) if contribution["A"] is not None else None,
+        "fault_contribution_ratio_b": round(contribution["B"], 2) if contribution["B"] is not None else None,
+        "loop_carries_fault": loop_carries_fault,
+        "weak_infeed_terminals": weak_infeed,
         "warnings": warnings,
     }
 
@@ -979,6 +1114,78 @@ def _compute_distance_histogram(
         samples.append(m * line_len_km)
 
     return samples
+
+
+_PHASE_LOOPS = {frozenset("AB"): "ZAB", frozenset("BC"): "ZBC", frozenset("AC"): "ZCA"}
+
+
+def _reasoned_phases(payload: dict) -> Optional[dict]:
+    """The terminal's faulted phases from its reasoning chain (rule F4)."""
+    reasoning = build_record_analysis("double-ended", payload).reasoning
+    row = next((c for c in reasoning.get("conclusions") or [] if c.get("key") == "phases"), None)
+    if row is None or not (row.get("value") or {}).get("phases"):
+        return None
+    value = row["value"]
+    return {
+        "phases": list(value["phases"]),
+        "ground": bool(value.get("ground")),
+        "label": value.get("label"),
+        "weak_infeed": bool(value.get("weak_infeed")),
+    }
+
+
+def _suggest_loop(payload_a: dict, payload_b: dict) -> dict:
+    """F7.4: solve on a quantity the fault draws current in. The strong end's
+    reading leads when one end is weak infeed (its phases come from voltage
+    alone).
+
+    A single-phase fault is solved in negative sequence (the ground loops),
+    which needs no zero-sequence impedance. Any fault on two or three phases
+    is solved on a phase-phase loop through them: its drop is Z1 times the
+    loop current whether or not ground is involved, and it carries the full
+    fault current."""
+    readings = {"A": _reasoned_phases(payload_a), "B": _reasoned_phases(payload_b)}
+    available = {t: r for t, r in readings.items() if r is not None}
+    weak = sorted(t for t, r in available.items() if r["weak_infeed"])
+    if not available:
+        return {"loop": None, "reason": "Neither terminal's reasoning found the faulted phases."}
+    source = "A" if "A" in available else "B"
+    if source == "A" and available["A"]["weak_infeed"] and "B" in available and not available["B"]["weak_infeed"]:
+        source = "B"
+    reading = available[source]
+    phases = set(reading["phases"])
+    agree = (set(available["A"]["phases"]) == set(available["B"]["phases"])) if len(available) == 2 else None
+
+    reason = f"Faulted phases {reading['label']} read at terminal {source}"
+    if len(phases) == 1:
+        loop = f"Z{next(iter(phases))}"
+    elif len(phases) == 2:
+        loop = _PHASE_LOOPS[frozenset(phases)]
+    else:
+        # A balanced fault draws no negative sequence; every phase-phase loop
+        # carries it alike.
+        loop = "ZAB"
+        reason += "; every phase-phase loop carries a three-phase fault"
+    if agree is False:
+        other = "B" if source == "A" else "A"
+        reason += f"; terminal {other} reads {available[other]['label']}"
+    return {
+        "loop": loop,
+        "label": reading["label"],
+        "source_terminal": source,
+        "agree": agree,
+        "weak_infeed_terminals": weak,
+        "reason": reason + ".",
+    }
+
+
+@router.post("/loop-suggestion", response_model=DoubleEndedLoopSuggestion)
+async def loop_suggestion(body: DoubleEndedAlignRequest):
+    """The loop each terminal's reasoning chain points to (rule F7.4)."""
+    payload_a = _load_or_404(body.analysis_id_a)
+    payload_b = _load_or_404(body.analysis_id_b)
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _suggest_loop, payload_a, payload_b)
 
 
 @router.post("/align-estimate", response_model=DoubleEndedAlignResponse)
