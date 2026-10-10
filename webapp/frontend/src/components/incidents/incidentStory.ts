@@ -183,6 +183,8 @@ export interface RecordFacts {
   inceptionAxisMs: number | null;
   inceptionAbs: number | null;
   durationMs: number | null;
+  /** Fault start to the last current zero, read from the waveforms (analog trace). */
+  fctMs: number | null;
   clearingAxisMs: number | null;
   phases: string[];
   reclose: { axisMs: number; abs: number | null; success: boolean | null } | null;
@@ -218,6 +220,7 @@ export function readFacts(record: IncidentRecordOut): RecordFacts {
     inceptionAxisMs: deadTimeRecording ? null : (ew?.inception_time_ms ?? null),
     inceptionAbs: deadTimeRecording ? null : toAbs(ew?.inception_time_ms),
     durationMs: ew?.fault_duration_ms ?? null,
+    fctMs: snap.analog_trace?.summary?.fct_ms ?? null,
     clearingAxisMs: ew?.clearing_time_ms ?? null,
     phases: ew?.faulted_phases ?? [],
     reclose:
@@ -584,7 +587,9 @@ function buildSequence(views: EpisodeView[]): SequenceEntry[] {
 
     const bullets: string[] = [];
     if (view.trip) bullets.push(view.trip.text);
-    const duration = episode.duration_ms ?? fault?.durationMs ?? null;
+    // The waveform's last current zero; the episode duration is the trip
+    // contact's pulse width, which is not the fault clearing time.
+    const duration = fault?.fctMs ?? episode.duration_ms ?? fault?.durationMs ?? null;
     if (duration !== null) bullets.push(`Gangguan padam setelah ${Math.round(duration)} ms`);
     if (i > 0 && episode.relationship_to_previous === "REFAULT_AFTER_RECLOSE") {
       const prev = views[i - 1];

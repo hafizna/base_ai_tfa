@@ -1,6 +1,6 @@
 {
  "incident": {
-  "incident_id": "7e4d93ec0c07446ab189004850a6e048",
+  "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
   "title": "bringin fixture",
   "status": "DRAFT",
   "station_name": "GI BRINGIN",
@@ -15,9 +15,9 @@
   "clock_assessment": "UNKNOWN",
   "clock_assessment_reason": null,
   "record_ids": [
-   "770c0370a7ed4693bda01fed47d06cfa",
-   "5214fec5f6744389bd4154ff64b7b98c",
-   "91261bc244444298aa538250874a2931"
+   "38e3fd4fd84f491284d85c81baa47cb6",
+   "83af59c248534a269ed0e0671431774a",
+   "353e42ddb3294980ad0f6e54c27c46c4"
   ],
   "evidence_ids": [],
   "observed_summary": {
@@ -45,19 +45,19 @@
    ],
    "cause_hypotheses_per_record": [
     {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
     },
     {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
     },
     {
-     "analysis_id": "91261bc244444298aa538250874a2931",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
      "top_hypothesis": null,
      "confidence": null,
      "scope": "RECORD_LOCAL_SIGNATURE"
@@ -80,14 +80,14 @@
    }
   ],
   "operator_notes": null,
-  "created_at": "2026-10-08T15:23:19.299113+00:00",
-  "updated_at": "2026-10-08T15:24:00.603385+00:00",
+  "created_at": "2026-10-09T10:44:41.692768+00:00",
+  "updated_at": "2026-10-09T10:44:49.881641+00:00",
   "schema_version": "stage2",
   "records": [
    {
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
     "source_filename": "ZQ6D.cfg",
     "station_name": "GI BRINGIN",
     "bay_name": null,
@@ -104,7 +104,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "770c0370a7ed4693bda01fed47d06cfa",
+     "record_id": "38e3fd4fd84f491284d85c81baa47cb6",
      "source_metadata": {
       "station_name": "GI BRINGIN",
       "rec_dev_id": "Bay Mojosongo 1-2",
@@ -294,6 +294,244 @@
        }
       }
      },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 422.5,
+        "B": 415.4,
+        "C": 419.2
+       },
+       "nominal_voltage": {
+        "A": 87.382,
+        "B": 82.709,
+        "C": 84.402
+       },
+       "none_threshold": 41.9,
+       "high_threshold": 1257.6
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 189.9,
+         "current_rms": 424.9,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "none",
+         "voltage": "normal",
+         "start_ms": 199.9,
+         "end_ms": 199.9,
+         "current_rms": 3.9,
+         "voltage_pu": 0.888
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 209.9,
+         "end_ms": 219.9,
+         "current_rms": 1.3,
+         "voltage_pu": 0.259
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 229.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.2,
+         "voltage_pu": 0.021
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 427.7,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 129.9,
+         "end_ms": 209.9,
+         "current_rms": 5527.0,
+         "voltage_pu": 0.657
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 219.9,
+         "end_ms": 239.9,
+         "current_rms": 91.6,
+         "voltage_pu": 0.02
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 249.9,
+         "end_ms": 3009.9,
+         "current_rms": 1.8,
+         "voltage_pu": 0.013
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 427.3,
+         "voltage_pu": 0.999
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 129.9,
+         "end_ms": 209.9,
+         "current_rms": 5140.3,
+         "voltage_pu": 0.632
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 219.9,
+         "end_ms": 229.9,
+         "current_rms": 56.8,
+         "voltage_pu": 0.015
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 239.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.4,
+         "voltage_pu": 0.018
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 118.6,
+        "phase": "B",
+        "kind": "disturbance_start",
+        "value": 5970.3
+       },
+       {
+        "t_ms": 118.6,
+        "phase": "C",
+        "kind": "disturbance_start",
+        "value": 5433.4
+       },
+       {
+        "t_ms": 177.9,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 679.3
+       },
+       {
+        "t_ms": 194.9,
+        "phase": "B",
+        "kind": "current_ceased",
+        "value": 5970.3
+       },
+       {
+        "t_ms": 195.1,
+        "phase": "C",
+        "kind": "current_ceased",
+        "value": 5433.4
+       },
+       {
+        "t_ms": 209.9,
+        "phase": "B",
+        "kind": "voltage_lost",
+        "value": 0.002
+       },
+       {
+        "t_ms": 209.9,
+        "phase": "C",
+        "kind": "voltage_lost",
+        "value": 0.006
+       },
+       {
+        "t_ms": 219.9,
+        "phase": "A",
+        "kind": "voltage_lost",
+        "value": 0.04
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 118.6,
+       "fault_clearing_ms": 195.1,
+       "fct_ms": 76.5,
+       "high_current_phases": [
+        "B",
+        "C"
+       ],
+       "sagged_phases": [
+        "B",
+        "C"
+       ],
+       "ceased": {
+        "A": 177.9,
+        "B": 194.9,
+        "C": 195.1
+       },
+       "zero_current_pattern": "three_together",
+       "zero_spans": [
+        {
+         "phase": "A",
+         "start_ms": 177.9,
+         "end_ms": null
+        },
+        {
+         "phase": "B",
+         "start_ms": 194.9,
+         "end_ms": null
+        },
+        {
+         "phase": "C",
+         "start_ms": 195.1,
+         "end_ms": null
+        }
+       ],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 118.6,
+         "end_ms": 209.9,
+         "high_current_phases": [
+          "B",
+          "C"
+         ],
+         "sagged_phases": [
+          "B",
+          "C"
+         ],
+         "ceased": {
+          "A": 177.9,
+          "B": 194.9,
+          "C": 195.1
+         },
+         "back_to_load": {},
+         "clearing_ms": 195.1
+        }
+       ]
+      },
+      "warnings": []
+     },
      "observed_facts": {
       "faulted_phases": [
        "B",
@@ -372,12 +610,12 @@
      }
     },
     "attachment_warnings": [],
-    "created_at": "2026-10-08T15:23:25.772811+00:00"
+    "created_at": "2026-10-09T10:44:42.982446+00:00"
    },
    {
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "analysis_id": "83af59c248534a269ed0e0671431774a",
     "source_filename": "ZQ6E.cfg",
     "station_name": "GI BRINGIN",
     "bay_name": null,
@@ -394,7 +632,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "5214fec5f6744389bd4154ff64b7b98c",
+     "record_id": "83af59c248534a269ed0e0671431774a",
      "source_metadata": {
       "station_name": "GI BRINGIN",
       "rec_dev_id": "Bay Mojosongo 1-2",
@@ -487,6 +725,239 @@
        }
       }
      },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 274.2,
+        "B": 258.9,
+        "C": 261.2
+       },
+       "nominal_voltage": {
+        "A": 87.682,
+        "B": 83.435,
+        "C": 84.977
+       },
+       "none_threshold": 26.1,
+       "high_threshold": 783.7
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 19.9,
+         "end_ms": 139.9,
+         "current_rms": 0.2,
+         "voltage_pu": 0.002
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 149.9,
+         "end_ms": 159.9,
+         "current_rms": 342.5,
+         "voltage_pu": 0.423
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 169.9,
+         "end_ms": 2239.9,
+         "current_rms": 274.2,
+         "voltage_pu": 1.0
+        }
+       ],
+       "B": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 19.9,
+         "end_ms": 149.9,
+         "current_rms": 1.8,
+         "voltage_pu": 0.002
+        },
+        {
+         "current": "high",
+         "voltage": "dead",
+         "start_ms": 159.9,
+         "end_ms": 159.9,
+         "current_rms": 858.0,
+         "voltage_pu": 0.458
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 169.9,
+         "end_ms": 179.9,
+         "current_rms": 985.7,
+         "voltage_pu": 0.936
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 189.9,
+         "end_ms": 2239.9,
+         "current_rms": 258.9,
+         "voltage_pu": 1.0
+        }
+       ],
+       "C": [
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 19.9,
+         "end_ms": 139.9,
+         "current_rms": 0.4,
+         "voltage_pu": 0.002
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 149.9,
+         "end_ms": 149.9,
+         "current_rms": 278.7,
+         "voltage_pu": 0.234
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 159.9,
+         "end_ms": 159.9,
+         "current_rms": 1071.1,
+         "voltage_pu": 0.668
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 169.9,
+         "end_ms": 169.9,
+         "current_rms": 1210.9,
+         "voltage_pu": 0.918
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 179.9,
+         "end_ms": 2239.9,
+         "current_rms": 261.2,
+         "voltage_pu": 1.0
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 139.9,
+        "phase": "A",
+        "kind": "voltage_return",
+        "value": 0.964
+       },
+       {
+        "t_ms": 139.9,
+        "phase": "C",
+        "kind": "voltage_return",
+        "value": 0.936
+       },
+       {
+        "t_ms": 145.7,
+        "phase": "A",
+        "kind": "energization_start",
+        "value": 521.3
+       },
+       {
+        "t_ms": 145.7,
+        "phase": "B",
+        "kind": "energization_start",
+        "value": 858.0
+       },
+       {
+        "t_ms": 145.7,
+        "phase": "C",
+        "kind": "energization_start",
+        "value": 1071.1
+       },
+       {
+        "t_ms": 146.9,
+        "phase": "A",
+        "kind": "current_return",
+        "value": 494.1
+       },
+       {
+        "t_ms": 146.9,
+        "phase": "C",
+        "kind": "current_return",
+        "value": 886.7
+       },
+       {
+        "t_ms": 147.0,
+        "phase": "B",
+        "kind": "current_return",
+        "value": 821.0
+       },
+       {
+        "t_ms": 159.9,
+        "phase": "B",
+        "kind": "voltage_return",
+        "value": 0.969
+       },
+       {
+        "t_ms": 169.9,
+        "phase": "C",
+        "kind": "current_back_to_load",
+        "value": 608.3
+       },
+       {
+        "t_ms": 179.9,
+        "phase": "B",
+        "kind": "current_back_to_load",
+        "value": 751.2
+       }
+      ],
+      "summary": {
+       "starts_dead": true,
+       "fault_start_ms": null,
+       "fault_clearing_ms": null,
+       "fct_ms": null,
+       "high_current_phases": [],
+       "sagged_phases": [],
+       "ceased": {},
+       "zero_current_pattern": null,
+       "zero_spans": [],
+       "current_returns": {
+        "A": 146.9,
+        "B": 147.0,
+        "C": 146.9
+       },
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": 145.7,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "energization",
+         "start_ms": 145.7,
+         "end_ms": 159.9,
+         "high_current_phases": [
+          "B",
+          "C"
+         ],
+         "sagged_phases": [
+          "A",
+          "C"
+         ],
+         "ceased": {},
+         "back_to_load": {
+          "B": 179.9,
+          "C": 169.9
+         },
+         "clearing_ms": 179.9
+        }
+       ]
+      },
+      "warnings": []
+     },
      "observed_facts": {
       "faulted_phases": [],
       "reclose_attempted": true,
@@ -567,12 +1038,12 @@
      }
     },
     "attachment_warnings": [],
-    "created_at": "2026-10-08T15:23:28.251735+00:00"
+    "created_at": "2026-10-09T10:44:43.740130+00:00"
    },
    {
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "analysis_id": "91261bc244444298aa538250874a2931",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
     "source_filename": "ZQ6F.cfg",
     "station_name": "GI BRINGIN",
     "bay_name": null,
@@ -589,7 +1060,7 @@
     "inclusion_status": "INCLUDED",
     "exclusion_reason": null,
     "canonical_snapshot": {
-     "record_id": "91261bc244444298aa538250874a2931",
+     "record_id": "353e42ddb3294980ad0f6e54c27c46c4",
      "source_metadata": {
       "station_name": "GI BRINGIN",
       "rec_dev_id": "Bay Mojosongo 1-2",
@@ -779,6 +1250,276 @@
        }
       }
      },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 304.7,
+        "B": 282.1,
+        "C": 292.4
+       },
+       "nominal_voltage": {
+        "A": 87.816,
+        "B": 83.217,
+        "C": 84.976
+       },
+       "none_threshold": 29.2,
+       "high_threshold": 877.3
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 189.9,
+         "current_rms": 305.0,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 199.9,
+         "end_ms": 209.9,
+         "current_rms": 149.9,
+         "voltage_pu": 0.677
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 219.9,
+         "end_ms": 229.9,
+         "current_rms": 0.9,
+         "voltage_pu": 0.194
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 239.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.2,
+         "voltage_pu": 0.021
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 282.4,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 129.9,
+         "end_ms": 129.9,
+         "current_rms": 1668.6,
+         "voltage_pu": 0.888
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 139.9,
+         "end_ms": 209.9,
+         "current_rms": 5674.6,
+         "voltage_pu": 0.669
+        },
+        {
+         "current": "high",
+         "voltage": "dead",
+         "start_ms": 219.9,
+         "end_ms": 219.9,
+         "current_rms": 912.2,
+         "voltage_pu": 0.085
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 229.9,
+         "end_ms": 259.9,
+         "current_rms": 63.9,
+         "voltage_pu": 0.029
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 269.9,
+         "end_ms": 3009.9,
+         "current_rms": 1.8,
+         "voltage_pu": 0.016
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 119.9,
+         "current_rms": 292.7,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "normal",
+         "start_ms": 129.9,
+         "end_ms": 129.9,
+         "current_rms": 1452.7,
+         "voltage_pu": 0.961
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 139.9,
+         "end_ms": 209.9,
+         "current_rms": 5299.5,
+         "voltage_pu": 0.633
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 219.9,
+         "end_ms": 219.9,
+         "current_rms": 693.4,
+         "voltage_pu": 0.249
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 229.9,
+         "end_ms": 239.9,
+         "current_rms": 38.1,
+         "voltage_pu": 0.03
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 249.9,
+         "end_ms": 3009.9,
+         "current_rms": 0.4,
+         "voltage_pu": 0.019
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 124.6,
+        "phase": "B",
+        "kind": "disturbance_start",
+        "value": 5907.9
+       },
+       {
+        "t_ms": 124.6,
+        "phase": "C",
+        "kind": "disturbance_start",
+        "value": 5519.4
+       },
+       {
+        "t_ms": 193.5,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 335.4
+       },
+       {
+        "t_ms": 202.6,
+        "phase": "C",
+        "kind": "current_ceased",
+        "value": 5519.4
+       },
+       {
+        "t_ms": 202.7,
+        "phase": "B",
+        "kind": "current_ceased",
+        "value": 5907.9
+       },
+       {
+        "t_ms": 209.9,
+        "phase": "B",
+        "kind": "voltage_lost",
+        "value": 0.085
+       },
+       {
+        "t_ms": 219.9,
+        "phase": "C",
+        "kind": "voltage_lost",
+        "value": 0.038
+       },
+       {
+        "t_ms": 229.9,
+        "phase": "A",
+        "kind": "voltage_lost",
+        "value": 0.044
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 124.6,
+       "fault_clearing_ms": 202.7,
+       "fct_ms": 78.1,
+       "high_current_phases": [
+        "B",
+        "C"
+       ],
+       "sagged_phases": [
+        "B",
+        "C"
+       ],
+       "ceased": {
+        "A": 193.5,
+        "B": 202.7,
+        "C": 202.6
+       },
+       "zero_current_pattern": "three_together",
+       "zero_spans": [
+        {
+         "phase": "A",
+         "start_ms": 193.5,
+         "end_ms": null
+        },
+        {
+         "phase": "B",
+         "start_ms": 202.7,
+         "end_ms": null
+        },
+        {
+         "phase": "C",
+         "start_ms": 202.6,
+         "end_ms": null
+        }
+       ],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 124.6,
+         "end_ms": 219.9,
+         "high_current_phases": [
+          "B",
+          "C"
+         ],
+         "sagged_phases": [
+          "B",
+          "C"
+         ],
+         "ceased": {
+          "A": 193.5,
+          "B": 202.7,
+          "C": 202.6
+         },
+         "back_to_load": {},
+         "clearing_ms": 202.7
+        }
+       ]
+      },
+      "warnings": []
+     },
      "observed_facts": {
       "faulted_phases": [
        "B",
@@ -857,7 +1598,7 @@
      }
     },
     "attachment_warnings": [],
-    "created_at": "2026-10-08T15:23:33.064449+00:00"
+    "created_at": "2026-10-09T10:44:45.047043+00:00"
    }
   ],
   "provenance": {
@@ -865,34 +1606,34 @@
    "incident_engine_version": "stage1.0",
    "record_snapshot_versions": [
     {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "status_waveform_aligned"
     },
     {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "dead_time_recording"
     },
     {
-     "analysis_id": "91261bc244444298aa538250874a2931",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
      "canonical_schema_version": "stage0",
      "model_version": null,
      "feature_version": null,
      "timing_source": "status_waveform_aligned"
     }
    ],
-   "created_at": "2026-10-08T15:23:19.299113+00:00",
-   "updated_at": "2026-10-08T15:24:00.603385+00:00"
+   "created_at": "2026-10-09T10:44:41.692768+00:00",
+   "updated_at": "2026-10-09T10:44:49.881641+00:00"
   }
  },
  "reconstruction": {
-  "reconstruction_id": "ea522bb7434a475491a676a1287eb21e",
-  "incident_id": "7e4d93ec0c07446ab189004850a6e048",
+  "reconstruction_id": "23583014af8d44b387ea7213811c8d63",
+  "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
   "engine_version": "stage2.0",
   "schema_version": "stage2",
   "same_bay_status": "CONFIRMED_SAME_BAY",
@@ -912,20 +1653,20 @@
    "confidence": 0.55,
    "order_source": "ABSOLUTE_TIME",
    "record_order": [
-    "55287a37b4094ecb86fa8cc48ef80e03",
-    "a364e50bade148b29814c335785176e4",
-    "23ce8995c8ad4b029ced67591997867d"
+    "0e496514bb2c4349a02c0b71c55f7820",
+    "8b59b0401b44414197d40efd091d12fb",
+    "64d473cad3974cd6b1ae1b65747cbee6"
    ],
    "pairwise_gaps_ms": [
     {
-     "left_incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
-     "right_incident_record_id": "a364e50bade148b29814c335785176e4",
+     "left_incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
+     "right_incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "gap_ms": 5104.2,
      "precise": false
     },
     {
-     "left_incident_record_id": "a364e50bade148b29814c335785176e4",
-     "right_incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "left_incident_record_id": "8b59b0401b44414197d40efd091d12fb",
+     "right_incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "gap_ms": 5715.8,
      "precise": false
     }
@@ -937,36 +1678,36 @@
    ]
   },
   "timeline_event_ids": [
-   "ea522bb7434a475491a676a1287eb21e-1",
-   "ea522bb7434a475491a676a1287eb21e-2",
-   "ea522bb7434a475491a676a1287eb21e-3",
-   "ea522bb7434a475491a676a1287eb21e-4",
-   "ea522bb7434a475491a676a1287eb21e-9",
-   "ea522bb7434a475491a676a1287eb21e-7",
-   "ea522bb7434a475491a676a1287eb21e-8",
-   "ea522bb7434a475491a676a1287eb21e-10",
-   "ea522bb7434a475491a676a1287eb21e-15",
-   "ea522bb7434a475491a676a1287eb21e-16",
-   "ea522bb7434a475491a676a1287eb21e-17",
-   "ea522bb7434a475491a676a1287eb21e-18",
-   "ea522bb7434a475491a676a1287eb21e-5",
-   "ea522bb7434a475491a676a1287eb21e-6",
-   "ea522bb7434a475491a676a1287eb21e-11",
-   "ea522bb7434a475491a676a1287eb21e-12",
-   "ea522bb7434a475491a676a1287eb21e-13",
-   "ea522bb7434a475491a676a1287eb21e-14",
-   "ea522bb7434a475491a676a1287eb21e-19",
-   "ea522bb7434a475491a676a1287eb21e-20",
-   "ea522bb7434a475491a676a1287eb21e-21",
-   "ea522bb7434a475491a676a1287eb21e-22"
+   "23583014af8d44b387ea7213811c8d63-1",
+   "23583014af8d44b387ea7213811c8d63-2",
+   "23583014af8d44b387ea7213811c8d63-3",
+   "23583014af8d44b387ea7213811c8d63-4",
+   "23583014af8d44b387ea7213811c8d63-9",
+   "23583014af8d44b387ea7213811c8d63-7",
+   "23583014af8d44b387ea7213811c8d63-8",
+   "23583014af8d44b387ea7213811c8d63-10",
+   "23583014af8d44b387ea7213811c8d63-15",
+   "23583014af8d44b387ea7213811c8d63-16",
+   "23583014af8d44b387ea7213811c8d63-17",
+   "23583014af8d44b387ea7213811c8d63-18",
+   "23583014af8d44b387ea7213811c8d63-5",
+   "23583014af8d44b387ea7213811c8d63-6",
+   "23583014af8d44b387ea7213811c8d63-11",
+   "23583014af8d44b387ea7213811c8d63-12",
+   "23583014af8d44b387ea7213811c8d63-13",
+   "23583014af8d44b387ea7213811c8d63-14",
+   "23583014af8d44b387ea7213811c8d63-19",
+   "23583014af8d44b387ea7213811c8d63-20",
+   "23583014af8d44b387ea7213811c8d63-21",
+   "23583014af8d44b387ea7213811c8d63-22"
   ],
   "relationship_ids": [
-   "ea522bb7434a475491a676a1287eb21e-23",
-   "ea522bb7434a475491a676a1287eb21e-24"
+   "23583014af8d44b387ea7213811c8d63-23",
+   "23583014af8d44b387ea7213811c8d63-24"
   ],
   "episode_ids": [
-   "ea522bb7434a475491a676a1287eb21e-25",
-   "ea522bb7434a475491a676a1287eb21e-26"
+   "23583014af8d44b387ea7213811c8d63-25",
+   "23583014af8d44b387ea7213811c8d63-26"
   ],
   "observed_incident_facts": {
    "record_count": 3,
@@ -1013,8 +1754,8 @@
    "scope": "RECORD_LOCAL_SIGNATURES",
    "records": [
     {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-     "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+     "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
      "top_hypothesis": "PETIR",
      "confidence": 0.82,
      "cause_ranking": [
@@ -1097,8 +1838,8 @@
      "requires_review": true
     },
     {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "top_hypothesis": null,
      "confidence": null,
      "cause_ranking": [],
@@ -1115,8 +1856,8 @@
      "skip_reason": "reclose_capture"
     },
     {
-     "analysis_id": "91261bc244444298aa538250874a2931",
-     "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+     "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "top_hypothesis": "PETIR",
      "confidence": 0.349,
      "cause_ranking": [
@@ -1191,24 +1932,24 @@
   "narrative": "3 COMTRADE records from the same bay were reconstructed into 2 fault episodes over 11 seconds.\n\nEpisode 1 was a phase-to-phase (or double-line-to-ground) (B-C fault), lasting 65 ms. Reclose was successful after a 5.0 s dead time. (2 records captured this episode.)\nEpisode 2 was a phase-to-phase (or double-line-to-ground) (B-C fault), lasting 66 ms. This episode is a new fault 5.7 s after the previous episode's successful reclose \u2014 the reclose did not hold.\n\nThe line was reclosed successfully but faulted again within seconds, so the cause of the first fault did not go away at the trip. A fault that comes back this quickly is more consistent with something still near the conductor than with a one-off transient \u2014 a pattern-based reading, not a confirmed conclusion.\nThe per-record physical-cause signatures are consistent with each other.\nNote: every record's own top cause hypothesis is PETIR (a classically transient cause), but the multi-episode pattern (refault after successful reclose) leans toward a persistent physical cause. LightGBM reads one record's waveform in isolation and cannot see this cross-episode pattern \u2014 the two views are not necessarily in conflict, but this combination is worth a manual review rather than accepting the per-record label at face value.\nThe physical initiating cause remains unconfirmed from local COMTRADE evidence alone; external evidence (field inspection, lightning detection, protection engineer review) is needed to confirm it.",
   "record_snapshot_versions": [
    {
-    "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+    "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
     "timing_source": "status_waveform_aligned"
    },
    {
-    "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "analysis_id": "83af59c248534a269ed0e0671431774a",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
     "timing_source": "dead_time_recording"
    },
    {
-    "analysis_id": "91261bc244444298aa538250874a2931",
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "canonical_schema_version": "stage0",
     "model_version": null,
     "feature_version": null,
@@ -1217,12 +1958,12 @@
   ],
   "is_latest": true,
   "supersedes": null,
-  "created_at": "2026-10-08T15:24:00.465365+00:00",
+  "created_at": "2026-10-09T10:44:49.835868+00:00",
   "timeline": [
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-1",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-1",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:03.729687",
@@ -1231,20 +1972,20 @@
     "source": "canonical_event_window",
     "label": "Record start (ZQ6D.cfg)",
     "details": {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa"
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-     "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+     "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-2",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-2",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:03.729687",
@@ -1255,16 +1996,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-     "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+     "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-3",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-3",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:03.738333",
@@ -1280,16 +2021,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-     "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+     "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-4",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-4",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
     "episode_id": null,
     "event_type": "FAULT_CLEARING",
     "absolute_time_iso": "2023-08-21T15:15:03.848228",
@@ -1302,16 +2043,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-     "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+     "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-9",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-9",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:08.699791",
@@ -1324,16 +2065,16 @@
     },
     "confidence": 0.6,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-7",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-7",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:08.833854",
@@ -1342,20 +2083,20 @@
     "source": "canonical_event_window",
     "label": "Record start (ZQ6E.cfg)",
     "details": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c"
+     "analysis_id": "83af59c248534a269ed0e0671431774a"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-8",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-8",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:08.833854",
@@ -1366,16 +2107,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-10",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-10",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "RECLOSE_SUCCESS",
     "absolute_time_iso": "2023-08-21T15:15:08.834478",
@@ -1388,16 +2129,16 @@
     },
     "confidence": 0.7,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-15",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-15",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "episode_id": null,
     "event_type": "RECORD_START",
     "absolute_time_iso": "2023-08-21T15:15:14.549687",
@@ -1406,20 +2147,20 @@
     "source": "canonical_event_window",
     "label": "Record start (ZQ6F.cfg)",
     "details": {
-     "analysis_id": "91261bc244444298aa538250874a2931"
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4"
     },
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "91261bc244444298aa538250874a2931",
-     "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+     "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-16",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-16",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "episode_id": null,
     "event_type": "RECORD_TRIGGER",
     "absolute_time_iso": "2023-08-21T15:15:14.549687",
@@ -1430,16 +2171,16 @@
     "details": {},
     "confidence": 1.0,
     "provenance": {
-     "analysis_id": "91261bc244444298aa538250874a2931",
-     "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+     "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-17",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-17",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "episode_id": null,
     "event_type": "FAULT_INCEPTION",
     "absolute_time_iso": "2023-08-21T15:15:14.564270",
@@ -1455,16 +2196,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "91261bc244444298aa538250874a2931",
-     "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+     "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-18",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-18",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "episode_id": null,
     "event_type": "FAULT_CLEARING",
     "absolute_time_iso": "2023-08-21T15:15:14.672187",
@@ -1477,16 +2218,16 @@
     },
     "confidence": 0.9,
     "provenance": {
-     "analysis_id": "91261bc244444298aa538250874a2931",
-     "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+     "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-11",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-11",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1497,16 +2238,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-12",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-12",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1517,16 +2258,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-13",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-13",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1537,16 +2278,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-14",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "a364e50bade148b29814c335785176e4",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-14",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1557,16 +2298,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
-     "incident_record_id": "a364e50bade148b29814c335785176e4",
+     "analysis_id": "83af59c248534a269ed0e0671431774a",
+     "incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "canonical_schema_version": "stage0",
      "timing_source": "dead_time_recording"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-19",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-19",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1577,16 +2318,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "91261bc244444298aa538250874a2931",
-     "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+     "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-20",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-20",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1597,15 +2338,15 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "91261bc244444298aa538250874a2931",
-     "incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
+     "incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-21",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-21",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
     "incident_record_id": null,
     "episode_id": null,
     "event_type": "DATA_GAP",
@@ -1615,8 +2356,8 @@
     "source": "alignment_assessment",
     "label": "Gap of 5.1s between records",
     "details": {
-     "left_incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
-     "right_incident_record_id": "a364e50bade148b29814c335785176e4",
+     "left_incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
+     "right_incident_record_id": "8b59b0401b44414197d40efd091d12fb",
      "gap_ms": 5104.2,
      "precise": false
     },
@@ -1626,8 +2367,8 @@
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-22",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-22",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
     "incident_record_id": null,
     "episode_id": null,
     "event_type": "DATA_GAP",
@@ -1637,8 +2378,8 @@
     "source": "alignment_assessment",
     "label": "Gap of 5.7s between records",
     "details": {
-     "left_incident_record_id": "a364e50bade148b29814c335785176e4",
-     "right_incident_record_id": "23ce8995c8ad4b029ced67591997867d",
+     "left_incident_record_id": "8b59b0401b44414197d40efd091d12fb",
+     "right_incident_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
      "gap_ms": 5715.8,
      "precise": false
     },
@@ -1648,9 +2389,9 @@
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-5",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-5",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1661,16 +2402,16 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-     "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+     "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
    },
    {
-    "timeline_event_id": "ea522bb7434a475491a676a1287eb21e-6",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+    "timeline_event_id": "23583014af8d44b387ea7213811c8d63-6",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
     "episode_id": null,
     "event_type": "CLOCK_WARNING",
     "absolute_time_iso": null,
@@ -1681,8 +2422,8 @@
     "details": {},
     "confidence": 0.5,
     "provenance": {
-     "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
-     "incident_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
+     "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
+     "incident_record_id": "0e496514bb2c4349a02c0b71c55f7820",
      "canonical_schema_version": "stage0",
      "timing_source": "status_waveform_aligned"
     }
@@ -1690,10 +2431,10 @@
   ],
   "relationships": [
    {
-    "relationship_id": "ea522bb7434a475491a676a1287eb21e-23",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "left_record_id": "55287a37b4094ecb86fa8cc48ef80e03",
-    "right_record_id": "a364e50bade148b29814c335785176e4",
+    "relationship_id": "23583014af8d44b387ea7213811c8d63-23",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "left_record_id": "0e496514bb2c4349a02c0b71c55f7820",
+    "right_record_id": "8b59b0401b44414197d40efd091d12fb",
     "relationship_type": "RECLOSE_SEQUENCE",
     "confidence": 0.85,
     "evidence_for": [
@@ -1730,10 +2471,10 @@
     "reconstruction_version": null
    },
    {
-    "relationship_id": "ea522bb7434a475491a676a1287eb21e-24",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
-    "left_record_id": "a364e50bade148b29814c335785176e4",
-    "right_record_id": "23ce8995c8ad4b029ced67591997867d",
+    "relationship_id": "23583014af8d44b387ea7213811c8d63-24",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
+    "left_record_id": "8b59b0401b44414197d40efd091d12fb",
+    "right_record_id": "64d473cad3974cd6b1ae1b65747cbee6",
     "relationship_type": "REFAULT_AFTER_RECLOSE",
     "confidence": 0.8,
     "evidence_for": [
@@ -1772,11 +2513,11 @@
   ],
   "episodes": [
    {
-    "episode_id": "ea522bb7434a475491a676a1287eb21e-25",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
+    "episode_id": "23583014af8d44b387ea7213811c8d63-25",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
     "member_record_ids": [
-     "55287a37b4094ecb86fa8cc48ef80e03",
-     "a364e50bade148b29814c335785176e4"
+     "0e496514bb2c4349a02c0b71c55f7820",
+     "8b59b0401b44414197d40efd091d12fb"
     ],
     "episode_index": 0,
     "start_iso": "2023-08-21T15:15:03.729687",
@@ -1793,7 +2534,7 @@
     "electrical_summary": {},
     "local_cause_hypotheses": [
      {
-      "analysis_id": "770c0370a7ed4693bda01fed47d06cfa",
+      "analysis_id": "38e3fd4fd84f491284d85c81baa47cb6",
       "top_hypothesis": "PETIR",
       "confidence": 0.82,
       "cause_ranking": [
@@ -1842,7 +2583,7 @@
       "skip_reason": null
      },
      {
-      "analysis_id": "5214fec5f6744389bd4154ff64b7b98c",
+      "analysis_id": "83af59c248534a269ed0e0671431774a",
       "top_hypothesis": null,
       "confidence": null,
       "cause_ranking": [],
@@ -1859,8 +2600,8 @@
     "confidence": 0.6,
     "observed_facts": {
      "member_record_ids": [
-      "55287a37b4094ecb86fa8cc48ef80e03",
-      "a364e50bade148b29814c335785176e4"
+      "0e496514bb2c4349a02c0b71c55f7820",
+      "8b59b0401b44414197d40efd091d12fb"
      ],
      "faulted_phases": [
       "B",
@@ -1879,21 +2620,21 @@
     "missing_evidence": [
      {
       "type": "MULTIPLE_RECORDS_ONE_EPISODE",
-      "description": "This episode spans 2 records (55287a37b4094ecb86fa8cc48ef80e03, a364e50bade148b29814c335785176e4): the fault and its trip/reclose sequence captured in separate files. Only the record holding the fault inception is cause evidence."
+      "description": "This episode spans 2 records (0e496514bb2c4349a02c0b71c55f7820, 8b59b0401b44414197d40efd091d12fb): the fault and its trip/reclose sequence captured in separate files. Only the record holding the fault inception is cause evidence."
      }
     ],
     "provenance": {
      "member_analysis_ids": [
-      "770c0370a7ed4693bda01fed47d06cfa",
-      "5214fec5f6744389bd4154ff64b7b98c"
+      "38e3fd4fd84f491284d85c81baa47cb6",
+      "83af59c248534a269ed0e0671431774a"
      ]
     }
    },
    {
-    "episode_id": "ea522bb7434a475491a676a1287eb21e-26",
-    "incident_id": "7e4d93ec0c07446ab189004850a6e048",
+    "episode_id": "23583014af8d44b387ea7213811c8d63-26",
+    "incident_id": "ac8e268c85c24bf69310a454bdfd56e5",
     "member_record_ids": [
-     "23ce8995c8ad4b029ced67591997867d"
+     "64d473cad3974cd6b1ae1b65747cbee6"
     ],
     "episode_index": 1,
     "start_iso": "2023-08-21T15:15:14.549687",
@@ -1910,7 +2651,7 @@
     "electrical_summary": {},
     "local_cause_hypotheses": [
      {
-      "analysis_id": "91261bc244444298aa538250874a2931",
+      "analysis_id": "353e42ddb3294980ad0f6e54c27c46c4",
       "top_hypothesis": "PETIR",
       "confidence": 0.349,
       "cause_ranking": [
@@ -1963,7 +2704,7 @@
     "confidence": 0.9,
     "observed_facts": {
      "member_record_ids": [
-      "23ce8995c8ad4b029ced67591997867d"
+      "64d473cad3974cd6b1ae1b65747cbee6"
      ],
      "faulted_phases": [
       "B",
@@ -1980,7 +2721,7 @@
     "missing_evidence": [],
     "provenance": {
      "member_analysis_ids": [
-      "91261bc244444298aa538250874a2931"
+      "353e42ddb3294980ad0f6e54c27c46c4"
      ]
     }
    }
