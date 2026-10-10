@@ -275,22 +275,41 @@ Penyimpangan dari ekspektasi ini ditandai "cek setting AR bay ini", bukan diangg
 
 DE-FL sendiri sudah ada di halaman terpisah.
 
-**F7.4 — DE-FL hanya sah pada loop yang membawa arus gangguan.** **BARU**, karena ditemukan saat menguji Bringin + Mojosongo.
-- Halaman DE-FL memilih loop dari klasifikasi fasa lama. Bringin S-T terbaca 3 fasa (F4.5), sehingga loop yang dipilih **ZA**, padahal fasa R sehat.
-- Hasilnya 19,79 km dengan "arus gangguan" 0,18 kA, yang sebenarnya arus beban. KVL residual-nya 0,001, sehingga tampak andal.
-- Penyebabnya: pada loop yang hanya dilalui arus beban, persamaan dua ujung terpenuhi oleh jarak berapa pun. Residual kecil di loop seperti itu tidak berarti hasilnya benar.
-- Dengan loop yang benar (ZBC), hasilnya 16,71 km dengan arus 14,5 kA, tapi residual-nya 0,29 karena kedua rekaman belum sinkron.
-- Aturan baru:
-  - loop diambil dari langkah 4;
-  - arus loop harus jelas di atas arus beban (mis. ≥3× prefault), kalau tidak hasilnya ditolak;
-  - sinkronisasi waktu kedua rekaman harus terkonfirmasi sebelum hasil dilaporkan.
-- Setelah PR #35, geser yang benar untuk pasangan ini adalah −50,5 ms, dan jam kedua DFR sepakat dalam 0,02 ms. Residual loop S-T tetap 0,26–0,37, karena:
+**F7.4 — DE-FL hanya sah pada besaran yang menarik arus gangguan.** **BARU**, ditemukan saat menguji Bringin + Mojosongo. **Dikoreksi** setelah diuji ulang (lihat di bawah).
+- Persamaan dua ujung: m = (V_A − V_B + Z·I_B) / (Z·(I_A + I_B)). Penyebutnya, I_A + I_B, adalah arus yang ditarik gangguan di titik gangguan pada besaran yang dipakai.
+- Besaran yang tidak menarik arus gangguan membuat I_A + I_B ≈ 0. Contohnya loop yang hanya lewat fasa sehat, atau urutan negatif pada gangguan 3 fasa seimbang. Jarak berapa pun lalu memenuhi persamaan, sehingga residual kecil tidak berarti apa-apa.
+- Ukurannya ρ = |I_A + I_B| pada besaran yang dipakai ÷ |I1_A + I1_B|, yaitu arus urutan positif yang ditarik gangguan (setiap gangguan menariknya). Nilai teorinya:
+  - loop fasa-fasa yang melewati fasa terganggu: 1,5–3,5;
+  - urutan negatif: 1 untuk gangguan 1 fasa atau fasa-fasa; Z0/(Z0+Z2) untuk 2 fasa ke tanah; ≈0 untuk 3 fasa;
+  - loop yang hanya lewat fasa sehat: ≈0.
+- Bila ρ < 0,2, hasil ditolak.
+- Bringin + Mojosongo (S-T), geser −50,5 ms. Hasil sesuai teori, dan keempat loop sah:
+
+  | Loop | ρ | Jarak | Residual KVL |
+  |---|---|---|---|
+  | ZBC | 3,54 | 15,34 km | 0,19 |
+  | ZAB | 1,79 | 16,78 km | 0,28 |
+  | ZCA | 1,76 | 13,39 km | 0,09 |
+  | ZA (urutan negatif) | 1,05 | 14,08 km | 0,23 |
+
+- Koreksi atas versi pertama aturan ini:
+  - Versi pertama menyebut ZA "hanya dilalui arus beban" karena fasa R sehat. Itu keliru. Loop ZA/ZB/ZC di halaman DE-FL tidak memakai arus fasa R, melainkan besaran urutan negatif (V2, I2), dan gangguan S-T juga menarik arus urutan negatif.
+  - Hasil lama 19,79 km dengan residual 0,001 tidak bisa diulang dengan geser −50,5 ms. ZA memberi 15,33 km dengan jendela lama dan 14,08 km dengan jendela sekarang. Jadi angka 19,79 km bukan akibat pilihan loop.
+  - "Arus gangguan" 0,18 kA yang tampil untuk ZA adalah jumlah arus fasa R kedua ujung, bukan besaran yang dipakai solver. Untuk gangguan selain R-N, angka ini menyesatkan (lihat catatan di bawah).
+- Loop dipilih dari langkah 4:
+  - Gangguan 1 fasa memakai loop tanah fasa itu, yaitu urutan negatif yang tidak butuh Z0.
+  - Gangguan 2 fasa, ke tanah atau tidak, memakai loop fasa-fasa keduanya. Drop-nya Z1 × arus loop terlepas dari arus tanah, dan loop ini membawa arus gangguan penuh.
+  - Gangguan 3 fasa memakai loop fasa-fasa mana saja (ZAB).
+  - Bila satu ujung weak infeed, fasa dibaca dari ujung yang kuat.
+- Sinkronisasi waktu kedua rekaman harus terkonfirmasi sebelum hasil dilaporkan. Selama sinkronisasi belum pas, loop yang sama-sama sah memberi jarak berbeda. Pada Bringin + Mojosongo selisihnya 13,4–16,8 km.
+- Residual tetap tinggi karena:
   - panjang line dan R1/X1 masih nilai uji;
-  - Mojosongo adalah ujung weak infeed: arus gangguannya hanya 0,4–0,8 kA, setara arus beban, sementara Bringin ±6 kA;
+  - Mojosongo weak infeed: kontribusinya 1,45× arus beban, sedangkan Bringin 12,9×;
   - arus Mojosongo berhenti ±20 ms lebih dulu daripada Bringin.
 - Aturan tambahan **BARU**:
-  - ujung dengan kontribusi arus gangguan < 2× beban ditandai weak infeed, dan keandalan DE-FL diturunkan;
-  - jendela evaluasi hanya dipakai selama kedua ujung masih mengalirkan arus gangguan.
+  - Ujung yang kontribusi arus gangguannya (arus superimposed) < 2× arus beban ditandai weak infeed (F4.7). Lokasi dua ujung tetap sah karena memakai tegangan ujung itu. Namun bacaan single-ended di ujung itu tidak andal, karena infeed dari ujung lain memperbesar tahanan gangguan yang dilihatnya.
+  - Jendela evaluasi hanya dipakai selama kedua ujung masih mengalirkan arus gangguan, sampai zero-crossing arus terakhir dari analog trace. Jendela yang sama dihitung sekali.
+- Catatan, **belum diubah**: "Fault current" untuk loop tanah menjumlahkan arus fasa yang menjadi nama loop. Untuk gangguan S-T dengan ZA nilainya 0,04 kA. Angka ini juga tampil di grafik histogram, jadi perubahannya menunggu persetujuan. Usulannya: tampilkan arus fasa terbesar yang ditarik di titik gangguan.
 
 ## Langkah 8 — Apa penyebabnya?
 
