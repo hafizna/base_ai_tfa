@@ -69,7 +69,7 @@ def test_the_far_end_adds_its_own_reading_of_the_fault(service):
     assert "Fasa sama di kedua ujung." in far["evidence"]
     assert any(line.startswith("Reclose berhasil setelah dead time") for line in far["evidence"])
     assert "Jam perekam diselaraskan pada awal gangguan (koreksi −7 jam, +20 ms)." in far["evidence"]
-    assert far["rules"][0] == "F7.3"
+    assert "F7.3" in far["rules"]
     # The ledger's fault record is this end's, not the far end's.
     rows = {row["key"]: row for row in ledger["rows"]}
     assert rows["trip_path"]["title"] == "Z1, seketika"

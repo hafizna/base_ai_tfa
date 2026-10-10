@@ -118,7 +118,7 @@ class Conclusion:
             "label": self.label,
             "title": self.title,
             "evidence": self.evidence,
-            "rules": self.rules,
+            "rules": sorted(set(self.rules), key=_rule_order),
             "confidence": self.confidence,
             "value": self.value,
             "conflicts": self.conflicts,
@@ -202,6 +202,13 @@ def _is_receive(ch: _Channel) -> bool:
 
 def _is_send(ch: _Channel) -> bool:
     return ch.role == "teleprotection" and bool(ch.tokens & _SEND) and not (ch.tokens & _RECEIVE)
+
+
+def is_send_channel(name: str) -> bool:
+    """A teleprotection send channel, by its name ("DIST Sig. Send", "LP SEND MJSNG2")."""
+    role, _zone, _phase = classify_status_channel(name)
+    tokens = _tokens(name)
+    return role == "teleprotection" and bool(tokens & _SEND) and not (tokens & _RECEIVE)
 
 
 def _is_sotf(ch: _Channel) -> bool:
@@ -1200,19 +1207,37 @@ def _signals(ctx: _Context) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     for ch in ctx.channels:
         role = _ROLE_LABEL.get(ch.role or "", "Lainnya")
-        for t in ch.on_ms:
-            change = "Aktif"
-            if ch.role == "trip":
-                change += ": trip " + ("3-pole" if ch.phase == "3P" else f"pole {_PLN[ch.phase]}" if ch.phase in _ORDER else "")
-            elif _is_receive(ch):
-                change += ": sinyal diterima"
-            elif _is_send(ch):
-                change += ": sinyal dikirim"
-            elif ch.phase in _ORDER:
-                change += f" (pole {_PLN[ch.phase]})"
-            events.append({"t_ms": round(t - origin, 1), "channel": ch.name, "role": role, "change": change.rstrip(": ")})
-        for t in ch.off_ms:
-            events.append({"t_ms": round(t - origin, 1), "channel": ch.name, "role": role, "change": "Reset"})
+        kept: set[float] = set()
+        for on, off in ch.stable_intervals():
+            if math.isfinite(on):
+                change = "Aktif"
+                if ch.role == "trip":
+                    change += ": trip " + ("3-pole" if ch.phase == "3P" else f"pole {_PLN[ch.phase]}" if ch.phase in _ORDER else "")
+                elif _is_receive(ch):
+                    change += ": sinyal diterima"
+                elif _is_send(ch):
+                    change += ": sinyal dikirim"
+                elif ch.phase in _ORDER:
+                    change += f" (pole {_PLN[ch.phase]})"
+                events.append({"t_ms": round(on - origin, 1), "channel": ch.name, "role": role, "change": change.rstrip(": ")})
+                kept.add(on)
+            if math.isfinite(off):
+                events.append({"t_ms": round(off - origin, 1), "channel": ch.name, "role": role, "change": "Reset"})
+                kept.add(off)
+        # Contact bounce (F6.4): one muted line per burst of short pulses.
+        dropped = sorted(t for t in ch.on_ms + ch.off_ms if t not in kept)
+        bursts: list[list[float]] = []
+        for t in dropped:
+            if bursts and t - bursts[-1][-1] < 5.0:
+                bursts[-1].append(t)
+            else:
+                bursts.append([t])
+        for burst in bursts:
+            span = max(burst[-1] - burst[0], 0.1)
+            events.append({
+                "t_ms": round(burst[0] - origin, 1), "channel": ch.name, "role": role,
+                "change": f"Bounce {_num(span)} ms, diabaikan", "muted": True,
+            })
     for event in ctx.trace.get("events") or []:
         kind = event.get("kind")
         text = {

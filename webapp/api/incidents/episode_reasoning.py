@@ -24,7 +24,7 @@ import copy
 import re
 from typing import Any, Optional
 
-from ..fault_reasoning import _int, _ms, _num
+from ..fault_reasoning import _int, _ms, _num, _rule_order, is_send_channel
 from .models import FaultEpisode, IncidentRecord
 
 _PLN = {"A": "R", "B": "S", "C": "T"}
@@ -56,7 +56,7 @@ def _row(key: str, step: int, label: str, title: str, evidence: list[str], rules
          value: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     return {
         "key": key, "step": step, "label": label, "title": title, "evidence": evidence,
-        "rules": rules, "confidence": confidence, "value": value or {}, "conflicts": [],
+        "rules": sorted(set(rules), key=_rule_order), "confidence": confidence, "value": value or {}, "conflicts": [],
     }
 
 
@@ -113,14 +113,20 @@ def _reclose_row(row: dict[str, Any], episode: FaultEpisode, records_by_id: dict
         row["evidence"] = [
             f"Reclose terekam di {_name(capture)}: rekaman dimulai saat PMT terbuka dan menangkap PMT menutup."
         ] + row["evidence"]
-    row["rules"] = sorted(set(row["rules"]) | {"F6.4", "F6.5"}, key=lambda r: tuple(int(x) for x in r[1:].split(".")))
+    row["rules"] = sorted(set(row["rules"]) | {"F6.4", "F6.5"}, key=_rule_order)
     return row
 
 
 def _other_end_rows(episode: FaultEpisode, records_by_id: dict[str, IncidentRecord],
-                    local: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    """F7.3: the other line end's view of the same fault."""
-    rows = []
+                    chain: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """F7.3: the other line end's view of the same fault, and the review
+    flags that come from comparing the two ends."""
+    local = _rows_by_key(chain)
+    silent_send = [
+        s["channel"] for s in (chain.get("signals") or {}).get("silent") or [] if is_send_channel(s["channel"])
+    ]
+    rows: list[dict[str, Any]] = []
+    flags: list[dict[str, Any]] = []
     for other in (episode.observed_facts or {}).get("other_recorders") or []:
         if other.get("same_station"):
             continue
@@ -145,15 +151,24 @@ def _other_end_rows(episode: FaultEpisode, records_by_id: dict[str, IncidentReco
         if remote_path:
             evidence.append(f"Jalur trip di sana: {remote_path['title']}.")
         echo = (remote_path.get("value") or {}).get("echo")
-        local_path = (local.get("trip_path") or {}).get("value") or {}
         rules = ["F7.3"]
         confidence = "medium"
-        if echo and local_path.get("kind") in ("z1", "accelerated"):
+        if echo:
             evidence.append(
-                f"GI ini trip dan mengirim izin; {other['station']} menerima {_ms(echo['receive_ms'])} ms lalu memantulkan "
-                f"{_ms(echo['send_ms'])} ms: pola POTT dengan echo weak infeed."
+                f"{other['station']} menerima sinyal {_ms(echo['receive_ms'])} ms lalu memantulkannya "
+                f"{_ms(echo['send_ms'])} ms: pola echo weak infeed pada skema POTT."
             )
             rules.append("F5.4")
+            if silent_send:
+                # P4: a recorded send that never asserted, while the far end received.
+                flags.append(_row(
+                    "flag_send_silent", 9, "Ditandai", "GI lawan menerima sinyal, kanal Send di GI ini tidak aktif",
+                    [f"{other['station']} menerima sinyal {_ms(echo['receive_ms'])} ms, tetapi {', '.join(silent_send)} "
+                     "di rekaman GI ini tidak pernah aktif.",
+                     "Kanal Send di DFR ini kemungkinan bukan dari relay yang mengirim, atau tidak terhubung — cek "
+                     "pemetaan kanal teleproteksi."],
+                    ["F5.4", "F7.3"], "flag",
+                ))
         if other.get("reclose_outcome"):
             dead = other.get("reclose_dead_time_s")
             evidence.append(
@@ -174,7 +189,7 @@ def _other_end_rows(episode: FaultEpisode, records_by_id: dict[str, IncidentReco
             confidence = "high" if phases and set(phases) == set(local_phases) else "medium"
         rows.append(_row("other_end", 7, "Ujung lain", title, evidence, rules, confidence,
                          {"station": other["station"], "record_id": other.get("fault_record_id")}))
-    return rows
+    return rows, flags
 
 
 def _cause_row(episode: FaultEpisode, fault: IncidentRecord, physical_cause: dict[str, Any],
@@ -228,10 +243,11 @@ def build_episode_reasoning(
     chain = _reasoning(fault)
     rows = copy.deepcopy([row for row in chain.get("conclusions") or [] if row.get("confidence") != "flag"])
     flags = copy.deepcopy([row for row in chain.get("conclusions") or [] if row.get("confidence") == "flag"])
-    local = _rows_by_key(chain)
 
     rows = [_reclose_row(row, episode, records_by_id, fault) if row["key"] == "trip_reclose" else row for row in rows]
-    rows += _other_end_rows(episode, records_by_id, local)
+    other_rows, other_flags = _other_end_rows(episode, records_by_id, chain)
+    rows += other_rows
+    flags += other_flags
     rows.append(_cause_row(episode, fault, physical_cause, hypotheses))
     for item in episode.missing_evidence or []:
         if item.get("type") == "ENDS_DISAGREE_ON_FAULTED_PHASES":

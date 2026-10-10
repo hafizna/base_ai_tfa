@@ -145,6 +145,17 @@ def test_a_current_rise_on_normal_voltage_is_not_a_fault():
     assert analysis.reasoning["has_fault"] is False
 
 
+def test_signal_sequence_mutes_contact_bounce():
+    payload = _record(faulted=("A",), status=[("DIST Trip A", [(35, 36.6), (38.4, 85)]), ("Z1", [(25, 85)]), ("Z3", [])])
+    reasoning, _rows = _conclusions(payload)
+    trip = [e for e in reasoning["signals"]["events"] if e["channel"] == "DIST Trip A"]
+
+    assert [e["change"] for e in trip if not e.get("muted")] == ["Aktif: trip pole R", "Reset"]
+    (bounce,) = [e for e in trip if e.get("muted")]
+    assert bounce["change"].startswith("Bounce") and bounce["change"].endswith("diabaikan")
+    assert reasoning["signals"]["silent"] == [{"channel": "Z3", "role": "Zona"}]
+
+
 def test_contact_bounce_is_ignored():
     channel = _Channel("CB OPEN", "breaker", None, None, set(), on_ms=[100.0, 100.4, 300.0], off_ms=[100.2, 200.0], initially_on=False)
     assert channel.stable_intervals() == [(100.0, 200.0), (300.0, float("inf"))]
