@@ -28,6 +28,7 @@ import numpy as np
 from core.line_selection import scope_payload
 from ..storage import load_analysis
 from .models import AlignmentAssessment, IncidentRecord, RecordRelationship
+from .time_axis import TimeAxis, build_time_axis, fault_phases, fault_start_s, same_station, span_s, station_of
 
 # Similarity thresholds. Kept as module-level constants (not tunable per
 # request) so relationship classification stays deterministic and auditable
@@ -52,6 +53,11 @@ REFAULT_AFTER_RECLOSE_MAX_S = 60.0
 # A fault starting this close to the reclose instant was already there when
 # the breaker closed: a failed reclose (switch-on-to-fault), not a new fault.
 RECLOSE_ONTO_FAULT_MAX_S = 0.5
+# A record from the other line end belongs with the local record its
+# recording overlaps — or, failing that, the one it starts within this long
+# of (each end's breaker recloses on its own timer, so the two reclose
+# captures need not overlap).
+REMOTE_END_WINDOW_S = AUTO_RECLOSE_DEAD_TIME_MAX_S
 
 _NO_INCEPTION_METHODS = {"dead_time_recording", "trigger_fallback", "no_fault_evidence", "insufficient_data"}
 
@@ -63,19 +69,6 @@ def _load_line_payload(analysis_id: str) -> Optional[dict]:
     one line's IA silently overwrite the other's)."""
     payload = load_analysis(analysis_id)
     return scope_payload(payload) if payload is not None else None
-
-
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except Exception:
-        return None
-
-
-def _record_time(record: IncidentRecord) -> Optional[datetime]:
-    return _parse_iso(record.trigger_time_iso) or _parse_iso(record.record_start_iso)
 
 
 def _phases(record: IncidentRecord) -> set[str]:
@@ -136,25 +129,6 @@ def _has_fault_inception(record: IncidentRecord) -> bool:
     )
 
 
-def _abs_at(record: IncidentRecord, t_s: Optional[float]) -> Optional[datetime]:
-    """Wall-clock time of an instant on the record's own time axis (seconds;
-    the axis starts at the first sample, the trigger sits at
-    ``trigger_offset_s`` on it)."""
-    if t_s is None:
-        return None
-    window = _window(record)
-    start = _parse_iso(record.record_start_iso)
-    if start is not None:
-        return start + timedelta(seconds=float(t_s) - float(window.get("record_start_ms") or 0.0) / 1000.0)
-    trigger = _parse_iso(record.trigger_time_iso)
-    if trigger is not None:
-        offset_s = record.trigger_offset_s
-        if offset_s is None:
-            offset_s = float(window.get("trigger_time_ms") or 0.0) / 1000.0
-        return trigger + timedelta(seconds=float(t_s) - float(offset_s))
-    return None
-
-
 def _seconds_between(earlier: Optional[datetime], later: Optional[datetime]) -> Optional[float]:
     if earlier is None or later is None:
         return None
@@ -179,16 +153,20 @@ def _same_relay(left: IncidentRecord, right: IncidentRecord) -> Optional[bool]:
     return None
 
 
-def _waveform_similarity(left: IncidentRecord, right: IncidentRecord) -> dict[str, Any]:
+def _waveform_similarity(left: IncidentRecord, right: IncidentRecord, axis: TimeAxis) -> dict[str, Any]:
     """Bounded waveform similarity computed ONLY over the overlapping
     absolute-time window and only for matching canonical phase-current
     channels. Returns an empty/low-confidence result if either record lacks
     absolute time, the ranges don't overlap, or channels can't be paired —
-    never raises, never falls back to a full-record comparison."""
+    never raises, never falls back to a full-record comparison.
+
+    Both records are indexed from their first sample, placed on the incident
+    time axis — not from the trigger, which sits a different pre-trigger
+    length into each record."""
     result: dict[str, Any] = {"computed": False, "reason": None}
 
-    t_left = _record_time(left)
-    t_right = _record_time(right)
+    t_left = axis.start(left)
+    t_right = axis.start(right)
     if t_left is None or t_right is None:
         result["reason"] = "missing_absolute_time"
         return result
@@ -211,8 +189,12 @@ def _waveform_similarity(left: IncidentRecord, right: IncidentRecord) -> dict[st
         left_abs = [left_abs_start + _seconds_delta(s - left_time[0]) for s in (left_time[0], left_time[-1])]
         right_abs = [right_abs_start + _seconds_delta(s - right_time[0]) for s in (right_time[0], right_time[-1])]
 
-        overlap_start = max(left_abs[0], right_abs[0])
-        overlap_end = min(left_abs[1], right_abs[1])
+        try:
+            overlap_start = max(left_abs[0], right_abs[0])
+            overlap_end = min(left_abs[1], right_abs[1])
+        except TypeError:  # one timestamp timezone-aware, the other naive
+            result["reason"] = "missing_absolute_time"
+            return result
         if overlap_end <= overlap_start:
             result["reason"] = "no_time_overlap"
             return result
@@ -311,6 +293,7 @@ def classify_pair(
     new_id_fn,
     incident_id: str,
     prior_fault: Optional[IncidentRecord] = None,
+    axis: Optional[TimeAxis] = None,
 ) -> RecordRelationship:
     """Classify the relationship between two attached incident records.
 
@@ -318,20 +301,28 @@ def classify_pair(
     order per ``alignment.record_order``. ``prior_fault`` is the latest
     record before ``right`` that contains a fault inception (``left`` itself,
     or an earlier one when ``left`` only captured a reclose) — what a new
-    fault's phases are compared against.
+    fault's phases are compared against. Times are read on the incident time
+    axis ``axis`` (built from the pair alone when not given).
     """
     evidence_for: list[dict] = []
     evidence_against: list[dict] = []
     assumptions: list[str] = []
     warnings: list[dict] = []
     metrics: dict[str, Any] = {}
+    axis = axis or build_time_axis([left, right])
 
-    t_left = _record_time(left)
-    t_right = _record_time(right)
-    gap_s = None
-    if t_left is not None and t_right is not None:
-        gap_s = (t_right - t_left).total_seconds()
+    def _abs_at(record: IncidentRecord, t_s: Optional[float]) -> Optional[datetime]:
+        return axis.absolute(record, t_s)
+
+    gap_s = _seconds_between(axis.trigger(left), axis.trigger(right))
+    # Where the right record starts on the left record's own time axis (s
+    # after its first sample), comparable with the left record's event times.
+    right_start_on_left_s = _seconds_between(axis.start(left), axis.start(right))
+    if gap_s is not None:
         metrics["gap_seconds"] = round(gap_s, 3)
+        left_span_s = span_s(left)
+        if left_span_s is not None and right_start_on_left_s is not None:
+            metrics["data_gap_seconds"] = round(right_start_on_left_s - left_span_s, 3)
     else:
         warnings.append({"type": "NO_ABSOLUTE_TIME", "description": "At least one record lacks absolute time; relationship relies on order and signature only."})
         assumptions.append("Temporal gap is unknown; classification relies on record order and fault-signature evidence only.")
@@ -344,7 +335,7 @@ def classify_pair(
     left_no_fault = _is_no_fault(left)
     right_no_fault = _is_no_fault(right)
 
-    similarity = _waveform_similarity(left, right)
+    similarity = _waveform_similarity(left, right, axis)
     metrics["waveform_similarity"] = similarity
     digital_sim = _digital_sequence_similarity(left, right)
     if digital_sim is not None:
@@ -488,7 +479,8 @@ def classify_pair(
         left_sequence_end_s = left_last_reclose_s
     elif left_clearing_s is not None:
         left_sequence_end_s = left_clearing_s
-    if left_sequence_end_s is not None and gap_s <= (left_sequence_end_s + CONTINUATION_GAP_MS / 1000.0):
+    right_start_s = right_start_on_left_s if right_start_on_left_s is not None else gap_s
+    if left_sequence_end_s is not None and right_start_s <= (left_sequence_end_s + CONTINUATION_GAP_MS / 1000.0):
         evidence_for.append({"type": "STARTS_BEFORE_PRIOR_SEQUENCE_CONCLUDED", "value": gap_ms})
         assumptions.append("Right record's start falls within the left record's fault/reclose sequence window; treated as a continuation rather than a fully independent new episode.")
         return _build(new_id_fn, incident_id, left, right, "CONTINUATION", 0.6, evidence_for, evidence_against, assumptions, warnings, metrics)
@@ -552,27 +544,167 @@ def _build(
     )
 
 
+def _overlap_s(axis: TimeAxis, a: IncidentRecord, b: IncidentRecord) -> Optional[float]:
+    """How long two recordings overlap on the incident clock (s); negative:
+    how far apart they are."""
+    a0, a1, b0, b1 = axis.start(a), axis.end(a), axis.start(b), axis.end(b)
+    if a0 is None or a1 is None or b0 is None or b1 is None:
+        return None
+    try:
+        return (min(a1, b1) - max(a0, b0)).total_seconds()
+    except TypeError:  # one timestamp timezone-aware, the other naive
+        return None
+
+
+def _local_counterpart(
+    record: IncidentRecord, local_records: list[IncidentRecord], axis: TimeAxis
+) -> tuple[Optional[IncidentRecord], Optional[float]]:
+    """The reference recorder's record that ``record`` overlaps most — or,
+    with no overlap, the nearest one — and that overlap (negative: gap)."""
+    best, best_overlap = None, None
+    for local in local_records:
+        overlap = _overlap_s(axis, local, record)
+        if overlap is not None and (best_overlap is None or overlap > best_overlap):
+            best, best_overlap = local, overlap
+    return best, best_overlap
+
+
+def _fault_instant(axis: TimeAxis, record: IncidentRecord) -> Optional[datetime]:
+    return axis.absolute(record, fault_start_s(record))
+
+
+def classify_remote_end(
+    local: IncidentRecord,
+    remote: IncidentRecord,
+    axis: TimeAxis,
+    new_id_fn,
+    incident_id: str,
+    overlap_s: float,
+) -> RecordRelationship:
+    """``remote`` is the other line end's recording of the event ``local``
+    captured: a recorder at another substation, running over (or within
+    ``REMOTE_END_WINDOW_S`` of) the local recording on the incident clock.
+    Not independent evidence of a second event, and not this end's breaker
+    sequence — its trip, dead time and reclose belong to the other end."""
+    evidence_for: list[dict] = []
+    evidence_against: list[dict] = []
+    assumptions: list[str] = []
+    warnings: list[dict] = []
+    metrics: dict[str, Any] = {"link": "other_recorder"}
+
+    evidence_for.append({
+        "type": "OTHER_SUBSTATION", "local": station_of(local), "remote": station_of(remote),
+        "description": "Recorded at the other end of the line.",
+    })
+    if overlap_s >= 0:
+        metrics["overlap_seconds"] = round(overlap_s, 3)
+        evidence_for.append({"type": "TIME_RANGE_OVERLAP", "value": round(overlap_s, 3)})
+    else:
+        metrics["separation_seconds"] = round(-overlap_s, 3)
+        evidence_for.append({
+            "type": "WITHIN_RECLOSE_WINDOW", "value": round(-overlap_s, 3),
+            "description": f"The recordings do not overlap; they are {-overlap_s:.1f} s apart.",
+        })
+
+    placement = axis.placement(remote)
+    confidence = 0.6
+    if placement is not None and placement.method == "fault_aligned":
+        metrics["clock_offset_ms"] = placement.clock_offset_ms
+        metrics["zone_offset_h"] = placement.zone_offset_h
+        evidence_for.append({
+            "type": "CLOCK_LINED_UP_ON_SHARED_FAULT",
+            "description": "The other end's clock was lined up with this end's on a fault both recorded.",
+        })
+        confidence = 0.85
+    elif placement is not None and placement.method == "own_clock_unverified":
+        assumptions.append(
+            "The other end's clock could not be checked against a shared fault; the pairing rests on its own timestamps."
+        )
+        confidence = 0.5
+
+    local_fault, remote_fault = _fault_instant(axis, local), _fault_instant(axis, remote)
+    if local_fault is not None and remote_fault is not None:
+        difference_s = _seconds_between(local_fault, remote_fault)
+        if difference_s is not None:
+            metrics["fault_start_difference_ms"] = round(difference_s * 1000.0, 1)
+        local_phases, remote_phases = fault_phases(local), fault_phases(remote)
+        if local_phases and remote_phases:
+            if local_phases & remote_phases:
+                evidence_for.append({"type": "SAME_FAULTED_PHASES_AT_BOTH_ENDS", "local": sorted(local_phases), "remote": sorted(remote_phases)})
+            else:
+                evidence_against.append({
+                    "type": "DIFFERENT_FAULTED_PHASES", "local": sorted(local_phases), "remote": sorted(remote_phases),
+                    "description": "The two ends read different faulted phases.",
+                })
+    return _build(new_id_fn, incident_id, local, remote, "REMOTE_END_CAPTURE", confidence,
+                  evidence_for, evidence_against, assumptions, warnings, metrics)
+
+
+def primary_lane(axis: TimeAxis, ordered: list[IncidentRecord]) -> Optional[str]:
+    """The reference recorder: the incident's story is told from its end."""
+    if axis.reference_group is not None:
+        return axis.reference_group
+    return axis.lane(ordered[0]) if ordered else None
+
+
 def build_relationships(
     incident_id: str,
     records: list[IncidentRecord],
     alignment: AlignmentAssessment,
     new_id_fn,
+    axis: Optional[TimeAxis] = None,
 ) -> list[RecordRelationship]:
-    """Classify relationships for consecutive record pairs in chronological
-    (or best-known) order. Only adjacent pairs are compared by default —
-    O(n) rather than O(n^2) — since Stage 2 targets same-bay incidents where
-    the interesting relationships are almost always between neighbors in
-    sequence. Non-adjacent duplicate/overlap pairs would require full
-    pairwise comparison, which is explicitly out of scope for a same-bay
-    reconstruction pass and left for manual relationship inspection."""
+    """Classify how each record relates to the records before it, per
+    recorder ("lane") on the incident time axis:
+
+    - within one recorder, consecutive records in time order — a fault file,
+      the dead-time file of its reclose, a re-fault file (``link``
+      ``"same_recorder"``);
+    - a record from another recorder is tied to the reference recorder's
+      record it overlaps: the other line end's capture of the same event
+      (``REMOTE_END_CAPTURE``), or, at the same substation, a second device's
+      capture, compared as before (duplicate / overlapping capture). From
+      another substation, the nearest reference record within
+      ``REMOTE_END_WINDOW_S`` also counts (``link`` ``"other_recorder"``);
+    - the first record of another recorder with nothing of the reference
+      recorder around it is compared with the record just before it, as all
+      records used to be (``link`` ``"nearest_record"``).
+
+    Only those pairs are compared — O(n) rather than O(n^2)."""
+    axis = axis or build_time_axis(records)
     order_index = {rid: i for i, rid in enumerate(alignment.record_order)}
     ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, r.sequence_index))
+    primary = primary_lane(axis, ordered)
+    local_records = [r for r in ordered if axis.lane(r) == primary]
+
+    def classify(left: IncidentRecord, right: IncidentRecord, link: str, prior_fault=None) -> RecordRelationship:
+        rel = classify_pair(left, right, alignment, new_id_fn, incident_id, prior_fault=prior_fault, axis=axis)
+        rel.metrics["link"] = link
+        return rel
 
     relationships: list[RecordRelationship] = []
-    prior_fault: Optional[IncidentRecord] = None
-    for i in range(len(ordered) - 1):
-        left, right = ordered[i], ordered[i + 1]
-        if _has_fault_inception(left):
-            prior_fault = left
-        relationships.append(classify_pair(left, right, alignment, new_id_fn, incident_id, prior_fault=prior_fault))
+    previous_in_lane: dict[str, IncidentRecord] = {}
+    prior_fault_in_lane: dict[str, IncidentRecord] = {}
+    for i, record in enumerate(ordered):
+        lane = axis.lane(record)
+        previous = previous_in_lane.get(lane)
+        if previous is not None:
+            if _has_fault_inception(previous):
+                prior_fault_in_lane[lane] = previous
+            relationships.append(classify(previous, record, "same_recorder", prior_fault_in_lane.get(lane)))
+        previous_in_lane[lane] = record
+        if lane == primary:
+            continue
+
+        counterpart, overlap = _local_counterpart(record, local_records, axis)
+        same_bay = counterpart is not None and (
+            same_station(station_of(counterpart), station_of(record))
+            or not (station_of(counterpart) and station_of(record))
+        )
+        if counterpart is not None and overlap is not None and overlap >= 0 and same_bay:
+            relationships.append(classify(counterpart, record, "other_recorder"))
+        elif counterpart is not None and overlap is not None and not same_bay and overlap >= -REMOTE_END_WINDOW_S:
+            relationships.append(classify_remote_end(counterpart, record, axis, new_id_fn, incident_id, overlap))
+        elif previous is None and i > 0:
+            relationships.append(classify(ordered[i - 1], record, "nearest_record"))
     return relationships

@@ -9,7 +9,9 @@ rather than a false-confidence number.
 Input is the list of ``IncidentRecord`` already attached to an incident
 (Stage 1); timing values come straight from each record's Stage 0 canonical
 snapshot (``source_metadata`` / ``event_window``) — this module does not
-recompute or re-detect timing.
+recompute or re-detect timing. Records are read on the incident time axis
+(``time_axis``): one recorder's clock is the reference, and another recorder
+is only shifted onto it by lining up a fault both of them recorded.
 """
 
 from __future__ import annotations
@@ -19,36 +21,14 @@ from typing import Optional
 
 from .models import AlignmentAssessment
 from .models import IncidentRecord
-
-
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except Exception:
-        return None
-
-
-def _record_timestamp(record: IncidentRecord) -> Optional[datetime]:
-    """Prefer the fault-relevant trigger time; fall back to record start."""
-    return _parse_iso(record.trigger_time_iso) or _parse_iso(record.record_start_iso)
+from .time_axis import TimeAxis, build_time_axis, span_s
 
 
 def _record_duration_s(record: IncidentRecord) -> Optional[float]:
-    snapshot = record.canonical_snapshot or {}
-    window = snapshot.get("event_window") or {}
-    total_samples = (snapshot.get("source_metadata") or {}).get("total_samples")
-    frequency = (snapshot.get("source_metadata") or {}).get("frequency")
-    # Best-effort: prefer explicit record_start->clearing span if available,
-    # otherwise fall back to sample_count / sampling assumptions being absent
-    # entirely rather than guessed — duration is only used for overlap
-    # detection, and an unknown duration simply skips overlap evidence for
-    # that record instead of fabricating one.
-    clearing_ms = window.get("clearing_time_ms")
-    if clearing_ms is not None:
-        return float(clearing_ms) / 1000.0
-    return None
+    """Record length, used only for overlap detection; unknown (older
+    snapshots) simply skips overlap evidence for that record rather than
+    guessing one."""
+    return span_s(record)
 
 
 def _has_timezone_info(record: IncidentRecord) -> bool:
@@ -61,9 +41,20 @@ def _clock_quality(record: IncidentRecord) -> Optional[str]:
     return meta.get("clock_quality")
 
 
-def assess_alignment(records: list[IncidentRecord]) -> AlignmentAssessment:
+def assess_alignment(records: list[IncidentRecord], axis: Optional[TimeAxis] = None) -> AlignmentAssessment:
+    """Order and gaps from each record's trigger on the incident time axis
+    (recorder clocks lined up on a shared fault, see ``time_axis``)."""
     warnings: list[dict] = []
     assumptions: list[str] = []
+    axis = axis or build_time_axis(records)
+
+    def _record_timestamp(record: IncidentRecord) -> Optional[datetime]:
+        return axis.trigger(record)
+
+    for warning in axis.warnings:
+        warnings.append(dict(warning))
+        if warning.get("type") == "TIME_ZONE_OFFSET_REMOVED":
+            assumptions.append(warning["description"])
 
     if not records:
         return AlignmentAssessment(status="INSUFFICIENT_DATA", confidence=0.0, order_source="UNKNOWN")
@@ -182,15 +173,27 @@ def assess_alignment(records: list[IncidentRecord]) -> AlignmentAssessment:
 
     record_order = [r.incident_record_id for r in order]
 
-    # Compute pairwise gaps only between consecutive, both-timed records.
+    # Compute pairwise gaps only between consecutive, both-timed records of
+    # one recorder (the far end's recordings run alongside this end's, so a
+    # gap between the two would mean nothing): ``gap_ms`` from trigger to
+    # trigger, ``data_gap_ms`` from the left record's last sample to the right
+    # record's first (negative when the two recordings overlap; absent when
+    # the left record's length is unknown).
     pairwise_gaps_ms: list[dict] = []
     overlap_groups: list[list[str]] = []
     ordered_with_time = [r for r in order if timestamps[r.incident_record_id] is not None]
-    for i in range(len(ordered_with_time) - 1):
-        left, right = ordered_with_time[i], ordered_with_time[i + 1]
+    consecutive = []
+    last_in_lane: dict[str, IncidentRecord] = {}
+    for record in ordered_with_time:
+        previous = last_in_lane.get(axis.lane(record))
+        if previous is not None:
+            consecutive.append((previous, record))
+        last_in_lane[axis.lane(record)] = record
+    for left, right in consecutive:
         t_left, t_right = timestamps[left.incident_record_id], timestamps[right.incident_record_id]
         try:
             gap_s = (t_right - t_left).total_seconds()
+            start_gap_s = (axis.start(right) - axis.start(left)).total_seconds()
         except TypeError:
             continue
         entry = {
@@ -199,10 +202,12 @@ def assess_alignment(records: list[IncidentRecord]) -> AlignmentAssessment:
             "gap_ms": round(gap_s * 1000.0, 1),
             "precise": tz_aware and not poor_clock_quality and not duplicate_times,
         }
+        left_duration_s = _record_duration_s(left)
+        if left_duration_s is not None:
+            entry["data_gap_ms"] = round((start_gap_s - left_duration_s) * 1000.0, 1)
         pairwise_gaps_ms.append(entry)
 
-        left_duration_s = _record_duration_s(left)
-        if left_duration_s is not None and gap_s < left_duration_s:
+        if left_duration_s is not None and start_gap_s < left_duration_s:
             overlap_groups.append([left.incident_record_id, right.incident_record_id])
         elif gap_s < 0:
             overlap_groups.append([left.incident_record_id, right.incident_record_id])

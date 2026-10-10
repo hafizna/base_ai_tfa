@@ -10,13 +10,16 @@ import {
 } from "../components/incidents/incidentStory";
 import bringinRaw from "./fixtures/incident_bringin.json";
 import cibatuRaw from "./fixtures/incident_cibatu.json";
+import twoEndedRaw from "./fixtures/incident_two_ended.json";
 
 // Real API responses (incident + reconstruction) built from the field records:
 // - Bringin ZQ6D/E/F, 21 Aug 2023: S-T fault, reclose after 5.0 s, same fault 5.7 s later.
 // - Cibatu–Mekarsari 2, 26 Apr 2024: R-N fault tripped by Z2 + carrier receive, 1-pole reclose.
+// - The same Bringin incident with the Mojosongo end's three Qualitrol files, stamped in UTC.
 type Fixture = { incident: IncidentOut; reconstruction: ReconstructionOut };
 const bringin = bringinRaw as unknown as Fixture;
 const cibatu = cibatuRaw as unknown as Fixture;
+const twoEnded = twoEndedRaw as unknown as Fixture;
 
 function cards(sequence: SequenceEntry[]) {
   return sequence.flatMap((e) => (e.type === "card" ? [e.card] : []));
@@ -120,6 +123,56 @@ describe("incident story — Bringin reclose then re-fault", () => {
     expect(story.records[2].note).toContain("5,7 s setelah reclose");
   });
 });
+
+describe("incident story — Bringin with the Mojosongo end attached", () => {
+  const story = buildIncidentStory(twoEnded.incident, twoEnded.reconstruction);
+
+  it("still tells the story from this end", () => {
+    expect(story.narrative).toBe(bringinStory().narrative);
+    expect(story.tiles).toEqual(bringinStory().tiles);
+    expect(story.sequenceMeta).toBe("Dari 6 rekaman · waktu menurut jam DFR GI BRINGIN");
+  });
+
+  it("adds what the far end saw to each card", () => {
+    const [fault1, reclose, fault2] = cards(story.sequence);
+    expect(fault1.recordName).toBe("ZQ6D");
+    expect(fault1.bullets).toEqual([
+      "Trip 3-pole +45 ms · Z1",
+      "Gangguan padam setelah 77 ms",
+      "Ujung GI MOJOSONGO: fasa S-T, padam setelah 59 ms",
+    ]);
+    expect(reclose.recordName).toBe("ZQ6E");
+    expect(reclose.bullets).toContain("Ujung GI MOJOSONGO: reclose berhasil setelah dead time 5,1 s");
+    expect(fault2.bullets).toContain("Ujung GI MOJOSONGO: fasa S-T, padam setelah 79 ms");
+  });
+
+  it("puts the far end's records on this end's clock", () => {
+    const far = story.records.filter((r) => r.name.startsWith("230821,"));
+    expect(far.map((r) => [r.name, `${r.roleLabel}${r.roleSuffix}`, r.start])).toEqual([
+      ["230821,081503670", "Gangguan #1 (ujung lain)", "15:15:03,670"],
+      ["230821,081508780", "Reclose (ujung lain, mulai saat dead time)", "15:15:08,780"],
+      ["230821,081514490", "Gangguan #2 (ujung lain)", "15:15:14,490"],
+    ]);
+    expect(far[0].note).toContain("Jam perekam −7 jam dari jam acuan — diselaraskan pada awal gangguan");
+  });
+
+  it("keeps the far end's AI readings out of the cause evidence", () => {
+    const farReadings = story.cause.ai.filter((a) => a.title === "Ujung GI MOJOSONGO");
+    expect(farReadings).toHaveLength(3);
+    expect(farReadings.filter((a) => a.kind === "reading").map((a) => a.note)).toEqual([
+      "Rekaman ujung lain — bukan bukti penyebab terpisah",
+      "Rekaman ujung lain — bukan bukti penyebab terpisah",
+    ]);
+    expect(story.cause.headline).toBe(bringinStory().cause.headline);
+    expect(story.checklist.find((c) => c.id === "two-ended")?.detail).toBe(
+      "Rekaman GI lawan sudah dilampirkan — hitung lokasi gangguan.",
+    );
+  });
+});
+
+function bringinStory() {
+  return buildIncidentStory(bringin.incident, bringin.reconstruction);
+}
 
 describe("incident story — Cibatu teleprotection-aided trip", () => {
   const story = buildIncidentStory(cibatu.incident, cibatu.reconstruction);

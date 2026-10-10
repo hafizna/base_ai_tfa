@@ -1202,6 +1202,8 @@ export type TimelineEventType =
 export type RelationshipType =
   | "DUPLICATE_TRIGGER"
   | "OVERLAPPING_CAPTURE"
+  /** The other line end's recording of the same event (another substation's recorder). */
+  | "REMOTE_END_CAPTURE"
   | "CONTINUATION"
   | "RECLOSE_SEQUENCE"
   | "REFAULT_AFTER_RECLOSE"
@@ -1215,8 +1217,36 @@ export type PhysicalCauseConsistency = "CONSISTENT" | "MOSTLY_CONSISTENT" | "MIX
 export interface AlignmentGap {
   left_incident_record_id: string;
   right_incident_record_id: string;
+  /** Trigger to trigger. */
   gap_ms: number;
+  /** Left record's last sample to the right record's first; negative when they overlap. */
+  data_gap_ms?: number;
   precise: boolean;
+}
+
+/** Where one record sits on the incident time axis (webapp/api/incidents/time_axis.py). */
+export interface TimeAxisPlacement {
+  incident_record_id: string;
+  clock_group: string;
+  method: "reference_clock" | "fault_aligned" | "own_clock_unverified" | "unplaced";
+  /** Seconds added to the recorder clock to read the incident clock. */
+  correction_s: number | null;
+  /** This recorder's clock minus the reference clock, whole time zones. */
+  zone_offset_h: number | null;
+  /** This recorder's clock minus the reference clock beyond the zone, at the shared fault. */
+  clock_offset_ms: number | null;
+  aligned_on: { reference_record_id: string; record_id: string; agreeing_pairs: number; candidate_pairs: number } | null;
+  /** First sample on the incident clock. */
+  start_iso: string | null;
+  offset_s: number | null;
+  span_s: number | null;
+}
+
+export interface IncidentTimeAxis {
+  reference_group: string | null;
+  zero_iso: string | null;
+  records: TimeAxisPlacement[];
+  warnings: Array<{ type: string; description?: string; [key: string]: unknown }>;
 }
 
 export interface AlignmentAssessmentOut {
@@ -1228,6 +1258,8 @@ export interface AlignmentAssessmentOut {
   overlap_groups: string[][];
   warnings: Array<{ type: string; description?: string; requires_review?: boolean; [key: string]: unknown }>;
   assumptions: string[];
+  /** Absent on reconstructions made before the incident time axis existed. */
+  time_axis?: IncidentTimeAxis;
 }
 
 export interface IncidentTimelineEventOut {
@@ -1258,7 +1290,10 @@ export interface RecordRelationshipOut {
   assumptions: string[];
   warnings: Array<Record<string, unknown>>;
   metrics: {
+    /** Trigger to trigger, on the incident time axis. */
     gap_seconds?: number;
+    /** Left record's last sample to the right record's first; negative when they overlap. */
+    data_gap_seconds?: number;
     waveform_similarity?: {
       computed: boolean;
       reason?: string | null;
@@ -1320,7 +1355,25 @@ export interface FaultEpisodeOut {
 // to its predecessor is a reclose/continuation/duplicate capture — its
 // classifier reading is preserved for audit but is not independent cause
 // evidence and should not be read as disagreeing with the inception record.
-export type CauseEvidenceRole = "inception" | "aftermath";
+// "remote_end" = the other line end's recording of an event this end
+// recorded: another view of the same fault, likewise not separate evidence.
+export type CauseEvidenceRole = "inception" | "aftermath" | "remote_end";
+
+/** What another recorder (the far line end, a second device in the bay) saw of an episode. */
+export interface EpisodeOtherRecorder {
+  recorder: string;
+  station: string;
+  same_station: boolean;
+  member_record_ids: string[];
+  relationship_types: RelationshipType[];
+  fault_record_id: string | null;
+  faulted_phases: string[];
+  fct_ms: number | null;
+  fault_start_difference_ms: number | null;
+  reclose_outcome: "successful" | "failed" | null;
+  reclose_dead_time_s: number | null;
+  clock: { method: TimeAxisPlacement["method"] | null; zone_offset_h: number | null; clock_offset_ms: number | null };
+}
 
 export interface PhysicalCauseRecordEntry {
   analysis_id: string;
@@ -1470,12 +1523,27 @@ export interface JoinedWaveformGapRange {
   long_gap: boolean;
 }
 
+export interface JoinedWaveformOtherLane {
+  recorder: string;
+  station: string;
+  clock_method: TimeAxisPlacement["method"] | null;
+  segments: Array<{
+    incident_record_id: string;
+    source_filename: string | null;
+    t_offset_s: number;
+    channels: Record<string, JoinedWaveformChannel>;
+  }>;
+}
+
 export interface JoinedWaveformOut {
   episode_id: string;
   can_join: boolean;
   reason: string | null;
+  /** The episode's own recorder, joined in time order. */
   segments: JoinedWaveformSegment[];
   gap_ranges: JoinedWaveformGapRange[];
+  /** Other recorders' recordings of the episode (the far line end), on the same time axis. */
+  other_lanes?: JoinedWaveformOtherLane[];
   warnings: Array<{ type: string; description?: string; [key: string]: unknown }>;
 }
 

@@ -11,6 +11,7 @@
 import type {
   CanonicalRecordAnalysis,
   ElectricalMeasurements,
+  EpisodeOtherRecorder,
   FaultEpisodeOut,
   IncidentHypothesis,
   IncidentOut,
@@ -19,6 +20,7 @@ import type {
   PhysicalCauseRecordEntry,
   ProtectionOperation,
   ReconstructionOut,
+  TimeAxisPlacement,
 } from "../../api/client";
 
 export type Tone = "fault" | "reclose" | "neutral" | "warning";
@@ -179,6 +181,10 @@ interface LineSelectionSnapshot {
 export interface RecordFacts {
   record: IncidentRecordOut;
   name: string;
+  /** First sample on the incident clock (epoch ms, read as written). */
+  startAbs: number | null;
+  /** How the record was placed on the incident time axis; null on older reconstructions. */
+  placement: TimeAxisPlacement | null;
   eventClass: string | null;
   inceptionAxisMs: number | null;
   inceptionAbs: number | null;
@@ -195,16 +201,27 @@ export interface RecordFacts {
   station: string | null;
 }
 
-/** "ZQ6D" for "ZQ6D.cfg+ZQ6D.dat" or "ZQ6D.cfg": the record's stem, as engineers name it. */
+/**
+ * "ZQ6D" for "ZQ6D.cfg+ZQ6D.dat" or "ZQ6D.cfg": the record's stem, as engineers
+ * name it. A file named the IEEE C37.232 way ("230821,081503670,+7h0,GI
+ * MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg") goes by its leading date and time.
+ */
 export function recordName(record: IncidentRecordOut): string {
-  const first = (record.source_filename ?? "").split("+")[0].trim();
-  return first.replace(/\.(cfg|dat|cff)$/i, "") || record.analysis_id.slice(0, 8);
+  const stem = (record.source_filename ?? "").split(/\.(?:cfg|dat|cff)\b/i)[0].trim();
+  const comname = /^(\d{6},\d{6,9}),[+-]?\d/.exec(stem);
+  return (comname ? comname[1] : stem) || record.analysis_id.slice(0, 8);
 }
 
-export function readFacts(record: IncidentRecordOut): RecordFacts {
+/**
+ * Facts of one record, with its times on the incident clock when the
+ * reconstruction placed it there (another recorder's clock, e.g. a far-end DFR
+ * stamping UTC, is lined up on the fault both ends recorded) — else on the
+ * record's own clock.
+ */
+export function readFacts(record: IncidentRecordOut, placement: TimeAxisPlacement | null = null): RecordFacts {
   const snap = (record.canonical_snapshot ?? {}) as Partial<CanonicalRecordAnalysis>;
   const ew = snap.event_window ?? null;
-  const startMs = isoToMs(record.record_start_iso);
+  const startMs = isoToMs(placement?.start_iso ?? record.record_start_iso);
   const axis0 = ew?.record_start_ms ?? 0;
   const toAbs = (axisMs: number | null | undefined) =>
     startMs !== null && axisMs !== null && axisMs !== undefined ? startMs + (axisMs - axis0) : null;
@@ -216,6 +233,8 @@ export function readFacts(record: IncidentRecordOut): RecordFacts {
   return {
     record,
     name: recordName(record),
+    startAbs: startMs,
+    placement,
     eventClass: ((snap.protection_interpretation ?? {}) as { event_class?: string }).event_class ?? null,
     inceptionAxisMs: deadTimeRecording ? null : (ew?.inception_time_ms ?? null),
     inceptionAbs: deadTimeRecording ? null : toAbs(ew?.inception_time_ms),
@@ -389,6 +408,8 @@ interface EpisodeView {
   fault: RecordFacts | null;
   reclose: RecordFacts | null;
   members: RecordFacts[];
+  /** Other recorders' view of the episode: the far line end, a second device in the bay. */
+  others: EpisodeOtherRecorder[];
   trip: TripReading | null;
   deadTimeS: number | null;
   refaultAfterS: number | null;
@@ -476,7 +497,11 @@ function aiReading(entry: PhysicalCauseRecordEntry, title: string, name: string,
     };
   }
   const note =
-    entry.evidence_role === "aftermath" ? "Rekaman lanjutan — bukan bukti penyebab terpisah" : capNote(entry, view);
+    entry.evidence_role === "aftermath"
+      ? "Rekaman lanjutan — bukan bukti penyebab terpisah"
+      : entry.evidence_role === "remote_end"
+        ? "Rekaman ujung lain — bukan bukti penyebab terpisah"
+        : capNote(entry, view);
   return {
     title,
     recordName: name,
@@ -487,18 +512,31 @@ function aiReading(entry: PhysicalCauseRecordEntry, title: string, name: string,
   };
 }
 
+/** The episode's other recorders, from `observed_facts.other_recorders` (absent on older reconstructions). */
+function episodeOtherRecorders(episode: FaultEpisodeOut): EpisodeOtherRecorder[] {
+  const value = (episode.observed_facts as { other_recorders?: unknown }).other_recorders;
+  return Array.isArray(value) ? (value as EpisodeOtherRecorder[]) : [];
+}
+
 function buildEpisodeViews(reconstruction: ReconstructionOut, factsById: Map<string, RecordFacts>): EpisodeView[] {
   const episodes = [...(reconstruction.episodes ?? [])].sort((a, b) => a.episode_index - b.episode_index);
   const relationships = reconstruction.relationships ?? [];
   return episodes.map((episode, i) => {
     const members = episode.member_record_ids.map((id) => factsById.get(id)).filter((f): f is RecordFacts => !!f);
-    const fault =
-      members.find((f) => f.inceptionAxisMs !== null && f.eventClass !== "RECLOSE_CAPTURE") ?? members[0] ?? null;
-    const capture = members.find((f) => f.eventClass === "RECLOSE_CAPTURE") ?? null;
+    // The episode is read from its own end; other recorders' records (the far
+    // line end) carry their own breaker's trip and reclose.
+    const others = episodeOtherRecorders(episode);
+    const otherIds = new Set(others.flatMap((o) => o.member_record_ids));
+    const own = members.filter((f) => !otherIds.has(f.record.incident_record_id));
+    const fault = own.find((f) => f.inceptionAxisMs !== null && f.eventClass !== "RECLOSE_CAPTURE") ?? own[0] ?? null;
+    const capture = own.find((f) => f.eventClass === "RECLOSE_CAPTURE") ?? null;
     const reclose = capture ?? (fault?.reclose ? fault : null);
     const facts = episode.observed_facts as Record<string, number | undefined>;
     const relDeadTime = relationships.find(
-      (r) => r.relationship_type === "RECLOSE_SEQUENCE" && episode.member_record_ids.includes(r.right_record_id),
+      (r) =>
+        r.relationship_type === "RECLOSE_SEQUENCE" &&
+        own.some((f) => f.record.incident_record_id === r.right_record_id) &&
+        !otherIds.has(r.left_record_id),
     )?.metrics?.dead_time_s as number | undefined;
     const deadTimeS =
       facts.reclose_dead_time_s ?? relDeadTime ?? (reclose && reclose === fault ? singleRecordDeadTimeS(fault) : null);
@@ -508,6 +546,7 @@ function buildEpisodeViews(reconstruction: ReconstructionOut, factsById: Map<str
       fault,
       reclose: episode.reclose_outcome || capture ? reclose : null,
       members,
+      others,
       trip: fault ? readTrip(fault) : null,
       deadTimeS: deadTimeS ?? null,
       refaultAfterS: facts.seconds_after_previous_reclose ?? null,
@@ -599,6 +638,11 @@ function buildSequence(views: EpisodeView[]): SequenceEntry[] {
           : `Fasa berubah dari ${phaseLabel(prev.episode.faulted_phases)}`,
       );
     }
+    for (const other of view.others) {
+      if (other.same_station || !other.fault_record_id) continue;
+      const fct = other.fct_ms !== null ? `, padam setelah ${Math.round(other.fct_ms)} ms` : "";
+      bullets.push(`Ujung ${other.station}: fasa ${phaseLabel(other.faulted_phases)}${fct}`);
+    }
     const amps = fault ? faultCurrentAmps(fault) : null;
     const time = fault?.inceptionAbs ?? isoToMs(episode.start_iso);
     entries.push({
@@ -630,6 +674,11 @@ function buildSequence(views: EpisodeView[]): SequenceEntry[] {
       const power = afterRecloseBullet(view.reclose);
       if (power) recloseBullets.push(power);
       recloseBullets.push(success ? "No fault current" : "Gangguan masih ada saat CB menutup");
+      for (const other of view.others) {
+        if (other.same_station || !other.reclose_outcome) continue;
+        const after = other.reclose_dead_time_s !== null ? ` setelah dead time ${formatNumber(other.reclose_dead_time_s)} s` : "";
+        recloseBullets.push(`Ujung ${other.station}: reclose ${other.reclose_outcome === "successful" ? "berhasil" : "gagal"}${after}`);
+      }
       const at = view.reclose.reclose?.abs ?? null;
       entries.push({
         type: "card",
@@ -672,11 +721,13 @@ function buildCause(reconstruction: ReconstructionOut, views: EpisodeView[], fac
     const view = viewOf(entry.incident_record_id);
     const facts = factsById.get(entry.incident_record_id);
     const title =
-      facts?.eventClass === "RECLOSE_CAPTURE"
-        ? "Reclose"
-        : view && view.fault?.record.incident_record_id === entry.incident_record_id
-          ? `Gangguan #${view.number}`
-          : "Rekaman lanjutan";
+      entry.evidence_role === "remote_end"
+        ? `Ujung ${facts?.station ?? "lain"}`
+        : facts?.eventClass === "RECLOSE_CAPTURE"
+          ? "Reclose"
+          : view && view.fault?.record.incident_record_id === entry.incident_record_id
+            ? `Gangguan #${view.number}`
+            : "Rekaman lanjutan";
     return aiReading(entry, title, facts?.name ?? entry.analysis_id.slice(0, 8), view);
   });
 
@@ -758,7 +809,9 @@ function buildChecklist(
         "gangguan kemungkinan dekat GI lawan. Rekaman GI lawan menunjukkan Z1 dan sinyal send-nya.",
     });
   }
-  const hasRemote = incident.records.some((r) => r.attachment_role === "REMOTE_END");
+  const hasRemote =
+    incident.records.some((r) => r.attachment_role === "REMOTE_END") ||
+    views.some((v) => v.others.some((o) => !o.same_station));
   items.push({
     id: "two-ended",
     title: "Lokasi gangguan dari dua ujung",
@@ -788,6 +841,13 @@ function buildChecklist(
       detail: "Gangguan terlihat di waveform, tetapi tidak ada kanal trip yang aktif di rekaman.",
     });
   }
+  if (views.some((v) => v.episode.missing_evidence.some((m) => m.type === "ENDS_DISAGREE_ON_FAULTED_PHASES"))) {
+    items.push({
+      id: "ends-phases",
+      title: "Periksa fasa gangguan di kedua ujung",
+      detail: "Kedua ujung line membaca fasa gangguan yang berbeda — salah satu bacaan perlu dicek (sering di ujung weak infeed).",
+    });
+  }
   if (missing.has("BAY_NAME_UNDETERMINED")) {
     items.push({ id: "bay", title: "Lengkapi nama bay", detail: "Belum diisi pada insiden ini" });
   }
@@ -803,9 +863,10 @@ function buildRecordRows(records: RecordFacts[], views: EpisodeView[]): RecordRo
     let roleSuffix = "";
     let note = "";
     if (facts.eventClass === "RECLOSE_CAPTURE") {
+      const farEnd = view?.others.some((o) => !o.same_station && o.member_record_ids.includes(id));
       roleLabel = "Reclose";
       roleTone = "reclose";
-      roleSuffix = " (mulai saat dead time)";
+      roleSuffix = farEnd ? " (ujung lain, mulai saat dead time)" : " (mulai saat dead time)";
       note = "Tidak ada gangguan di rekaman ini";
     } else if (view && view.fault?.record.incident_record_id === id) {
       roleLabel = `Gangguan #${view.number}`;
@@ -815,14 +876,17 @@ function buildRecordRows(records: RecordFacts[], views: EpisodeView[]): RecordRo
         note = `${formatNumber(view.refaultAfterS)} s setelah reclose`;
       }
     } else if (view) {
+      const other = view.others.find((o) => o.member_record_ids.includes(id));
       roleLabel = `Gangguan #${view.number}`;
-      roleSuffix = " (rekaman lanjutan)";
+      roleSuffix = other ? (other.same_station ? " (perekam lain)" : " (ujung lain)") : " (rekaman lanjutan)";
     }
     const others = facts.otherLines
       .map((l) => `${l.line} ${LINE_STATE[l.state] ?? l.state.toLowerCase()}${l.breakerOpen ? " (CB open)" : ""} — diabaikan`)
       .join("; ");
     if (others) note = note ? `${note}; ${others}` : others;
-    const start = isoToMs(facts.record.record_start_iso);
+    const clock = clockNote(facts.placement);
+    if (clock) note = note ? `${note}; ${clock}` : clock;
+    const start = facts.startAbs;
     return {
       recordId: id,
       name: facts.name,
@@ -834,6 +898,25 @@ function buildRecordRows(records: RecordFacts[], views: EpisodeView[]): RecordRo
       note,
     };
   });
+}
+
+/** How a record from another recorder was put on the incident clock, when that needed a correction. */
+function clockNote(placement: TimeAxisPlacement | null): string {
+  if (!placement) return "";
+  if (placement.method === "own_clock_unverified") return "Jam perekam belum terverifikasi terhadap jam acuan";
+  if (placement.method !== "fault_aligned") return "";
+  const parts: string[] = [];
+  if (placement.zone_offset_h) {
+    const hours = placement.zone_offset_h;
+    parts.push(`${hours > 0 ? "+" : "−"}${formatNumber(Math.abs(hours), Number.isInteger(hours) ? 0 : 2)} jam`);
+  }
+  if (placement.clock_offset_ms !== null && Math.abs(placement.clock_offset_ms) >= 1) {
+    const ms = placement.clock_offset_ms;
+    parts.push(`${ms > 0 ? "+" : "−"}${formatNumber(Math.abs(ms), 0)} ms`);
+  }
+  return parts.length
+    ? `Jam perekam ${parts.join(" ")} dari jam acuan — diselaraskan pada awal gangguan`
+    : "Diselaraskan pada awal gangguan";
 }
 
 function orderedRecords(incident: IncidentOut, reconstruction: ReconstructionOut): IncidentRecordOut[] {
@@ -858,7 +941,10 @@ export function isReconstructionStale(incident: IncidentOut, reconstruction: Rec
 }
 
 export function buildIncidentStory(incident: IncidentOut, reconstruction: ReconstructionOut): IncidentStory {
-  const records = orderedRecords(incident, reconstruction).map(readFacts);
+  const placements = new Map(
+    (reconstruction.alignment?.time_axis?.records ?? []).map((p) => [p.incident_record_id, p]),
+  );
+  const records = orderedRecords(incident, reconstruction).map((r) => readFacts(r, placements.get(r.incident_record_id) ?? null));
   const factsById = new Map(records.map((f) => [f.record.incident_record_id, f]));
   const views = buildEpisodeViews(reconstruction, factsById);
   const line = lineName(incident, views, records);

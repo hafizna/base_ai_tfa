@@ -13,7 +13,7 @@ type FilterGroup = "ALL" | "DUPLICATE_OVERLAP" | "CONTINUATION_RECLOSE" | "REPEA
 
 const FILTER_GROUPS: Record<FilterGroup, RelationshipType[] | null> = {
   ALL: null,
-  DUPLICATE_OVERLAP: ["DUPLICATE_TRIGGER", "OVERLAPPING_CAPTURE"],
+  DUPLICATE_OVERLAP: ["DUPLICATE_TRIGGER", "OVERLAPPING_CAPTURE", "REMOTE_END_CAPTURE"],
   CONTINUATION_RECLOSE: ["CONTINUATION", "RECLOSE_SEQUENCE"],
   REPEATED_EVOLVING: ["REFAULT_AFTER_RECLOSE", "REPEATED_FAULT", "POSSIBLE_EVOLVING_FAULT", "NEW_FAULT_EPISODE"],
   UNCERTAIN_UNRELATED: ["UNCERTAIN", "UNRELATED"],
@@ -21,7 +21,7 @@ const FILTER_GROUPS: Record<FilterGroup, RelationshipType[] | null> = {
 
 const FILTER_LABELS: Record<FilterGroup, string> = {
   ALL: "All",
-  DUPLICATE_OVERLAP: "Duplicate / overlap",
+  DUPLICATE_OVERLAP: "Duplicate / overlap / other end",
   CONTINUATION_RECLOSE: "Continuation / reclose",
   REPEATED_EVOLVING: "Repeated / evolving",
   UNCERTAIN_UNRELATED: "Uncertain / unrelated",
@@ -30,6 +30,7 @@ const FILTER_LABELS: Record<FilterGroup, string> = {
 const RELATIONSHIP_TYPE_OPTIONS: RelationshipType[] = [
   "DUPLICATE_TRIGGER",
   "OVERLAPPING_CAPTURE",
+  "REMOTE_END_CAPTURE",
   "CONTINUATION",
   "RECLOSE_SEQUENCE",
   "REFAULT_AFTER_RECLOSE",

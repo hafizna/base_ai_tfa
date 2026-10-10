@@ -6,31 +6,38 @@ preserved (never filled/interpolated/fabricated) — so a trip/dead-time/
 reclose sequence captured as separate COMTRADE files can be read as one
 continuous story instead of switching between panels.
 
-This deliberately reuses the SAME absolute-time-from-relative-time
-conversion already used by ``relationships.py::_waveform_similarity`` (and
-the same anchor convention as ``timeline.py``), so a joined waveform's time
-axis can never disagree with what the relationship/timeline views already
-show for the same pair of records.
+Each record is placed by its first sample on the incident time axis
+(``time_axis``) — the same placement the relationship and timeline views use
+— so a joined waveform can never disagree with them about when a record ran.
+The gap shown between two records is the stretch from the left record's last
+sample to the right record's first.
 
-Trust gate: a pair is only joined with a *precise* gap when both records
-carry absolute time. When one or both records lack it, the pair is still
-returned (so the UI isn't empty), but flagged ``gap_precision: "unknown"``
-and the join falls back to placing the right record immediately after the
-left one's last sample — never claiming a duration we didn't measure. This
-mirrors ``alignment.py``'s philosophy: degrade the confidence label rather
-than invent a number.
+The joined trace is one recorder's: the episode's own end, whose records
+follow each other in time. Recordings of the same episode by other recorders
+(the far line end, a second device in the bay) run alongside it, so they are
+returned separately in ``other_lanes``, on the same time axis, rather than
+drawn over it.
+
+Trust gate: a record is only placed at a *measured* offset when it and the
+episode's first record both carry absolute time. Otherwise it is still
+returned (so the UI isn't empty), but flagged ``gap_precision:
+"assumed_back_to_back"`` and placed immediately after the previous record's
+last sample — never claiming a duration we didn't measure. This mirrors
+``alignment.py``'s philosophy: degrade the confidence label rather than
+invent a number.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 import numpy as np
 
 from core.line_selection import scope_payload
 from ..storage import load_analysis
-from .models import FaultEpisode, IncidentRecord, RecordRelationship
+from .models import FaultEpisode, IncidentRecord
+from .time_axis import TimeAxis, build_time_axis, station_of
 
 # A gap longer than this is still joined (never refused), but flagged so the
 # UI can render it as a visibly compressed/labeled break rather than an
@@ -47,32 +54,53 @@ def _load_line_payload(analysis_id: str) -> Optional[dict]:
     return scope_payload(payload) if payload is not None else None
 
 
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
+def _span_s(payload: dict) -> float:
+    time = payload.get("time") or []
+    return float(time[-1]) - float(time[0]) if len(time) >= 2 else 0.0
+
+
+def _channels(payload: dict, t_offset_s: float) -> dict[str, dict[str, list[float]]]:
+    time_arr = np.asarray(payload.get("time") or [], dtype=float)
+    t0 = float(time_arr[0]) if len(time_arr) else 0.0
+    rel_t = (time_arr - t0) + t_offset_s
+    channels: dict[str, dict[str, list[float]]] = {}
+    for ch in payload.get("analog_channels", []):
+        canon = ch.get("canonical_name")
+        if not canon:
+            continue
+        samples = ch.get("samples") or []
+        if len(samples) != len(rel_t):
+            continue
+        channels[canon] = {"t": rel_t.tolist(), "values": list(samples)}
+    return channels
+
+
+def _offset_s(axis: TimeAxis, record: IncidentRecord, origin: Optional[datetime]) -> Optional[float]:
+    start = axis.start(record)
+    if origin is None or start is None:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except Exception:
+        return (start - origin).total_seconds()
+    except TypeError:  # one timestamp timezone-aware, the other naive
         return None
 
 
-def _record_time(record: IncidentRecord) -> Optional[datetime]:
-    return _parse_iso(record.trigger_time_iso) or _parse_iso(record.record_start_iso)
-
-
-def _relationship_for_pair(
-    relationships: list[RecordRelationship], left_id: str, right_id: str
-) -> Optional[RecordRelationship]:
-    for rel in relationships:
-        if rel.left_record_id == left_id and rel.right_record_id == right_id:
-            return rel
-    return None
+def _not_joined(episode: FaultEpisode, reason: str, warnings: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "episode_id": episode.episode_id,
+        "can_join": False,
+        "reason": reason,
+        "segments": [],
+        "gap_ranges": [],
+        "other_lanes": [],
+        "warnings": warnings,
+    }
 
 
 def build_joined_waveform(
     episode: FaultEpisode,
     records_by_id: dict[str, IncidentRecord],
-    relationships: list[RecordRelationship],
+    axis: Optional[TimeAxis] = None,
 ) -> dict[str, Any]:
     """Build a joined, incident-relative waveform view for one episode.
 
@@ -83,7 +111,7 @@ def build_joined_waveform(
         "can_join": bool,
         "reason": str | None,           # set when can_join is False
         "warnings": [...],
-        "segments": [                    # one per record, in join order
+        "segments": [                    # the episode's own recorder, in join order
           {
             "incident_record_id": ...,
             "source_filename": ...,
@@ -98,6 +126,10 @@ def build_joined_waveform(
         "gap_ranges": [                  # incident-relative [start,end] per gap, for UI shading
           {"start_s": float, "end_s": float, "precision": "measured"|"assumed_back_to_back"},
         ],
+        "other_lanes": [                 # other recorders' recordings of the episode, same axis
+          {"recorder": str, "station": str, "clock_method": str | None,
+           "segments": [{"incident_record_id", "source_filename", "t_offset_s", "channels"}]},
+        ],
       }
 
     Never interpolates or fabricates samples inside a gap — ``gap_ranges``
@@ -107,53 +139,46 @@ def build_joined_waveform(
     member_ids = list(episode.member_record_ids)
     ordered = [records_by_id[rid] for rid in member_ids if rid in records_by_id]
     if len(ordered) < 1:
-        return {"episode_id": episode.episode_id, "can_join": False, "reason": "no_records", "segments": [], "gap_ranges": [], "warnings": []}
+        return _not_joined(episode, "no_records", [])
 
-    if len(ordered) == 1:
-        return _build_single_record(episode, ordered[0])
+    # The episode's own recorder is its first member's (episodes list the
+    # reference recorder's records first).
+    axis = axis or build_time_axis(list(records_by_id.values()))
+    main_lane = axis.lane(ordered[0])
+    main = [r for r in ordered if axis.lane(r) == main_lane]
+    others = [r for r in ordered if axis.lane(r) != main_lane]
 
     warnings: list[dict[str, Any]] = []
     payloads: dict[str, dict] = {}
-    for rec in ordered:
+    for rec in main:
         payload = _load_line_payload(rec.analysis_id)
         if payload is None:
-            return {
-                "episode_id": episode.episode_id,
-                "can_join": False,
-                "reason": "analysis_expired_or_missing",
-                "segments": [],
-                "gap_ranges": [],
-                "warnings": [{"type": "MISSING_ANALYSIS", "incident_record_id": rec.incident_record_id}],
-            }
+            return _not_joined(episode, "analysis_expired_or_missing",
+                               [{"type": "MISSING_ANALYSIS", "incident_record_id": rec.incident_record_id}])
         payloads[rec.incident_record_id] = payload
 
-    # Anchor: first record's absolute time if available, else its samples
-    # simply start at t_offset_s = 0 with everything after it placed
-    # relative to measured/assumed gaps — there's no absolute reference to
-    # convert to, but relative placement is still exact.
+    # Anchor: the first record's first sample is t = 0; every record with an
+    # absolute time is placed by its own first sample on the incident time
+    # axis. Without one, a record goes right after the previous record's last
+    # sample — relative placement inside each record is still exact.
+    origin = axis.start(main[0])
     t_offsets_s: list[float] = [0.0]
-    gap_infos: list[dict[str, Any]] = [None]  # index 0 has no "gap before" it
+    gap_infos: list[Optional[dict[str, Any]]] = [None]  # index 0 has no "gap before" it
 
-    for i in range(1, len(ordered)):
-        left, right = ordered[i - 1], ordered[i]
-        rel = _relationship_for_pair(relationships, left.incident_record_id, right.incident_record_id)
-        gap_s = rel.metrics.get("gap_seconds") if rel and isinstance(rel.metrics, dict) else None
+    for i in range(1, len(main)):
+        left, right = main[i - 1], main[i]
+        left_end_s = t_offsets_s[-1] + _span_s(payloads[left.incident_record_id])
+        offset_s = _offset_s(axis, right, origin)
 
-        if gap_s is None:
-            t_left = _record_time(left)
-            t_right = _record_time(right)
-            if t_left is not None and t_right is not None:
-                gap_s = (t_right - t_left).total_seconds()
-
-        left_time = np.asarray(payloads[left.incident_record_id].get("time") or [], dtype=float)
-        left_span_s = float(left_time[-1] - left_time[0]) if len(left_time) >= 2 else 0.0
-
-        if gap_s is not None and gap_s >= 0:
+        if offset_s is not None:
             precision = "measured"
+            # Negative when the two recordings overlap: no gap to shade.
+            gap_s = max(0.0, offset_s - left_end_s)
         else:
-            # No absolute-time evidence for this pair, or a nonsensical
-            # (negative) gap — place the right record immediately after the
-            # left one's last sample rather than guessing a duration.
+            # No absolute-time evidence for this record — place it
+            # immediately after the previous one's last sample rather than
+            # guessing a duration.
+            offset_s = left_end_s
             gap_s = 0.0
             precision = "assumed_back_to_back"
             warnings.append({
@@ -163,27 +188,12 @@ def build_joined_waveform(
                 "description": "No absolute-time evidence for this pair; placed back-to-back with no implied dead-time duration.",
             })
 
-        t_offsets_s.append(t_offsets_s[-1] + left_span_s + gap_s)
+        t_offsets_s.append(offset_s)
         gap_infos.append({"gap_seconds": round(gap_s, 3), "precision": precision})
 
     segments: list[dict[str, Any]] = []
     gap_ranges: list[dict[str, Any]] = []
-    for i, rec in enumerate(ordered):
-        payload = payloads[rec.incident_record_id]
-        time_arr = np.asarray(payload.get("time") or [], dtype=float)
-        t0 = float(time_arr[0]) if len(time_arr) else 0.0
-        rel_t = (time_arr - t0) + t_offsets_s[i]
-
-        channels: dict[str, dict[str, list[float]]] = {}
-        for ch in payload.get("analog_channels", []):
-            canon = ch.get("canonical_name")
-            if not canon:
-                continue
-            samples = ch.get("samples") or []
-            if len(samples) != len(rel_t):
-                continue
-            channels[canon] = {"t": rel_t.tolist(), "values": list(samples)}
-
+    for i, rec in enumerate(main):
         gap_info = gap_infos[i]
         segments.append({
             "incident_record_id": rec.incident_record_id,
@@ -191,7 +201,7 @@ def build_joined_waveform(
             "t_offset_s": round(t_offsets_s[i], 6),
             "gap_precision": gap_info["precision"] if gap_info else None,
             "gap_seconds": gap_info["gap_seconds"] if gap_info else None,
-            "channels": channels,
+            "channels": _channels(payloads[rec.incident_record_id], t_offsets_s[i]),
         })
 
         if gap_info is not None and gap_info["gap_seconds"] > 0:
@@ -203,52 +213,46 @@ def build_joined_waveform(
                 "long_gap": gap_info["gap_seconds"] > LONG_GAP_DISPLAY_THRESHOLD_S,
             })
 
+    other_lanes: list[dict[str, Any]] = []
+    lanes: dict[str, list[IncidentRecord]] = {}
+    for rec in others:
+        lanes.setdefault(axis.lane(rec), []).append(rec)
+    for lane, recs in lanes.items():
+        lane_segments = []
+        for rec in recs:
+            offset_s = _offset_s(axis, rec, origin)
+            payload = _load_line_payload(rec.analysis_id)
+            if offset_s is None or payload is None:
+                warnings.append({
+                    "type": "OTHER_RECORDER_NOT_PLACED",
+                    "incident_record_id": rec.incident_record_id,
+                    "description": (
+                        "This recording could not be placed beside the episode's records: "
+                        + ("it has no absolute time." if offset_s is None else "its analysis has expired.")
+                    ),
+                })
+                continue
+            lane_segments.append({
+                "incident_record_id": rec.incident_record_id,
+                "source_filename": rec.source_filename,
+                "t_offset_s": round(offset_s, 6),
+                "channels": _channels(payload, offset_s),
+            })
+        if lane_segments:
+            placement = axis.placement(recs[0])
+            other_lanes.append({
+                "recorder": lane,
+                "station": station_of(recs[0]),
+                "clock_method": placement.method if placement else None,
+                "segments": lane_segments,
+            })
+
     return {
         "episode_id": episode.episode_id,
         "can_join": True,
         "reason": None,
         "segments": segments,
         "gap_ranges": gap_ranges,
+        "other_lanes": other_lanes,
         "warnings": warnings,
-    }
-
-
-def _build_single_record(episode: FaultEpisode, rec: IncidentRecord) -> dict[str, Any]:
-    payload = _load_line_payload(rec.analysis_id)
-    if payload is None:
-        return {
-            "episode_id": episode.episode_id,
-            "can_join": False,
-            "reason": "analysis_expired_or_missing",
-            "segments": [],
-            "gap_ranges": [],
-            "warnings": [{"type": "MISSING_ANALYSIS", "incident_record_id": rec.incident_record_id}],
-        }
-    time_arr = np.asarray(payload.get("time") or [], dtype=float)
-    t0 = float(time_arr[0]) if len(time_arr) else 0.0
-    rel_t = (time_arr - t0)
-    channels: dict[str, dict[str, list[float]]] = {}
-    for ch in payload.get("analog_channels", []):
-        canon = ch.get("canonical_name")
-        if not canon:
-            continue
-        samples = ch.get("samples") or []
-        if len(samples) != len(rel_t):
-            continue
-        channels[canon] = {"t": rel_t.tolist(), "values": list(samples)}
-
-    return {
-        "episode_id": episode.episode_id,
-        "can_join": True,
-        "reason": None,
-        "segments": [{
-            "incident_record_id": rec.incident_record_id,
-            "source_filename": rec.source_filename,
-            "t_offset_s": 0.0,
-            "gap_precision": None,
-            "gap_seconds": None,
-            "channels": channels,
-        }],
-        "gap_ranges": [],
-        "warnings": [],
     }

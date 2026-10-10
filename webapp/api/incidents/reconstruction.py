@@ -42,6 +42,7 @@ from .models import (
 from .narrative import build_narrative
 from .relationships import build_relationships
 from .same_bay import assess_same_bay
+from .time_axis import TimeAxis, build_time_axis
 from .timeline import build_timeline
 
 
@@ -99,7 +100,8 @@ def _record_ml_result(record: IncidentRecord) -> dict[str, Any]:
 # left record's event (a reclose attempt/outcome, or a continued capture of
 # the same still-in-progress sequence) rather than a new, independently
 # faulted waveform. A record reached only via one of these relationships is
-# not treated as separate cause evidence — see _evidence_roles.
+# not treated as separate cause evidence — see _evidence_roles. (The other
+# line end's recording, REMOTE_END_CAPTURE, gets a role of its own.)
 _AFTERMATH_RELATIONSHIP_TYPES = {"RECLOSE_SEQUENCE", "CONTINUATION", "DUPLICATE_TRIGGER", "OVERLAPPING_CAPTURE"}
 
 
@@ -107,32 +109,33 @@ def _evidence_roles(
     records: list[IncidentRecord], relationships: list[RecordRelationship], record_order: list[str]
 ) -> dict[str, str]:
     """Classify each record as ``"inception"`` (captures an independently
-    faulted waveform — its cause hypothesis is real evidence) or
-    ``"aftermath"`` (only captures the reclose/continuation/duplicate of a
-    preceding record's event — its cause hypothesis reflects whatever the
+    faulted waveform — its cause hypothesis is real evidence),
+    ``"aftermath"`` (only captures the reclose/continuation/duplicate of an
+    earlier record's event — its cause hypothesis reflects whatever the
     classifier saw in ITS OWN waveform, e.g. reclose inrush or CT transient,
     not a second independent cause, and must not be pitted against the
-    inception record's reading).
+    inception record's reading), or ``"remote_end"`` (the other line end's
+    recording of an event this end recorded — another view of the same
+    fault, not a second one, and often a weak-infeed end whose waveform the
+    classifier was not trained on).
 
-    Chosen per adjacent-pair relationship (the same pairs already classified
-    by ``relationships.classify_pair``), walking records in the same
-    chronological order episode grouping uses. A record with no known
-    ordering position, or the first record overall, is always "inception" —
-    only an explicit aftermath-type relationship to its immediate
-    predecessor demotes it.
+    Chosen from the relationships that tie each record to an earlier one (the
+    pairs ``relationships.build_relationships`` classified: its own
+    recorder's previous record, another recorder's capture of the same
+    event). A record with no such relationship — the first record overall —
+    is always "inception"; only an explicit aftermath-type or remote-end tie
+    demotes it.
     """
-    order_index = {rid: i for i, rid in enumerate(record_order)}
-    ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, 10**9))
-    rel_by_pair = {(r.left_record_id, r.right_record_id): r for r in relationships}
+    incoming: dict[str, list[RecordRelationship]] = {}
+    for rel in relationships:
+        incoming.setdefault(rel.right_record_id, []).append(rel)
 
     roles: dict[str, str] = {}
-    for i, record in enumerate(ordered):
-        if i == 0:
-            roles[record.incident_record_id] = "inception"
-            continue
-        prev = ordered[i - 1]
-        rel = rel_by_pair.get((prev.incident_record_id, record.incident_record_id))
-        if rel is not None and rel.relationship_type in _AFTERMATH_RELATIONSHIP_TYPES:
+    for record in records:
+        types = {rel.relationship_type for rel in incoming.get(record.incident_record_id) or []}
+        if "REMOTE_END_CAPTURE" in types:
+            roles[record.incident_record_id] = "remote_end"
+        elif types & _AFTERMATH_RELATIONSHIP_TYPES:
             roles[record.incident_record_id] = "aftermath"
         else:
             roles[record.incident_record_id] = "inception"
@@ -263,6 +266,7 @@ def _apply_reclose_outcome_cross_validation(
     records: list[IncidentRecord],
     relationships: list[RecordRelationship],
     record_order: list[str],
+    axis: Optional[TimeAxis] = None,
 ) -> dict[str, Any]:
     """Adjust each inception record's cause confidence based on whether the
     reclose outcome captured by its aftermath record(s) is physically
@@ -288,25 +292,36 @@ def _apply_reclose_outcome_cross_validation(
     roles = _evidence_roles(records, relationships, record_order)
     order_index = {rid: i for i, rid in enumerate(record_order)}
     ordered = sorted(records, key=lambda r: order_index.get(r.incident_record_id, 10**9))
-    rel_by_pair = {(r.left_record_id, r.right_record_id): r for r in relationships}
+    lane_of = {r.incident_record_id: (axis.lane(r) if axis is not None else "") for r in records}
+    # The relationship tying each record to an earlier record of the same
+    # breaker: its own recorder's previous record, or a second device's
+    # capture in the same bay (not the far end — that is the other breaker).
+    previous_rel: dict[str, RecordRelationship] = {}
+    for rel in relationships:
+        if (rel.metrics or {}).get("link") == "other_recorder" and rel.relationship_type != "REMOTE_END_CAPTURE":
+            previous_rel[rel.right_record_id] = rel
+    for rel in relationships:
+        if lane_of.get(rel.left_record_id) == lane_of.get(rel.right_record_id) and (rel.metrics or {}).get("link") != "other_recorder":
+            previous_rel.setdefault(rel.right_record_id, rel)
 
     # Map each inception record -> the reclose outcome captured by the
-    # nearest following aftermath record(s) attached to it (same walk
-    # _evidence_roles used to assign roles in the first place). A reclose
-    # that succeeded but was followed by a REFAULT_AFTER_RECLOSE did not hold:
-    # recorded as "refault_after_reclose", which is what the cause has to
-    # explain.
+    # following aftermath record(s) of the same breaker (the far end's
+    # reclose is its own breaker's). A reclose that succeeded but was
+    # followed by a REFAULT_AFTER_RECLOSE did not hold: recorded as
+    # "refault_after_reclose", which is what the cause has to explain.
     reclose_outcome_by_inception: dict[str, str] = {}
-    current_inception_id: Optional[str] = None
-    for i, record in enumerate(ordered):
-        rel = rel_by_pair.get((ordered[i - 1].incident_record_id, record.incident_record_id)) if i else None
+    current_inception_by_lane: dict[str, str] = {}
+    for record in ordered:
+        rel = previous_rel.get(record.incident_record_id)
+        lane = lane_of[rel.left_record_id] if rel is not None else lane_of[record.incident_record_id]
+        current_inception_id = current_inception_by_lane.get(lane)
         if rel is not None and rel.relationship_type == "REFAULT_AFTER_RECLOSE" and current_inception_id is not None:
             reclose_outcome_by_inception[current_inception_id] = "refault_after_reclose"
         role = roles.get(record.incident_record_id, "inception")
         if role == "inception":
-            current_inception_id = record.incident_record_id
+            current_inception_by_lane[lane] = record.incident_record_id
             continue
-        if current_inception_id is None:
+        if role == "remote_end" or current_inception_id is None:
             continue
         outcome = _record_reclose_outcome(record)
         if rel is not None and (rel.metrics or {}).get("reclose_outcome_correction") == "failed":
@@ -366,15 +381,16 @@ def _apply_reclose_outcome_cross_validation(
     return physical_cause
 
 
-def _observed_incident_facts(records: list[IncidentRecord], episodes: list[FaultEpisode]) -> dict[str, Any]:
-    times = []
-    for r in records:
-        t = _parse_iso(r.trigger_time_iso or r.record_start_iso)
-        if t is not None:
-            times.append(t)
+def _observed_incident_facts(records: list[IncidentRecord], episodes: list[FaultEpisode], axis: TimeAxis) -> dict[str, Any]:
+    """``incident_duration_ms``: first to last record trigger on the incident
+    time axis."""
+    times = [t for t in (axis.trigger(r) for r in records) if t is not None]
     duration_ms = None
     if len(times) >= 2:
-        duration_ms = (max(times) - min(times)).total_seconds() * 1000.0
+        try:
+            duration_ms = (max(times) - min(times)).total_seconds() * 1000.0
+        except TypeError:  # one timestamp timezone-aware, the other naive
+            duration_ms = None
 
     return {
         "record_count": len(records),
@@ -767,6 +783,11 @@ def run_reconstruction(
         id_counter["n"] += 1
         return f"{reconstruction_id}-{id_counter['n']}"
 
+    # One time axis for every step below: recorder clocks lined up on a
+    # shared fault, each record placed by its first sample, told from the
+    # incident's own substation.
+    axis = build_time_axis(records, home_station=incident.station_name)
+
     same_bay = assess_same_bay(
         incident.station_name,
         incident.bay_name,
@@ -774,11 +795,12 @@ def run_reconstruction(
         override_reason=same_bay_override_reason,
         override_operator=same_bay_override_operator,
         override_at_iso=_now_iso() if same_bay_override_reason or same_bay_override_operator else None,
+        axis=axis,
     )
 
-    alignment = assess_alignment(records)
-    timeline_events = build_timeline(incident.incident_id, records, alignment, new_id)
-    relationships = build_relationships(incident.incident_id, records, alignment, new_id)
+    alignment = assess_alignment(records, axis)
+    timeline_events = build_timeline(incident.incident_id, records, alignment, new_id, axis)
+    relationships = build_relationships(incident.incident_id, records, alignment, new_id, axis)
 
     # Computed once, before episode grouping, so episodes and the incident-level
     # physical_cause_evidence report exactly the same per-record ML call
@@ -792,12 +814,15 @@ def run_reconstruction(
     # incident-level physical_cause_evidence agree on one final,
     # already-adjusted confidence rather than reporting two numbers for the
     # same record.
-    physical_cause = _apply_reclose_outcome_cross_validation(physical_cause, records, relationships, alignment.record_order)
+    physical_cause = _apply_reclose_outcome_cross_validation(physical_cause, records, relationships, alignment.record_order, axis)
     cause_lookup = {e["incident_record_id"]: e for e in physical_cause["records"]}
 
-    episodes = group_episodes(incident.incident_id, records, relationships, alignment.record_order, new_id, record_cause_lookup=cause_lookup)
+    episodes = group_episodes(
+        incident.incident_id, records, relationships, alignment.record_order, new_id,
+        record_cause_lookup=cause_lookup, axis=axis,
+    )
 
-    observed_facts = _observed_incident_facts(records, episodes)
+    observed_facts = _observed_incident_facts(records, episodes, axis)
     interpretation = _protection_sequence_interpretation(episodes, relationships)
     hypotheses = _incident_hypotheses(episodes, relationships)
 
@@ -820,7 +845,7 @@ def run_reconstruction(
         same_bay_status=same_bay.status,
         same_bay_evidence=same_bay.evidence,
         same_bay_override=same_bay.override,
-        alignment=alignment.to_dict(),
+        alignment={**alignment.to_dict(), "time_axis": axis.to_dict()},
         timeline_event_ids=[e.timeline_event_id for e in timeline_events],
         relationship_ids=[r.relationship_id for r in relationships],
         episode_ids=[e.episode_id for e in episodes],
