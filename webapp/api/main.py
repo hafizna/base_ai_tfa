@@ -22,8 +22,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from . import ml_predict
 from .routers import (
-    event_simulator, incidents, location_report, upload, relay_21, relay_21_de, relay_87l, relay_87t, relay_ocr,
-    relay_ref, tws, report, training,
+    event_simulator, incident_report, incidents, location_report, upload, relay_21, relay_21_de, relay_87l,
+    relay_87t, relay_ocr, relay_ref, tws, report, training,
 )
 from .storage import get_session_ttl_hours, get_storage_backend
 
@@ -101,6 +101,7 @@ app.include_router(location_report.router)
 app.include_router(training.router)
 app.include_router(event_simulator.router)
 app.include_router(incidents.router)
+app.include_router(incident_report.router)
 
 
 @app.get("/api/health")

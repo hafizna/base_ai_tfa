@@ -70,6 +70,27 @@
   border-color: var(--brand-hover);
 }
 
+.secondaryButton {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--brand-line);
+  background: var(--surface);
+  color: var(--brand-hover);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: var(--brand-soft);
+}
+
+.secondaryButton:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
 /* --- body --- */
 
 .main {

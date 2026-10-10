@@ -7,6 +7,7 @@ import {
   fetchIncidentEpisodes,
   fetchIncidentRelationships,
   fetchReconstruction,
+  generateIncidentReport,
   reconstructIncident,
   refreshIncidentSnapshots,
   updateIncident,
@@ -58,6 +59,7 @@ export default function IncidentWorkspace() {
   const [reconstructionError, setReconstructionError] = useState<string | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [printing, setPrinting] = useState(false);
   // Record set an automatic rebuild was already started for, so a failing
   // rebuild is not retried in a loop.
   const autoRebuiltFor = useRef<string | null>(null);
@@ -232,6 +234,28 @@ export default function IncidentWorkspace() {
     }
   }
 
+  // The PDF prints the story this page shows, so it is built from the same
+  // reconstruction the reader is looking at.
+  async function handlePrint() {
+    if (!incidentId || !incident || !story) return;
+    setPrinting(true);
+    try {
+      const blob = await generateIncidentReport(incidentId, story);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `laporan_insiden_${incident.title.replace(/[^\w-]+/g, "_").replace(/^_+|_+$/g, "") || incidentId.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal membuat laporan PDF insiden.");
+    } finally {
+      setPrinting(false);
+    }
+  }
+
   async function handleDetach(incidentRecordId: string) {
     if (!incidentId) return;
     if (!window.confirm("Lepas rekaman ini dari insiden? Analisa rekamannya tidak dihapus.")) return;
@@ -285,6 +309,16 @@ export default function IncidentWorkspace() {
           </nav>
           {multiComtradeEnabled && (
             <div className={styles.actions}>
+              {story && (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  disabled={printing || rebuilding}
+                  onClick={() => void handlePrint()}
+                >
+                  {printing ? "Menyiapkan PDF…" : "Cetak laporan"}
+                </button>
+              )}
               <button type="button" className={styles.primaryButton} onClick={() => openUpload()}>
                 Tambah rekaman
               </button>
