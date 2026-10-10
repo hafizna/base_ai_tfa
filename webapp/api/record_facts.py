@@ -127,7 +127,7 @@ _IGNORED = frozenset({
     "TEST", "BLOCK", "BLK", "BAR", "VTS", "MCB", "SWING", "SF6", "GAS", "PRESSURE", "SPRING", "SYNCH", "SYNC",
 })
 _BREAKER = frozenset({"CB", "52A", "52B", "BREAKER", "PMT", "POLE"})
-_RECLOSE = frozenset({"AR", "RECLOSE", "RECLOSING"})
+_RECLOSE = frozenset({"AR", "RECLOSE", "RECLOSING", "AUTORECLOSE", "AUTOCLOSE"})
 _TELEPROTECTION = frozenset({
     "CR", "CS", "SEND", "SENDING", "SND", "RCV", "RECV", "RECEIVE", "RECEIVED", "RX", "TX", "CARR", "CARRIER",
     "CARIER", "CHAN", "CHANNEL", "DTT", "PUTT", "POTT", "UNB", "TELEPROT", "TELEPROTECTION",
@@ -171,7 +171,9 @@ def classify_status_channel(name: str) -> tuple[Optional[str], Optional[int], Op
 
     if token_set & _BREAKER:
         role = "breaker"
-    elif token_set & _RECLOSE or any(_ANSI_RECLOSE_RE.match(t) for t in tokens):
+    elif (token_set & _RECLOSE or {"AUTO", "CLOSE"} <= token_set
+          or any(_ANSI_RECLOSE_RE.match(t) for t in tokens)):
+        # "Auto Close" is the auto-reclose close command.
         role = "reclose"
     elif token_set & _TELEPROTECTION or any(_ANSI_TELEPROTECTION_RE.match(t) for t in tokens):
         role = "teleprotection"

@@ -1112,6 +1112,10 @@ def _trip_and_reclose(ctx: _Context, trip: Optional[dict[str, Any]], path: dict[
         rules.append("F6.4")
     breaker_lines = _breaker_lines(ctx)
     evidence += breaker_lines
+    if reclose and not ar_mode and len(poles) == 1 and not three_pole:
+        # One pole tripped and the breaker closed again with the others in
+        # service: a single-pole auto-reclose by definition.
+        ar_mode = "SPAR"
 
     title = mode
     if ar_mode:
@@ -1176,18 +1180,23 @@ def _breaker_open_ms(ctx: _Context) -> Optional[float]:
 
 
 def _breaker_lines(ctx: _Context) -> list[str]:
-    """The breaker contacts' changes after the fault, bounce removed."""
+    """The breaker contacts' changes after the fault, bounce removed: when a
+    contact that was set before the fault resets, also when it sets again
+    (the breaker closed again)."""
     lines = []
     for ch in ctx.channels:
         if ch.role != "breaker" or ctx.t0 is None:
             continue
-        for on, off in ch.stable_intervals():
+        intervals = ch.stable_intervals()
+        for k, (on, off) in enumerate(intervals):
             if math.isfinite(on) and on >= ctx.t0 - 20.0:
                 text = f"{ch.name} {_ms(on - ctx.t0)}"
                 lines.append(text + (f" → {_ms(off - ctx.t0)} ms." if math.isfinite(off) else " ms."))
                 break
             if not math.isfinite(on) and math.isfinite(off) and off >= ctx.t0 - 20.0:
-                lines.append(f"{ch.name} reset {_ms(off - ctx.t0)} ms.")
+                back = intervals[k + 1][0] if k + 1 < len(intervals) else None
+                lines.append(f"{ch.name} reset {_ms(off - ctx.t0)}"
+                             + (f" → aktif lagi {_ms(back - ctx.t0)} ms." if back is not None else " ms."))
                 break
     return lines[:2]
 

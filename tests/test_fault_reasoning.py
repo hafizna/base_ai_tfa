@@ -92,6 +92,28 @@ def test_single_phase_fault_aided_trip_reads_as_putt():
     assert "DIST Sig. Send" in [s["channel"] for s in reasoning["signals"]["silent"]]
 
 
+def test_a_reclose_inside_the_record_is_read_from_the_breaker_contacts():
+    """RWALO-PLTU #1: the breaker's closed-state contacts open after the trip
+    and close again ~1 s later, and "Auto Close" is the AR command. No AR
+    keyword names the reclose, so it must come from the contacts."""
+    payload = _record(faulted=("A",), clear_ms=60.0, reclose_ms=1090.0, status=[
+        ("Zone 1 Trip", [(12, 72)]), ("Trip Output A", [(12, 112)]),
+        ("CB Closed A ph", [(-300, 60), (1094, None)]),
+        ("L1 Status 52A R", [(-300, 57), (1089, None)]),
+        ("CB Closed B ph", [(-300, None)]),
+        ("Auto Close", [(1032, 1132)]),
+    ])
+    _reasoning, rows = _conclusions(payload)
+    reclose = rows["trip_reclose"]
+    assert reclose["title"].startswith("Trip 1-pole R, SPAR, reclose berhasil setelah 1,0")
+    assert reclose["value"]["reclose_success"] is True
+    assert {"F6.4", "F6.5"} <= set(reclose["rules"])
+    # Times are from the detected fault start, so only their shape is checked.
+    assert any(re.fullmatch(r"CB Closed A ph reset \+\d+,\d → aktif lagi \+1\d{3},\d ms\.", line)
+               for line in reclose["evidence"])
+    assert any(re.fullmatch(r"Auto Close \+1\d{3},\d → \+1\d{3},\d ms\.", line) for line in reclose["evidence"])
+
+
 def test_clearing_is_the_last_current_zero_within_the_grid_code_limit():
     payload = _record(faulted=("A",), clear_ms=80.0, status=[("Z1", [(20, 80)]), ("DIST Trip A", [(30, 80)])])
     _reasoning, rows = _conclusions(payload)
