@@ -682,6 +682,21 @@ export async function aiFaultAnalysis87L(analysisId: string, params: unknown) {
   return data;
 }
 
+/** F5.8: whether a record carries line-differential (87L) evidence. */
+export interface LineDiffEvidence {
+  has_87l: boolean;
+  diff_data_mode: "TWO_TERMINAL" | "TWO_TERMINAL_RAW" | "LOCAL_ONLY";
+  /** Differential operate channels recorded, and the ones that asserted. */
+  operate_channels: string[];
+  operated_channels: string[];
+  evidence: string[];
+}
+
+export async function fetchLineDiffEvidence(analysisId: string) {
+  const { data } = await api.post<LineDiffEvidence>("/api/analyze/87l/evidence", { analysis_id: analysisId });
+  return data;
+}
+
 export async function diffRestraint87T(analysisId: string, params: unknown) {
   const { data } = await api.post("/api/analyze/87t/diff-restraint", { analysis_id: analysisId, params, relay_type: "87T" });
   return data;

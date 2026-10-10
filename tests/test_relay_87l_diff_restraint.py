@@ -4,6 +4,7 @@ from webapp.api.routers.relay_87l import (
     _compute_diff_restraint,
     _detect_diff_mode,
     _detect_terminal_pairs,
+    _line_diff_evidence,
 )
 
 
@@ -179,3 +180,28 @@ def test_87l_abb_remote_current_names_are_not_misread_as_relay_idiff():
     assert result["diff_data_mode"] == "TWO_TERMINAL_RAW"
     assert result["operated_status"] == "NOT_OPERATED"
     assert result["operated_phases"] == []
+
+
+def test_local_and_remote_currents_are_87l_evidence():
+    # F5.8: the line workspace shows the 87L panels for this record.
+    evidence = _line_diff_evidence(_payload())
+    assert evidence["has_87l"] is True
+    assert evidence["diff_data_mode"] == "TWO_TERMINAL_RAW"
+    assert evidence["operated_channels"] == ["DIF-A_TRIP"]
+
+
+def test_a_local_only_record_carries_no_87l_evidence():
+    payload = _payload(include_diff_trip=False)
+    n = len(payload["time"])
+    payload["analog_channels"] = payload["analog_channels"][:3]
+    payload["status_channels"] = [
+        # Asserted, but it says the element is off.
+        _status("Ln1:87L:I-DIFF:Inactive", n, 0),
+        # Recorded, never asserted.
+        _status("Ln1:87L:I-DIFF:Operate:general", n),
+    ]
+    evidence = _line_diff_evidence(payload)
+    assert evidence["has_87l"] is False
+    assert evidence["diff_data_mode"] == "LOCAL_ONLY"
+    assert evidence["operate_channels"] == ["Ln1:87L:I-DIFF:Operate:general"]
+    assert evidence["operated_channels"] == []

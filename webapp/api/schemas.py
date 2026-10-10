@@ -298,6 +298,17 @@ class PhaseClassification(BaseModel):
     max_ratio: float        # max(i_diff / threshold) — >1.0 = inside operate region
 
 
+class LineDiffEvidence(BaseModel):
+    """F5.8: whether a record carries line-differential (87L) evidence — the
+    relay's own differential current, a validated local/remote current pair,
+    or a differential operate channel that asserted."""
+    has_87l: bool
+    diff_data_mode: str                         # TWO_TERMINAL | TWO_TERMINAL_RAW | LOCAL_ONLY
+    operate_channels: List[str] = []            # differential operate channels recorded
+    operated_channels: List[str] = []           # the ones that asserted
+    evidence: List[str] = []
+
+
 class DiffRestraintResponse(BaseModel):
     samples: List[DiffRestraintSample]
     params: CharacteristicParams

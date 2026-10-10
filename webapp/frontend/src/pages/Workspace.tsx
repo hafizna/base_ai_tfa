@@ -18,7 +18,9 @@ import {
   extractFeatures21,
   fetchAnalysis,
   fetchFullSoe21,
+  fetchLineDiffEvidence,
   generateReport,
+  type LineDiffEvidence,
   type ReportChart,
   type ReportSoeEvent,
 } from "../api/client";
@@ -120,6 +122,21 @@ export default function Workspace() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [ocrReportSettings, setOcrReportSettings] = useState<OCRReportSettings | null>(null);
   const [showAddToIncident, setShowAddToIncident] = useState(false);
+  // F5.8: the line workspace shows the 87L panels only for a record with 87L
+  // evidence. Keyed by analysis id, so another record never reads a stale
+  // answer; "error" keeps the panels, as before the check existed.
+  const [lineDiff, setLineDiff] = useState<{ id: string; value: LineDiffEvidence | "error" } | null>(null);
+
+  useEffect(() => {
+    if (!analysisId || !isLineRelay) return;
+    let cancelled = false;
+    fetchLineDiffEvidence(analysisId)
+      .then((value) => !cancelled && setLineDiff({ id: analysisId, value }))
+      .catch(() => !cancelled && setLineDiff({ id: analysisId, value: "error" }));
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId, isLineRelay]);
 
   useEffect(() => {
     if (!analysisId) return;
@@ -138,6 +155,8 @@ export default function Workspace() {
   }
 
   const currentAnalysisId = analysisId;
+  const lineDiffEvidence = lineDiff && lineDiff.id === analysisId ? lineDiff.value : null;
+  const show87L = lineDiffEvidence === "error" || (lineDiffEvidence !== null && lineDiffEvidence.has_87l);
 
   function handleReset() {
     reset();
@@ -335,9 +354,11 @@ export default function Workspace() {
               <PanelErrorBoundary label="Fault Recap 87L">
                 <FaultRecap87T comtrade={comtrade!} relayLabel="Line Protection (21 / 87L)" />
               </PanelErrorBoundary>
-              <PanelErrorBoundary label="AI Fault Analysis 87L">
-                <AIFaultAnalysis87L analysisId={currentAnalysisId} />
-              </PanelErrorBoundary>
+              {show87L && (
+                <PanelErrorBoundary label="AI Fault Analysis 87L">
+                  <AIFaultAnalysis87L analysisId={currentAnalysisId} />
+                </PanelErrorBoundary>
+              )}
             </>
           )}
         </>
@@ -404,9 +425,19 @@ export default function Workspace() {
           <PanelErrorBoundary label="Impedance Locus">
             <ImpedanceLocus analysisId={currentAnalysisId} dataRevision={dataRevision} />
           </PanelErrorBoundary>
-          <PanelErrorBoundary label="Diff/Restraint">
-            <DiffRestraintPlot analysisId={currentAnalysisId} relayType="87L" />
-          </PanelErrorBoundary>
+          {show87L && (
+            <PanelErrorBoundary label="Diff/Restraint">
+              <DiffRestraintPlot analysisId={currentAnalysisId} relayType="87L" />
+            </PanelErrorBoundary>
+          )}
+          {lineDiffEvidence && lineDiffEvidence !== "error" && !lineDiffEvidence.has_87l && (
+            <div className={styles.pendingNote}>
+              Panel 87L tidak ditampilkan: rekaman ini tidak memuat arus differential atau arus ujung remote,
+              dan tidak ada kanal operate 87L yang aktif.
+              {lineDiffEvidence.operate_channels.length > 0 &&
+                ` Kanal 87L terekam (${lineDiffEvidence.operate_channels.join(", ")}) tetapi tidak operate.`}
+            </div>
+          )}
         </>
       );
     }
