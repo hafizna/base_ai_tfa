@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from core.analog_trace import trace_payload
+from core.cause_context import recorded_context, episode_signatures
 from core.event_analysis import EventWindow, build_event_window
 from core.line_selection import scope_payload_with_selection
 from .fault_detection import detect_fault_presence
@@ -52,6 +53,8 @@ class RecordAnalysis:
     # interpretation vs. hypothesis vs. missing evidence must never be mixed.
     observed_facts: dict[str, Any] = field(default_factory=dict)
     protection_interpretation: dict[str, Any] = field(default_factory=dict)
+    event_context: dict[str, Any] = field(default_factory=dict)
+    episode_signatures: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,6 +69,8 @@ class RecordAnalysis:
             "reasoning": self.reasoning,
             "observed_facts": self.observed_facts,
             "protection_interpretation": self.protection_interpretation,
+            "event_context": self.event_context,
+            "episode_signatures": self.episode_signatures,
             "cause_hypotheses": self.cause_hypotheses,
             "missing_evidence": self.missing_evidence,
             "provenance": self.provenance,
@@ -190,8 +195,8 @@ def _analog_trace(line_payload: dict) -> dict[str, Any]:
 def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
     """Build the canonical :class:`RecordAnalysis` for a stored COMTRADE payload.
 
-    Deliberately Stage-0 scoped: at most one fault episode, no cross-record
-    correlation. ``fault_episodes`` schema is a list so Stage 1-2 can extend
+    Includes every detected episode within this record, without cross-record
+    correlation. ``fault_episodes`` schema is a list so incident analysis can extend
     it to multiple episodes without a breaking change here.
     """
     event_window = build_event_window(payload)
@@ -254,8 +259,9 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         }
         fault_episodes = event_window.fault_episodes or [episode]
         protection_interpretation = {
-            "event_class": "PERMANENT_LINE_FAULT" if event_window.sequence.get("restoration_outcome") == "failed"
-                else "TRANSIENT_LINE_FAULT" if event_window.sequence.get("restoration_outcome") == "successful" else "FAULT_EVENT",
+            "event_class": "RECLOSE_REFAULT_SOTF" if event_window.sequence.get("sotf_after_reclose")
+                else "RECLOSE_FAILED" if event_window.sequence.get("restoration_outcome") == "failed"
+                else "RECLOSE_SUCCESSFUL" if event_window.sequence.get("restoration_outcome") == "successful" else "FAULT_EVENT",
             "summary": "Fault detected from available waveform/status evidence.",
         }
     else:
@@ -297,4 +303,6 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         provenance=provenance,
         observed_facts=observed_facts,
         protection_interpretation=protection_interpretation,
+        event_context=recorded_context(event_window),
+        episode_signatures=episode_signatures(line_payload, event_window),
     )

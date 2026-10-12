@@ -294,6 +294,8 @@ export interface AnalogTrace {
 }
 
 export interface CanonicalRecordAnalysis {
+  event_context?: { summary?: string; restoration_outcome?: string };
+  episode_signatures?: { episodes: Array<{ episode_index: number; reference: string; channels: Array<{ measurement: string; phase?: string; unit?: string; peak_abs: number; rms: number }> }>; used_by_deployed_model?: boolean };
   record_id: string;
   source_metadata: Record<string, unknown>;
   data_quality: Record<string, unknown>;
@@ -619,6 +621,8 @@ export async function fetchFaultClassification21(analysisId: string) {
 export async function fetchElectricalParams21(analysisId: string) {
   const { data } = await api.get(`/api/analyze/21/electrical-params?analysis_id=${analysisId}`);
   return data as {
+    reference_phase?: string | null;
+    impedance_note?: string;
     fault_duration_ms?: number;
     inception_time_ms?: number;
     trip_time_ms?: number;

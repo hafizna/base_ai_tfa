@@ -36,6 +36,17 @@ export default function RecordContextPanel({ analysisId, dataRevision = 0 }: { a
         </tr>)}</tbody>
       </table>}
       {episodes.length > 1 && <p>Waktu episode berasal dari waveform dan dapat bergeser sekitar satu siklus terhadap kontak digital. Dead time tidak dihitung sebagai durasi gangguan.</p>}
+      {data.episode_signatures && <details>
+        <summary>Signature elektrikal per episode</summary>
+        <p>Hasil pemulihan tidak menentukan penyebab fisik. Fitur tambahan ini belum menjadi input model aktif.</p>
+        {data.episode_signatures.episodes.map(episode => <div key={episode.episode_index}>
+          <strong>Episode {episode.episode_index + 1}</strong>
+          <p>Referensi sehat: {episode.reference === "first_episode_prefault" ? "sebelum gangguan pertama" : "tidak tersedia"}.</p>
+          {episode.channels.filter(channel => channel.measurement === "current").map((channel, index) => <p key={index}>
+            Fasa {channel.phase ?? "?"}: puncak {channel.peak_abs.toFixed(1)}, RMS {channel.rms.toFixed(1)} {channel.unit}.
+          </p>)}
+        </div>)}
+      </details>}
       <details>
         <summary>Alasan dan bukti sinyal</summary>
         {data.reasoning?.conclusions.map((row) => <div key={row.key}>

@@ -205,6 +205,9 @@ def _physical_cause_evidence(
             "applied_caps": result.get("applied_caps") or [],
             "evidence_role": role,
             "fault_type": result.get("fault_type"),
+            "event_context": result.get("event_context"),
+            "cause_assessment": result.get("cause_assessment"),
+            "episode_signatures": result.get("episode_signatures"),
             # Set only when this record's protection type isn't one the line
             # -fault classifier is built for (e.g. "87T") — distinguishes
             # "no reading because unsupported" from "no reading because the
@@ -241,54 +244,18 @@ def _physical_cause_evidence(
     }
 
 
-# A physical fault mechanism predicts a specific reclose outcome: a genuinely
-# transient cause (lightning, kite contact, animal, foreign object — the
-# object/arc is gone after the trip) should self-clear, so a successful
-# reclose is the EXPECTED outcome, not independent confirmation of nothing.
-# A permanent cause (conductor/tower damage, stuck equipment) should NOT
-# self-clear, so a failed reclose is the expected outcome. This mirrors how
-# a protection engineer reads the two files together: the reclose result is
-# evidence for or against the inception record's cause hypothesis, even
-# though it was never re-run through the classifier as competing evidence.
-_TRANSIENT_EXPECTS_SUCCESS = True   # cause fault_type == "transient"
-_PERMANENT_EXPECTS_FAILURE = True   # cause fault_type == "permanent"
-
-# Confidence adjustment magnitude — deliberately small and symmetric (this is
-# corroboration/contradiction from ONE downstream reclose outcome, not a
-# second independent classifier vote) and never exceeds the same 92% hard
-# ceiling ml_predict.py already enforces.
-_RECLOSE_MATCH_BONUS = 0.05
-_RECLOSE_MISMATCH_PENALTY = 0.10
-_CONFIDENCE_CEILING = 0.92
-
-
-def _apply_reclose_outcome_cross_validation(
+def _attach_reclose_context(
     physical_cause: dict[str, Any],
     records: list[IncidentRecord],
     relationships: list[RecordRelationship],
     record_order: list[str],
     axis: Optional[TimeAxis] = None,
 ) -> dict[str, Any]:
-    """Adjust each inception record's cause confidence based on whether the
-    reclose outcome captured by its aftermath record(s) is physically
-    consistent with the cause's fault_type (transient vs permanent) —
-    recorded as an ``applied_caps`` entry named
-    ``reclose_outcome_consistency`` / ``reclose_outcome_conflict`` on that
-    record, exactly like ml_predict.py's existing caps, so the adjustment is
-    auditable rather than silent.
+    """Attach outcomes from linked captures without changing cause scores.
 
-    Must run BEFORE group_episodes (which consumes physical_cause's
-    per-record confidence via cause_lookup) so episodes and the incident-
-    level physical_cause_evidence agree on one final, already-adjusted
-    confidence — never two numbers for the same record.
-
-    Only touches "inception"-role records (the ones carrying real cause
-    evidence — see _evidence_roles) and only when at least one of ITS OWN
-    aftermath records (same grouping the RECLOSE_SEQUENCE/CONTINUATION/etc.
-    relationship already establishes) has a reclose outcome to compare
-    against. Never changes incident_root_cause (still UNCONFIRMED) or
-    invents a new cause — purely reweights confidence in the SAME
-    already-computed cause_ranking.
+    A reclose outcome describes the recorded recovery, not a validated
+    cause-specific likelihood. Keep record and incident inference aligned;
+    physical root cause remains unconfirmed.
     """
     roles = _evidence_roles(records, relationships, record_order)
     order_index = {rid: i for i, rid in enumerate(record_order)}
@@ -335,49 +302,24 @@ def _apply_reclose_outcome_cross_validation(
     for entry in physical_cause["records"]:
         if entry.get("evidence_role") != "inception":
             continue
-        fault_type = entry.get("fault_type")
         cause = entry.get("top_hypothesis")
         confidence = entry.get("confidence")
-        if fault_type not in ("transient", "permanent") or cause is None or confidence is None:
+        if cause is None or confidence is None:
             continue
 
         reclose_outcome = reclose_outcome_by_inception.get(entry["incident_record_id"])
         if reclose_outcome not in ("successful", "failed", "refault_after_reclose"):
-            continue  # no reclose evidence to cross-validate against
-
-        # A re-fault seconds after a successful reclose behaves like a
-        # persisting cause: the transient reading is the one it contradicts.
-        held = reclose_outcome == "successful"
-        expected_success = fault_type == "transient"
-        matches = held == expected_success
-
-        cap_name = "reclose_outcome_consistency" if matches else "reclose_outcome_conflict"
-        delta = _RECLOSE_MATCH_BONUS if matches else -_RECLOSE_MISMATCH_PENALTY
-        new_confidence = round(min(_CONFIDENCE_CEILING, max(0.0, confidence + delta)), 3)
-        if new_confidence == confidence:
             continue
-
-        outcome_txt = (
-            "the line faulted again shortly after a successful reclose"
-            if reclose_outcome == "refault_after_reclose" else f"reclose outcome '{reclose_outcome}'"
-        )
-        reason = (
-            f"Episode {outcome_txt} — "
-            f"{'consistent with' if matches else 'inconsistent with'} a "
-            f"{fault_type} cause ({cause}): "
-            f"{'transient causes are expected to self-clear and stay cleared' if fault_type == 'transient' else 'permanent causes are expected to persist through reclose'}."
-        )
-        entry.setdefault("applied_caps", []).append({
-            "name": cap_name, "before": confidence, "after": new_confidence, "reason": reason,
+        # Reclose outcome is context, not a cause-specific likelihood. Animal,
+        # vegetation, lightning-damaged insulation and equipment can all recur.
+        # Preserve the same model scores as the single-record view; do not add
+        # unvalidated bonuses/penalties inferred from a cause taxonomy.
+        entry.setdefault("context_evidence", []).append({
+            "reclose_outcome": reclose_outcome,
+            "scope": "linked_recorded_sequence",
+            "physical_cause_confirmed": False,
         })
-        entry["confidence"] = new_confidence
-        for candidate in entry.get("cause_ranking") or []:
-            if candidate.get("cause") == cause:
-                candidate["confidence"] = new_confidence
-                break
-
-        if not matches:
-            entry["requires_review"] = True
+        entry["requires_review"] = True
 
     return physical_cause
 
@@ -835,7 +777,7 @@ def run_reconstruction(
     # incident-level physical_cause_evidence agree on one final,
     # already-adjusted confidence rather than reporting two numbers for the
     # same record.
-    physical_cause = _apply_reclose_outcome_cross_validation(physical_cause, records, relationships, alignment.record_order, axis)
+    physical_cause = _attach_reclose_context(physical_cause, records, relationships, alignment.record_order, axis)
     cause_lookup = {e["incident_record_id"]: e for e in physical_cause["records"]}
 
     episodes = group_episodes(

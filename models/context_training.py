@@ -43,14 +43,14 @@ def context_vector(analysis):
     path = (conclusions.get("trip_path", {}).get("value") or {})
     def channel_time(name):
         edges = [t for op in operations if op.get("name") == name for t in op.get("on_ms", [])
-                 if origin is not None and t >= origin - 20 and trip is not None and t <= trip + 10]
+                 if origin is not None and t >= origin - 20 and trip is not None and t <= trip]
         return min(edges) if edges else None
     receive = channel_time(path.get("receive_at_trip"))
     send = channel_time(path.get("send_active"))
     def active_at_trip(op):
         if trip is None:
             return False
-        return any(t <= trip + 10 and not any(t < off < trip - 10 for off in op.get("off_ms", [])) for t in op.get("on_ms", []))
+        return any(t <= trip and not any(t < off <= trip for off in op.get("off_ms", [])) for t in op.get("on_ms", []))
     measured = analysis.electrical_measurements
     pre = measured.get("prefault") or {}
     fault = measured.get("fault") or {}
@@ -157,6 +157,7 @@ def build_context_dataset(inventory, output, training_dir=None, annotations=Path
         rows.append({"record_fingerprint": key, "event_group": event_group(path),
                      "pipeline_fingerprint": reader_sha, "features": context_vector(analysis),
                      "feature_columns": CONTEXT_FEATURES,
+                     "episode_signatures": analysis.episode_signatures,
                      "targets": targets, "confidence": correction["ground_truth_confidence"],
                      "source": correction.get("ground_truth_source", []),
                      "baseline": {"event_class": analysis.protection_interpretation.get("event_class"),

@@ -222,6 +222,9 @@ class AIFaultFeatures(BaseModel):
 
 
 class AIFaultResult(BaseModel):
+    event_context: Optional[Dict[str, Any]] = None
+    cause_assessment: Optional[Dict[str, Any]] = None
+    episode_signatures: Optional[Dict[str, Any]] = None
     cause_ranking: List[Dict[str, Any]]   # [{cause, label, confidence}]
     fault_type: str                        # "transient" | "permanent" | "none"
     overall_confidence: float

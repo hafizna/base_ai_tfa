@@ -56,7 +56,7 @@ def test_one_record_preserves_two_episodes_and_sotf_after_reclose():
     assert window.sequence["sotf_after_reclose"] is True
     assert window.sequence["refault_after_reclose"] is True
     assert len(analysis.fault_episodes) == 2
-    assert analysis.protection_interpretation["event_class"] == "PERMANENT_LINE_FAULT"
+    assert analysis.protection_interpretation["event_class"] == "RECLOSE_REFAULT_SOTF"
     row = next(c for c in analysis.reasoning["conclusions"] if c["key"] == "trip_reclose")
     assert "SOTF/TOR" in row["title"]
     assert row["value"]["sequence"]["restoration_outcome"] == "failed"

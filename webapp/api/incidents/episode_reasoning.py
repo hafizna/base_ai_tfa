@@ -217,6 +217,9 @@ def _cause_row(episode: FaultEpisode, fault: IncidentRecord, physical_cause: dic
         else:
             title = f"{_CAUSE_NAMES.get(cause, cause)} {_int(top * 100)}% (bacaan AI)"
         evidence.append("Bacaan AI per rekaman; tidak mengubah fakta di atas.")
+        if (entry.get("cause_assessment") or {}).get("additional_episodes_evaluated_by_model") is False:
+            evidence.append("Model lama memakai waveform episode pertama dan fitur konteks rekaman; signature episode berikutnya belum menjadi input model.")
+        evidence.append("Hasil reclose menjelaskan pemulihan yang terekam, bukan konfirmasi penyebab fisik.")
         if cause == "PETIR":
             rules.append("F8.3")
             evidence.append("Sub-mekanisme (SF/BFO) tidak dapat ditentukan tanpa data LDS.")

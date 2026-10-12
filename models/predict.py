@@ -960,7 +960,7 @@ def classify_file(cfg_path: str) -> ClassificationResult:
             if _diff_confirmed_channels else ""
         )
         _routing_caveat = (
-            f" | [87L: proteksi diferensial saluran —{_diff_confirm_str} "
+            f" | [87L: proteksi diferensial saluran (87L) —{_diff_confirm_str} "
             "gangguan terkonfirmasi berada di segmen terlindungi. "
             "Penyebab diklasifikasikan dari pola gelombang arus; tidak ada data zona impedansi.]"
         )
@@ -1035,7 +1035,7 @@ def classify_file(cfg_path: str) -> ClassificationResult:
 
     # ── Step 6: Tier 1 rules ──────────────────────────────────────────────────
     rule_result: Optional[RuleResult] = apply_rules(row)
-    if rule_result is not None:
+    if rule_result is not None and rule_result.scope != "context":
         _tier1_recs = {
             "KONDUKTOR / TOWER": (
                 "Lakukan inspeksi mekanik pada tower dan konduktor di zona operasi rele. "

@@ -427,7 +427,7 @@ def _build_conclusion(
             confidence = ai_analysis.get("overall_confidence") or ai_analysis.get("confidence")
 
         if cause_label:
-            line = f"<b>Penyebab (AI):</b> {cause_label}"
+            line = f"<b>Hipotesis penyebab (AI):</b> {cause_label}"
             if cause_code and cause_code != cause_label:
                 line += f" <font color='#64748b'>[{cause_code}]</font>"
             if isinstance(confidence, (int, float)):
@@ -441,7 +441,8 @@ def _build_conclusion(
                 "transient": "Transient (sementara)",
                 "permanent": "Permanent (menetap)",
             }.get(fault_type.lower(), fault_type)
-            narrative_lines.append(f"<b>Jenis kejadian:</b> {ft_label}")
+            context = ai_analysis.get("event_context") or {}
+            narrative_lines.append(f"<b>Pemulihan:</b> {context['summary']}" if context.get("summary") else f"<b>Jenis kejadian:</b> {ft_label}")
 
         # Verdict-level evidence promoted to KONKLUSI summary
         evidence = ai_analysis.get("evidence") or []
@@ -470,7 +471,7 @@ def _build_conclusion(
         z_inception = elec.get("z_at_inception_ohm")
         z_angle = elec.get("z_angle_deg")
         if z_inception is not None:
-            z_line = f"<b>Impedansi fasa A saat inception:</b> {z_inception:.2f} Ω"
+            z_line = f"<b>Impedansi semu fasa {elec.get('reference_phase') or '?'} saat inception:</b> {z_inception:.2f} Ω"
             if z_angle is not None:
                 z_line += f" ∠ {z_angle:.1f}°"
             narrative_lines.append(z_line)
@@ -596,7 +597,7 @@ def _build_generic_conclusion(styles: dict, payload: dict, relay_label: str, ai_
             label = top.get("label") or top.get("cause")
             conf = top.get("confidence")
             if label:
-                line = f"<b>Penyebab (AI):</b> {_safe_text(label)}"
+                line = f"<b>Hipotesis penyebab (AI):</b> {_safe_text(label)}"
                 if isinstance(conf, (int, float)):
                     pct = conf * 100 if conf <= 1 else conf
                     line += f" <font color='#64748b'>(confidence {pct:.0f}%)</font>"
@@ -1102,15 +1103,15 @@ def _build_electrical_section(styles: dict, elec: dict) -> list:
         ("I peak fasa A", _format_number(elec.get("i_peak_ia_a"), " A")),
         ("I peak fasa B", _format_number(elec.get("i_peak_ib_a"), " A")),
         ("I peak fasa C", _format_number(elec.get("i_peak_ic_a"), " A")),
-        ("V sag fasa A", _format_number(elec.get("v_sag_pct"), " %", 1)),
+        (f"V sag fasa {elec.get('reference_phase') or '?'}", _format_number(elec.get("v_sag_pct"), " %", 1)),
         ("I positive sequence", _format_number(elec.get("i_pos_seq_a"), " A")),
         ("I negative sequence", _format_number(elec.get("i_neg_seq_a"), " A")),
         ("I zero sequence", _format_number(elec.get("i_zero_seq_a"), " A")),
-        ("|Z_A| at inception", _format_number(elec.get("z_at_inception_ohm"), " Ω")),
-        ("|Z_A| minimum", _format_number(elec.get("z_min_ohm"), " Ω")),
-        ("R fasa A", _format_number(elec.get("r_at_fault_ohm"), " Ω")),
-        ("X fasa A", _format_number(elec.get("x_at_fault_ohm"), " Ω")),
-        ("Z_A angle", _format_number(elec.get("z_angle_deg"), " °", 1)),
+        (f"|Z_{elec.get('reference_phase') or '?'}| semu inception", _format_number(elec.get("z_at_inception_ohm"), " Ω")),
+        (f"|Z_{elec.get('reference_phase') or '?'}| semu minimum", _format_number(elec.get("z_min_ohm"), " Ω")),
+        ("R semu fasa terpilih", _format_number(elec.get("r_at_fault_ohm"), " Ω")),
+        ("X semu fasa terpilih", _format_number(elec.get("x_at_fault_ohm"), " Ω")),
+        ("Z semu angle", _format_number(elec.get("z_angle_deg"), " °", 1)),
     ]
 
     # Two-column layout for compactness
@@ -1149,7 +1150,8 @@ def _build_electrical_section(styles: dict, elec: dict) -> list:
         ("BOX", (0, 0), (-1, -1), 0.4, BRAND_BORDER),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, BRAND_BG_SOFT]),
     ]))
-    return _section_header(styles, "SECTION 2", "Parameter Elektrikal") + [pair_table]
+    notes = [Paragraph(_safe_text(elec["impedance_note"]), styles["body_muted"])] if elec.get("impedance_note") else []
+    return _section_header(styles, "SECTION 2", "Parameter Elektrikal") + [pair_table] + notes
 
 
 def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> list:
@@ -1180,10 +1182,11 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
             "permanent": "Permanent (menetap)",
             "none": "Tidak ada gangguan",
         }.get(fault_type.lower(), fault_type)
-        summary_bits.append(f"<b>Jenis kejadian:</b> {ft_label}")
-    if isinstance(overall_conf, (int, float)) and fault_type != "none":
+        context = ai_analysis.get("event_context") or {}
+        summary_bits.append(f"<b>Pemulihan:</b> {context['summary']}" if context.get("summary") else f"<b>Jenis kejadian:</b> {ft_label}")
+    if isinstance(overall_conf, (int, float)) and fault_type != "none" and cause_ranking:
         pct = overall_conf * 100 if overall_conf <= 1 else overall_conf
-        confidence_label = "Confidence overall" if cause_ranking else "Keyakinan pembacaan kejadian"
+        confidence_label = "Skor model penyebab" if (ai_analysis.get("cause_assessment") or {}).get("confidence_kind") == "model_score" else "Skor aturan penyebab"
         summary_bits.append(f"<b>{confidence_label}:</b> {pct:.0f}%")
     if summary_bits:
         flowables.append(Paragraph(" &nbsp;·&nbsp; ".join(summary_bits), styles["body"]))
@@ -1191,12 +1194,12 @@ def _build_ai_analysis_section(styles: dict, ai_analysis: Optional[dict]) -> lis
 
     # Cause ranking table
     if isinstance(cause_ranking, list) and cause_ranking:
-        top_n = cause_ranking[:5]
+        top_n = cause_ranking
         header = [
             Paragraph("<b>#</b>", styles["body_muted"]),
             Paragraph("<b>Cause</b>", styles["body_muted"]),
             Paragraph("<b>Label</b>", styles["body_muted"]),
-            Paragraph("<b>Confidence</b>", styles["body_muted"]),
+            Paragraph("<b>Skor</b>", styles["body_muted"]),
         ]
         data = [header]
         for idx, item in enumerate(top_n, start=1):
@@ -1596,6 +1599,14 @@ def _build_pdf(payload: dict, request: ReportRequest, analysis_id: str) -> bytes
             if end is not None and duration is not None:
                 detail += f", padam {end:.1f} ms, durasi {duration:.1f} ms."
             story.append(Paragraph(detail, styles["body"]))
+        if context.episode_signatures.get("episodes"):
+            story.append(Paragraph("<b>Signature per episode:</b> ukuran elektrikal, bukan konfirmasi penyebab. Fitur tambahan belum dipakai model aktif.", styles["body_muted"]))
+            for signature in context.episode_signatures["episodes"]:
+                currents = [ch for ch in signature.get("channels", []) if ch["measurement"] == "current" and ch.get("phase") in signature.get("faulted_phases", [])]
+                for ch in currents:
+                    detail = f"Episode {signature['episode_index'] + 1}, fasa {ch['phase']}: puncak {ch['peak_abs']:.1f}, RMS {ch['rms']:.1f} {ch.get('unit') or ''}."
+                    detail += " Referensi sehat sebelum gangguan pertama." if signature["reference"] == "first_episode_prefault" else " Referensi sehat tidak tersedia."
+                    story.append(Paragraph(xml_escape(detail), styles["body_muted"]))
         for row in context.reasoning.get("conclusions", []):
             if row["key"] in {"trip_path", "trip_reclose"}:
                 story.append(Paragraph(xml_escape(row["title"]), styles["body"]))

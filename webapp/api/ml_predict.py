@@ -34,7 +34,7 @@ _PIPELINE_DIR = Path(__file__).parent.parent.parent
 if str(_PIPELINE_DIR) not in sys.path:
     sys.path.insert(0, str(_PIPELINE_DIR))
 
-from models.predict import _petir_subtype_description, _augment_row_with_soe_context  # noqa: E402
+from models.predict import _augment_row_with_soe_context  # noqa: E402
 from models.rules import apply_rules  # noqa: E402
 from core.current_anomaly import detect_ct_measurement_anomaly  # noqa: E402
 from .fault_detection import detect_fault_presence, _is_operate_status  # noqa: E402
@@ -1206,9 +1206,9 @@ def _build_narrative_evidence(row: dict, ranking: list, pred: str, confidence: f
     ar_suffix = f" ({'; '.join(parts)})" if parts else ""
 
     if ar_ok is True:
-        evidence.append(_ev(f"Auto Reclose (AR) berhasil — gangguan terkonfirmasi bersifat transien{ar_suffix}.", "notable", kind="physics"))
+        evidence.append(_ev(f"Auto Reclose (AR) berhasil — pemulihan bertahan selama interval yang terekam{ar_suffix}; ini tidak memastikan penyebab fisik.", "notable", kind="physics"))
     elif ar_ok is False:
-        evidence.append(_ev(f"Auto Reclose (AR) gagal — gangguan kemungkinan bersifat permanen{ar_suffix}.", "notable", kind="physics"))
+        evidence.append(_ev(f"Auto Reclose (AR) gagal — pemulihan tidak bertahan pada percobaan yang terekam{ar_suffix}; diagnosis penyebab tetap terpisah.", "notable", kind="physics"))
     elif ar_attempted and cb_open_phases and not cb_close_phases:
         evidence.append(_ev(
             f"Urutan single-pole/open-pole terdeteksi pada kanal digital (fase {', '.join(cb_open_phases)}), "
@@ -1221,32 +1221,22 @@ def _build_narrative_evidence(row: dict, ranking: list, pred: str, confidence: f
     evidence.extend(_reclose_sequence_evidence(row))
     top_label = ranking[0]['label'] if ranking else "—"
     evidence.append(_ev(
-        f"Berdasarkan analisis pola gelombang, AI mengklasifikasikan gangguan ini sebagai {top_label} "
-        f"dengan tingkat keyakinan {confidence:.0%}.",
+        f"Berdasarkan fitur rekaman, model menempatkan {top_label} sebagai hipotesis teratas "
+        f"dengan skor {confidence:.0%}; penyebab fisik belum terkonfirmasi.",
         "verdict", weight=min(1.0, confidence + 0.05), kind="model",
     ))
 
     if pred == "PETIR":
-        subtype_line = _petir_subtype_description(row)
-        if subtype_line:
-            evidence.append(_ev(subtype_line, "notable", kind="physics"))
-
-    if pred == "PETIR" and (
-        row.get("digital_ar_lockout") or row.get("digital_ar_not_ready")
-        or (cb_open_phases and len(cb_open_phases) >= 3)
-        or (startup_to_trip is not None and startup_to_trip > 20)
-    ):
         evidence.append(_ev(
-            "Catatan interpretasi: label PETIR perlu dibaca hati-hati karena kanal digital menunjukkan "
-            "evolusi pickup/trip dan/atau operasi tiga fasa/AR lockout; kandidat fisik seperti Hewan, "
-            "Konduktor, atau Peralatan tetap perlu diverifikasi dari inspeksi lapangan.",
-            "critical", kind="cap",
+            "Hipotesis PETIR perlu konfirmasi data sambaran/cuaca atau inspeksi. Arus gangguan "
+            "50 Hz bukan arus sambaran; magnitudonya tidak memastikan shielding failure atau back-flashover.",
+            "info", kind="physics",
         ))
 
     fia = row.get("inception_angle_degrees", 0.0)
     if abs(fia) > 60:
         evidence.append(_ev(
-            f"Fault Inception Angle (FIA) = {fia:.1f}° — gangguan terjadi dekat puncak tegangan, pola tipikal gangguan petir.",
+            f"Fault Inception Angle (FIA) = {fia:.1f}° — indikator sudut awal gangguan; pola dekat puncak tegangan tidak unik untuk petir.",
             "notable", kind="physics",
         ))
 
@@ -1341,7 +1331,7 @@ def _reclose_capture_gate(payload: dict) -> Optional[dict]:
     }
 
 
-def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
+def _run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     """Run the LightGBM fault classifier on a session payload.
 
     Returns a dict matching the (now-extended) AIFaultResult schema. The
@@ -1410,7 +1400,11 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     # Tier 1 — deterministic rules
     # ------------------------------------------------------------------
     tier1 = apply_rules(row)
-    if tier1 is not None:
+    if tier1 is not None and tier1.scope == "context":
+        meta["context_rule"] = {"fired": True, "scope": "context", "rule_name": tier1.rule_name,
+            "label": "Hasil pemulihan / urutan gangguan", "confidence": tier1.confidence,
+            "confidence_kind": "rule_heuristic", "evidence": tier1.evidence}
+    if tier1 is not None and tier1.scope != "context":
         # Translate rule label back to the cause_ranking format the UI uses.
         # Some Tier 1 rules emit labels that do not map cleanly to the 7-class
         # taxonomy (e.g. "GANGGUAN PERMANEN"); in that case we still surface
@@ -1468,12 +1462,11 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
     # Tier 2 — LightGBM
     # ------------------------------------------------------------------
     if model_bundle is None:
-        n = len(_LABEL_MAP)
-        ranking = [{"cause": k, "label": v, "confidence": round(1 / n, 3)} for k, v in _LABEL_MAP.items()]
+        ranking = []
         return {
             "fault_type": "transient",
             "cause_ranking": ranking,
-            "overall_confidence": round(1 / n, 3),
+            "overall_confidence": 0.0,
             "evidence": [_ev("Model fault_classifier.pkl tidak ditemukan — prediksi tidak tersedia.", "critical", kind="model")],
             "tier1": {"fired": False},
             "meta": meta,
@@ -1532,28 +1525,8 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
         ranking[0]["confidence"] = round(confidence, 3)
         ranking.sort(key=lambda x: x["confidence"], reverse=True)
 
-    # PETIR + caution-digital cap
-    digital_cb_open_phases = row.get("digital_cb_open_phases") or []
-    digital_startup_to_trip = row.get("digital_startup_to_trip_ms")
-    digital_caution = (
-        row.get("digital_ar_lockout") or row.get("digital_ar_not_ready")
-        or len(digital_cb_open_phases) >= 3
-        or (digital_startup_to_trip is not None and digital_startup_to_trip > 20)
-    )
-    if pred == "PETIR" and digital_caution:
-        if confidence > 0.72:
-            applied_caps.append({"name": "petir_digital_caution", "before": confidence, "after": 0.72, "reason": "AR lockout / startup-to-trip terlalu lama / CB tiga fasa membuka — meragukan label PETIR."})
-        confidence = min(confidence, 0.72)
-        for item in ranking:
-            if item["cause"] == "PETIR":
-                item["confidence"] = min(float(item["confidence"]), 0.72)
-            elif item["cause"] == "HEWAN":
-                item["confidence"] = max(float(item["confidence"]), 0.12)
-            elif item["cause"] == "KONDUKTOR":
-                item["confidence"] = max(float(item["confidence"]), 0.08)
-            elif item["cause"] == "PERALATAN":
-                item["confidence"] = max(float(item["confidence"]), 0.06)
-        ranking.sort(key=lambda x: x["confidence"], reverse=True)
+    # Pole operation/AR lockout describe protection context. Without a
+    # validated cause-specific likelihood they must not reweight cause scores.
 
     top_class = ranking[0]["cause"] if ranking else pred
     fault_type = "transient" if top_class in _TRANSIENT else "permanent"
@@ -1580,3 +1553,36 @@ def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
         "feature_vector_used": feature_vector_used,
         "meta": meta,
     }
+
+
+def run_ml_prediction(payload: dict, relay_type: str = "21") -> dict:
+    """Physical-cause inference with a separate, shared recorded-context view."""
+    from core.cause_context import recorded_context, episode_signatures
+
+    result = _run_ml_prediction(payload, relay_type)
+    line_payload = scope_payload(payload)
+    window = build_event_window(line_payload)
+    context = recorded_context(window)
+    context_rule = (result.get("meta") or {}).pop("context_rule", None)
+    if context_rule:
+        context["rule"] = context_rule
+        result["tier1"] = context_rule
+        result.setdefault("evidence", []).append(_ev(context_rule["evidence"], "notable", kind="context"))
+    result["event_context"] = context
+    result["episode_signatures"] = episode_signatures(line_payload, window)
+    ranking = result.get("cause_ranking") or []
+    top = float(ranking[0].get("confidence", 0)) if ranking else 0.0
+    margin = top - float(ranking[1].get("confidence", 0)) if len(ranking) > 1 else top
+    result["cause_assessment"] = {
+        "status": "unavailable" if not ranking else "insufficient_evidence" if top < 0.5 and margin < 0.1 else "hypothesis",
+        "confirmed": False, "requires_review": True,
+        "confidence_kind": "rule_heuristic" if (result.get("tier1") or {}).get("fired") and not context_rule else "model_score",
+        "evidence_scope": "first_episode_waveform_and_legacy_record_features",
+        "legacy_context_features_used": [name for name in (result.get("feature_vector_used") or {})
+                                         if name in {"reclose_enc", "trip_type_enc", "fault_count", "zone_enc"}],
+        "additional_episodes_evaluated_by_model": False,
+    }
+    if result.get("fault_type") != "none" and result.get("record_kind") != "reclose_capture":
+        # Compatibility field describes observed recovery, never a cause class.
+        result["fault_type"] = {"failed": "permanent", "successful": "transient"}.get(context["restoration_outcome"], "unknown")
+    return result

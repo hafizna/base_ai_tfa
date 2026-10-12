@@ -714,13 +714,13 @@ def _trip_path(ctx: _Context, trip: Optional[dict[str, Any]]) -> dict[str, Any]:
 
     at = trip["abs_ms"]
     window = (min(zone_on.values(), default=at) - 5.0, at + 10.0)
-    path["receive_at_trip"] = next((ch.name for ch in receive if ch.on_during(*window)), None)
+    path["receive_at_trip"] = next((ch.name for ch in receive if ch.on_during(window[0], at)), None)
     received_pilot = _pilot_index(path["receive_at_trip"] or "")
     if received_pilot is not None:
         send = [ch for ch in send if _pilot_index(ch.name) in (None, received_pilot)]
         path["send_recorded"] = bool(send)
-    path["send_active"] = next((ch.name for ch in send if ch.on_during(window[0], at + 10.0)), None)
-    path["sotf_active"] = next((ch.name for ch in sotf if ch.on_during(at - 10.0, at + 10.0)), None)
+    path["send_active"] = next((ch.name for ch in send if ch.on_during(window[0], at)), None)
+    path["sotf_active"] = next((ch.name for ch in sotf if ch.on_during(at - 10.0, at)), None)
 
     path["trip_zones"] = list(trip["named_zones"])
     if path["sotf_active"]:

@@ -658,6 +658,19 @@ def _compute_electrical_params(payload: dict) -> dict:
                 break
 
     canonical_window = build_event_window(payload)
+    phase_currents = {"A": ia, "B": ib, "C": ic}
+    phase_voltages = {"A": va, "B": vb, "C": vc}
+    fault_phases = [p for p in canonical_window.faulted_phases if p in phase_currents and phase_currents[p] is not None]
+    candidates = fault_phases or [p for p, values in phase_currents.items() if values is not None]
+    reference_end = max(inception_idx + 1, canonical_window.clearing_idx or len(time))
+    reference_phase = max(candidates, key=lambda phase: float(
+        np.max(np.abs(phase_currents[phase][inception_idx:reference_end]))
+    )) if candidates else None
+    reference_v = phase_voltages.get(reference_phase)
+    reference_i = phase_currents.get(reference_phase)
+    result["reference_phase"] = reference_phase
+    result["impedance_kind"] = "phase_apparent_uncompensated"
+    result["impedance_note"] = "Impedansi semu fasa terpilih; bukan resistansi fault atau loop tanah dengan kompensasi residual."
     if canonical_window.clearing_idx is not None:
         extinction_idx = canonical_window.clearing_idx
 
@@ -667,9 +680,9 @@ def _compute_electrical_params(payload: dict) -> dict:
         if arr is not None and len(arr) > inception_idx:
             result[f"i_peak_{label.lower()}_a"] = round(float(np.max(np.abs(arr[fault_slice]))), 2)
 
-    if va is not None and pre_end > 1:
-        v_pre_rms = float(np.sqrt(np.mean(va[:pre_end] ** 2)))
-        v_fault_rms = float(np.sqrt(np.mean(va[fault_slice] ** 2))) if len(va) > inception_idx else v_pre_rms
+    if reference_v is not None and pre_end > 1:
+        v_pre_rms = float(np.sqrt(np.mean(reference_v[:pre_end] ** 2)))
+        v_fault_rms = float(np.sqrt(np.mean(reference_v[fault_slice] ** 2))) if len(reference_v) > inception_idx else v_pre_rms
         # v_sag_pct = (1 - v_fault/v_pre) * 100 divides by v_pre_rms, so a
         # near-zero prefault window (not just exactly zero) still blows the
         # ratio up to an absurd magnitude (e.g. -143255%). This is a REAL
@@ -683,9 +696,10 @@ def _compute_electrical_params(payload: dict) -> dict:
         # upstream sag rarely exceeds ~50-60% dip), so use 20% of nominal
         # phase voltage as the "this isn't a real pre-fault baseline"
         # threshold rather than trying to guess a tighter one.
-        va_channel = next((ch for ch in channels if ch is not None and ch.get("measurement") == "voltage"
-                            and _extract_line_tag(ch.get("name") or "") == active_tag), None)
-        vt_primary = float((va_channel or {}).get("ct_primary") or 0.0)
+        reference_channel = next((ch for ch in channels if ch is not None and ch.get("measurement") == "voltage"
+                                  and str(ch.get("phase", "")).upper() == reference_phase
+                                  and _extract_line_tag(ch.get("name") or "") == active_tag), None)
+        vt_primary = float((reference_channel or {}).get("ct_primary") or 0.0)
         nominal_phase_v = (vt_primary / np.sqrt(3)) / 1000.0 if vt_primary > 0 else None  # kV, matches va's unit
         pre_energization = nominal_phase_v is not None and v_pre_rms < nominal_phase_v * 0.2
         if pre_energization:
@@ -724,11 +738,11 @@ def _compute_electrical_params(payload: dict) -> dict:
         result["i_neg_seq_a"] = round(abs(i_neg), 2)
         result["i_zero_seq_a"] = round(abs(i_zero), 2)
 
-    if va is not None and ia is not None:
-        win = min(cycle_n, len(va) - inception_idx)
+    if reference_v is not None and reference_i is not None:
+        win = min(cycle_n, len(reference_v) - inception_idx)
         if win >= 4:
-            v_w = va[inception_idx : inception_idx + win] * 1000.0
-            i_w = ia[inception_idx : inception_idx + win]
+            v_w = reference_v[inception_idx : inception_idx + win] * 1000.0
+            i_w = reference_i[inception_idx : inception_idx + win]
             i_90 = np.gradient(i_w) / (2 * np.pi * freq / sr)
             matrix = np.column_stack([i_w, i_90])
             try:
@@ -747,23 +761,19 @@ def _compute_electrical_params(payload: dict) -> dict:
                 pass
 
     z_min_values = []
-    for v_phase, i_phase in ((va, ia), (vb, ib), (vc, ic)):
+    for v_phase, i_phase in ((reference_v, reference_i),):
         if v_phase is None or i_phase is None:
             continue
         limit = min(len(v_phase), len(i_phase), len(time))
         if limit <= pre_end + 1:
             continue
-        i_abs = np.abs(i_phase[:limit])
-        pre_i = i_abs[:pre_end] if pre_end > 1 else i_abs[: max(1, limit // 10)]
-        current_gate = max(float(np.sqrt(np.mean(pre_i ** 2))) * 2.0, float(np.max(i_abs)) * 0.05, 0.1)
-        valid = i_abs[pre_end:limit] > current_gate
-        if not np.any(valid):
-            continue
-        with np.errstate(divide="ignore", invalid="ignore"):
-            z_vals = np.abs((v_phase[pre_end:limit] * 1000.0) / i_phase[pre_end:limit])
-        z_vals = z_vals[np.isfinite(z_vals) & valid]
-        if z_vals.size:
-            z_min_values.append(float(np.min(z_vals)))
+        # Instantaneous V/I near zero crossings is not impedance. Evaluate
+        # complete cycles inside the first fault episode, on the selected phase.
+        for idx in range(inception_idx, min(extinction_idx, limit) - cycle_n + 1, cycle_n):
+            voltage = rms_phasor(v_phase, idx, cycle_n)
+            current = rms_phasor(i_phase, idx, cycle_n)
+            if voltage is not None and current is not None and abs(current) > 0.1:
+                z_min_values.append(float(abs(voltage * 1000 / current)))
     if z_min_values:
         result["z_min_ohm"] = round(float(np.min(z_min_values)), 2)
     elif "z_at_inception_ohm" in result:

@@ -228,14 +228,22 @@ def test_fault_reclose_refault_reconstructs_as_one_sequence(service, with_status
     assert "faulted again" in recon.narrative
 
 
-def test_refault_contradicts_a_transient_cause_reading(service):
+def test_refault_preserves_cause_scores_and_adds_context(service, monkeypatch):
+    from webapp.api.incidents import reconstruction
+    original = reconstruction._record_ml_result
+    def reading(record):
+        result = original(record)
+        if result.get("record_kind") != "reclose_capture":
+            result.update(cause_ranking=[{"cause": "PETIR", "label": "Petir", "confidence": .7}],
+                          overall_confidence=.7, fault_type="transient", applied_caps=[])
+        return result
+    monkeypatch.setattr(reconstruction, "_record_ml_result", reading)
     _incident, recon, (fault_id, _reclose_id, _refault_id) = _reconstruct(service, bringin_like_sequence())
     entry = next(e for e in recon.physical_cause_evidence["records"] if e["incident_record_id"] == fault_id)
-    if entry.get("fault_type") != "transient":
-        pytest.skip("classifier did not read the synthetic fault as transient")
-    cap = next(c for c in entry["applied_caps"] if c["name"].startswith("reclose_outcome"))
-    assert cap["name"] == "reclose_outcome_conflict"
-    assert cap["after"] < cap["before"]
+    assert entry["confidence"] == .7
+    assert not any(cap["name"].startswith("reclose_outcome") for cap in entry["applied_caps"])
+    assert entry["context_evidence"][-1]["reclose_outcome"] == "refault_after_reclose"
+    assert entry["context_evidence"][-1]["physical_cause_confirmed"] is False
 
 
 def test_failed_reclose_capture_makes_the_episode_outcome_failed(service):

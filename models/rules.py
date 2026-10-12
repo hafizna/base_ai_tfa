@@ -18,6 +18,7 @@ class RuleResult:
     confidence: float         # 0–1
     rule_name: str            # which rule fired
     evidence: str             # human-readable explanation
+    scope: str = "cause"     # context rules must not bypass physical-cause inference
 
 
 def apply_rules(row: dict) -> Optional[RuleResult]:
@@ -67,31 +68,25 @@ def apply_rules(row: dict) -> Optional[RuleResult]:
         )
 
     # ------------------------------------------------------------------
-    # Rule 1 - KONDUKTOR: Fault On Reclose with phase change
-    #   Evidence: multiple phases across the recording AND multiple fault
-    #   events detected.  Phase change (A→B, B→A, etc.) on reclose is the
-    #   structural-damage signature of broken tower / conductor.
-    #
-    #   Guard conditions:
-    #   - reclose_ok must NOT be True: a successful reclose proves the fault
-    #     cleared and the line is intact — cannot be a broken conductor.
-    #   - fault_count capped at 20: values above this indicate a detection
-    #     artefact (e.g. oscillation mis-counted as sub-faults).
+    # Rule 1 - Repeated episodes with multiple recorded phases.
+    #   Aggregate phase/count features cannot establish phase evolution or
+    #   structural damage. Request episode-level comparison as context only.
     # ------------------------------------------------------------------
     phase_count = faulted_phases.count("+") + 1 if faulted_phases else 1
-    multi_phase_for = phase_count == 2   # exactly 2 different phases = likely change on reclose
+    multi_phase_for = phase_count == 2
 
     reclose_succeeded = (reclose_ok is True or reclose_ok == "True")
     if (fault_count >= 2 and fault_count <= 20 and multi_phase_for
             and duration_ms > 80 and not reclose_succeeded):
         return RuleResult(
-            label="KONDUKTOR / TOWER",
+            label="GANGGUAN BERULANG: PERIKSA FASA PER EPISODE",
             confidence=0.85,
             rule_name="fault_on_reclose_phase_change",
+            scope="context",
             evidence=(
                 f"fault_count={fault_count}, fasa={faulted_phases}, "
-                f"dur={duration_ms:.0f}ms - perubahan fasa saat AR, "
-                "diduga kerusakan mekanik pada konduktor/tower. "
+                f"dur={duration_ms:.0f}ms - beberapa fasa dan episode terdeteksi; "
+                "perbandingan fasa per episode diperlukan; ini belum membuktikan kerusakan konduktor/tower. "
                 "Verifikasi dengan rekaman AR dan catatan operasi."
             ),
         )
@@ -134,14 +129,15 @@ def apply_rules(row: dict) -> Optional[RuleResult]:
             and trip_type == "three_pole"
             and peak_i > 50):
         return RuleResult(
-            label="GANGGUAN PERMANEN",
+            label="PEMULIHAN GAGAL PADA RECLOSE TEREKAM",
             confidence=0.75,
             rule_name="three_pole_failed_reclose",
+            scope="context",
             evidence=(
                 f"trip_type=three_pole, reclose_successful=False, "
                 f"peak_i={peak_i:.0f}A - "
-                "gangguan permanen 3-fasa, AR gagal. "
-                "Diduga kerusakan mekanik/konduktor — verifikasi kondisi jalur diperlukan."
+                "pemulihan gagal pada percobaan reclose yang terekam. "
+                "Trip 3-pole tidak membuktikan gangguan 3-fasa atau penyebab mekanik."
             ),
         )
 
@@ -158,12 +154,13 @@ def apply_rules(row: dict) -> Optional[RuleResult]:
             and duration_ms > 10
             and peak_i > 100):
         return RuleResult(
-            label="GANGGUAN PERMANEN",
+            label="PEMULIHAN GAGAL PADA RECLOSE TEREKAM",
             confidence=0.90,
             rule_name="explicit_failed_reclose",
+            scope="context",
             evidence=(
                 f"reclose_successful=False, dur={duration_ms:.0f}ms, "
-                f"peak_i={peak_i:.0f}A - gangguan permanen, AR gagal. "
+                f"peak_i={peak_i:.0f}A - pemulihan gagal pada percobaan reclose yang terekam. "
                 "Penyebab spesifik belum dapat ditentukan dari rekaman ini saja."
             ),
         )

@@ -25,6 +25,7 @@ export interface AIAppliedCap {
 }
 
 export interface AITier1Info {
+  scope?: string;
   fired: boolean;
   rule_name?: string;
   label?: string;
@@ -33,6 +34,8 @@ export interface AITier1Info {
 }
 
 export interface AIFaultResult {
+  event_context?: { restoration_outcome?: string; summary?: string; episode_count?: number; scope?: string } | null;
+  cause_assessment?: { status?: string; confidence_kind?: string; confirmed?: boolean; evidence_scope?: string; additional_episodes_evaluated_by_model?: boolean } | null;
   cause_ranking: AICauseRank[];
   fault_type: string;
   overall_confidence: number;
@@ -160,10 +163,10 @@ export default function AIFaultResultView({
         <section className={styles.aiVerdictStrip}>
           <div className={styles.aiVerdictMain}>
             <span className={styles.aiEyebrow}>Most consistent signature (hypothesis)</span>
-            <div className={styles.aiVerdictTitle}>{topCause?.label ?? "No dominant cause"}</div>
+            <div className={styles.aiVerdictTitle}>{result.cause_assessment?.status === "insufficient_evidence" ? "Bukti belum membedakan penyebab" : topCause?.label ?? "Penyebab belum dapat dinilai"}</div>
             <div className={styles.aiVerdictMeta}>
               <span className={isPermanent ? styles.aiFaultPermanent : styles.aiFaultTransient}>
-                {isPermanent ? permanentLabel : transientLabel}
+                {result.event_context?.summary ?? (isPermanent ? permanentLabel : transientLabel)}
               </span>
               <span>{result.cause_ranking.length} ranked candidates</span>
             </div>
@@ -172,16 +175,21 @@ export default function AIFaultResultView({
                 Hipotesis berbasis evidence lokal — belum tentu penyebab final. Verifikasi lapangan disarankan.
               </span>
             </div>
+            {result.cause_assessment?.additional_episodes_evaluated_by_model === false && (
+              <div className={styles.aiVerdictMeta}>
+                <span>Model penyebab memakai fitur episode pertama dan konteks rekaman dari model lama; signature episode berikutnya ditampilkan sebagai bukti terpisah.</span>
+              </div>
+            )}
           </div>
 
-          <div
+          {result.cause_ranking.length > 0 && <div
             className={styles.aiConfidenceDial}
             style={{ "--confidence": `${confidence}%` } as CSSProperties}
             aria-label={`Overall confidence ${confidence.toFixed(0)}%`}
           >
             <span>{confidence.toFixed(0)}%</span>
-            <small>{result.cause_ranking.length === 0 && result.tier1?.fired ? "Keyakinan pembacaan kejadian" : "Pattern-match confidence"}</small>
-          </div>
+            <small>{result.cause_assessment?.confidence_kind === "rule_heuristic" ? "Rule evidence score" : "Cause model score"}</small>
+          </div>}
         </section>
       )}
 
@@ -251,7 +259,7 @@ export default function AIFaultResultView({
 
           {result.tier1?.fired && (
             <div className={styles.aiProvenanceBlock} data-tone="rule">
-              <strong>Tier 1 rule fired:</strong> <code>{result.tier1.rule_name}</code> → {result.tier1.label}
+              <strong>{result.tier1.scope === "context" ? "Context rule:" : "Tier 1 rule fired:"}</strong> <code>{result.tier1.rule_name}</code> → {result.tier1.label}
               {typeof result.tier1.confidence === "number" && ` (conf ${pct(result.tier1.confidence)})`}
               {result.tier1.evidence && <div className={styles.aiProvenanceNote}>{result.tier1.evidence}</div>}
             </div>
