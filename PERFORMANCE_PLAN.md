@@ -1,6 +1,19 @@
 # Rencana Perbaikan Performance dan Tech Stack
 
-Tanggal review: 10 Oktober 2026. Status: rencana; belum diimplementasikan.
+Tanggal review: 10 Oktober 2026. Status: implementasi tahap awal; lihat update berikut.
+
+Update 12 Oktober 2026: baseline bundle lokal dan route lazy loading sudah
+diimplementasikan. Custom Plotly memuat scatter, histogram, dan scattergl saja.
+JavaScript awal turun dari 5.251.341 menjadi 238.900 byte; chunk grafik turun
+dari sekitar 4,65 menjadi 1,47 MB. Validasi Chromium headless lokal lulus untuk
+data grafik, hover/zoom, histogram/WebGL, PNG, dan PDF OCR. Transfer JS aktual
+turun 95% pada landing dan 59% pada workspace; heap JS juga turun. Cold load
+5 MB belum lebih cepat. Pengukuran frontend memakai replay respons API nyata;
+timeout PDF distance pada run live awal masih perlu profiling backend.
+Perubahan masih lokal tanpa commit.
+Baseline latency produksi/backend dan optimasi waveform belum dilakukan.
+Metode, hasil, dan batas pengukuran ada di
+[`docs/performance-baseline-2026-10-12.md`](docs/performance-baseline-2026-10-12.md).
 
 Tujuan: mempercepat pembukaan web dan analisis COMTRADE berukuran hingga sekitar
 10 MB, dengan menjaga akurasi analisis dan detail waveform saat investigasi.

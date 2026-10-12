@@ -1,11 +1,13 @@
 import type { ComponentType } from "react";
-import PlotlyModule, { type PlotParams } from "react-plotly.js";
+import type { PlotParams } from "react-plotly.js";
+import createPlotlyModule from "react-plotly.js/factory";
+import Plotly from "./plotlyRuntime";
 
-type PlotModuleShape = ComponentType<PlotParams> | { default?: ComponentType<PlotParams> };
+type PlotFactory = (plotly: object) => ComponentType<PlotParams>;
 
-const PlotlyComponent =
-  (PlotlyModule as PlotModuleShape & { default?: ComponentType<PlotParams> }).default ??
-  (PlotlyModule as ComponentType<PlotParams>);
+const createPlotlyComponent =
+  (createPlotlyModule as PlotFactory & { default?: PlotFactory }).default ?? createPlotlyModule;
+const PlotlyComponent = createPlotlyComponent(Plotly);
 
 export default function PlotlyChart(props: PlotParams) {
   return <PlotlyComponent {...props} />;

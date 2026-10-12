@@ -33,6 +33,7 @@ output/pdf/
 
 # Node / Vite
 node_modules/
+.npm-cache/
 webapp/frontend/dist/
 webapp/frontend/.vite/
 *.log
