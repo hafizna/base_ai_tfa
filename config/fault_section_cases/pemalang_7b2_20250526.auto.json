@@ -1,0 +1,38 @@
+{
+  "title": "TRIP 7B2 DIA #2 GITET PMLNG 500 kV — CT breakdown (26-05-2025 11:34)",
+  "station": "GITET Pemalang",
+  "data_folder": "UPT PURWOKERTO/2025/5. MEI/11.) 26052025 11.34 - TRIP 7B2 DIA #2 GITET PMLNG 500 kV ALAT CT BREAKDOWN",
+  "notes": [
+    "Records only: what each channel measures, the diameter around it and the zones are inferred (core/fault_section/mapping.py).",
+    "Archives are expected extracted in place, as for pemalang_7b2_20250526.json.",
+    "GE relays only left screenshots of their event lists; the entries are transcribed from them (weak evidence)."
+  ],
+  "recorders": [
+    {"id": "rec1", "comtrade": ["MAIN B BAY MANDIRANCAN 1/NR MAIN B MDRCN 1.CFG"]},
+    {"id": "rec2", "comtrade": ["LCD MAIN A BAY MANDIRANCAN 1/DR/Monday 26 May 2025 11.34.44.000.CFG"]},
+    {"id": "rec3", "comtrade": ["CBF B DIAMETER 2_/DR/Monday 26 May 2025 11.34.43.000.CFG"],
+     "micom_evt": ["CBF B DIAMETER 2_/Events/2025-05-26 15.03.47.evt"]},
+    {"id": "rec4", "comtrade": ["CCP AB-B MICOM MAIN A/DR/Monday 26 May 2025 11.34.42.000.CFG",
+                                "CCP AB-B MICOM MAIN A/DR/Monday 26 May 2025 11.34.43.000.CFG"]},
+    {"id": "rec5", "folder": "CCP B-AB MAIN 2_", "screenshot": "CCP MAIN 2 EVENT.jpg",
+     "comtrade": ["CCP B-AB MAIN 2_/OSC_126_12_20180527_053414/OSC_126_12_20180527_053414.cfg"],
+     "manual_events": [
+       {"time": "2022-03-22 07:58:08.242585", "signal": "RESET OP", "state": true},
+       {"time": "2025-05-26 11:34:42.871928", "signal": "XFMR PCNT DIFF OP", "state": true},
+       {"time": "2025-05-26 11:34:43.094406", "signal": "XFMR PCNT DIFF OP", "state": false},
+       {"time": "2025-05-26 11:34:44.049399", "signal": "XFMR PCNT DIFF OP", "state": true},
+       {"time": "2025-05-26 11:34:44.214316", "signal": "XFMR PCNT DIFF OP", "state": false},
+       {"time": "2025-05-26 12:40:24.253697", "signal": "RESET OP", "state": false}
+     ]},
+    {"id": "rec6", "micom_evt": ["BUSPRO B MAIN 1 FASA S/2025-05-26 14.40.58.evt"]},
+    {"id": "rec7", "folder": "BUSPRO MAIN 2 FASA S", "screenshot": "BUSPRO B MAIN 2 EVENT.jpg", "weak": true,
+     "manual_events": [
+       {"time": "2025-05-25 11:01:30.859967", "signal": "53 P2", "state": true},
+       {"time": "2025-05-26 00:43:07.215525", "signal": "53 P2", "state": false},
+       {"time": "2025-05-26 00:43:07.235536", "signal": "BUS 1 OP", "state": true},
+       {"time": "2025-05-26 00:43:07.413090", "signal": "BUS 1 OP", "state": false},
+       {"time": "2025-05-26 01:46:07.170591", "signal": "RESET OP", "state": true}
+     ]},
+    {"id": "rec8", "comtrade": ["TRIP MDCAN-PMLG 1 (26 MEI 2025)/DFR/MAIN A/20250526_043445_716_r137.cfg"]}
+  ]
+}

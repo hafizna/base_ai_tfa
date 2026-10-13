@@ -322,12 +322,14 @@ def _load_with_sanitized_cfg(com: Comtrade, cfg_path: Path, dat_path: Optional[s
 
     Some field recordings use:
       - a first header line with extra trailing fields after the recorder/device ID
-      - DD/MM/YYYY timestamps, while the bundled `comtrade` parser expects MM/DD/YYYY
+      - timestamps in the other day/month order than the bundled `comtrade`
+        parser reads for the file's revision (it reads MM/DD/YYYY for 1991
+        and DD/MM/YYYY for 1999 and later)
 
     The fallback keeps the original CFG/DAT content but rewrites only the parts that
     confuse the third-party parser.
     """
-    date_re = re.compile(r"^(?P<day>\d{1,2})/(?P<month>\d{1,2})/(?P<year>\d{4})(?P<rest>,.*)$")
+    date_re = re.compile(r"^(?P<first>\d{1,2})/(?P<second>\d{1,2})/(?P<year>\d{4})(?P<rest>,.*)$")
 
     with tempfile.TemporaryDirectory(prefix="comtrade_sanitized_") as tmp_dir:
         tmp_dir_path = Path(tmp_dir)
@@ -356,16 +358,22 @@ def _load_with_sanitized_cfg(com: Comtrade, cfg_path: Path, dat_path: Optional[s
             # with (a real 2-field pre-1999 header).
             if len(first_line_parts) > 3:
                 cfg_lines[0] = ",".join(first_line_parts[:3])
+            # Swap a date only when the order the parser will read it in puts
+            # a value above 12 in the month: "26/05/2025" stays as it is in a
+            # 1999 file ("NR,LINE_DISTANCE_RELAY,1999," from a NARI PCS-902)
+            # and becomes "05/26/2025" in a 1991 one.
+            modern = len(first_line_parts) >= 3 and first_line_parts[2] in ("1999", "2001", "2013")
 
             for idx, line in enumerate(cfg_lines):
                 match = date_re.match(line)
                 if not match:
                     continue
-                day = int(match.group("day"))
-                month = int(match.group("month"))
-                if day > 12 and month <= 12:
+                first = int(match.group("first"))
+                second = int(match.group("second"))
+                month_as_read, other = (second, first) if modern else (first, second)
+                if month_as_read > 12 and other <= 12:
                     cfg_lines[idx] = (
-                        f"{month:02d}/{day:02d}/{match.group('year')}{match.group('rest')}"
+                        f"{second:02d}/{first:02d}/{match.group('year')}{match.group('rest')}"
                     )
 
         tmp_cfg.write_text("\n".join(cfg_lines), encoding="utf-8")

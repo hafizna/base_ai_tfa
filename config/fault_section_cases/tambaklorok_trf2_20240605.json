@@ -1,0 +1,50 @@
+{
+  "title": "GIS Tambaklorok Blok III — Trafo #2 150/20 kV trip (05-06-2024 05:35) — binatang (burung)",
+  "station": "GIS Tambak Lorok 3",
+  "data_folder": "UPT SEMARANG/2024/05. MEI 2024/20240605_GIS TAMBAKLOROK BLOK III_BAY TRAFO #2_BINATANG (BURUNG)",
+  "notes": [
+    "Three relays of one transformer bay: ABB RET650 differential/REF (W1 = HV 300/1, W2 = LV 2000/5, 'REF HV'/'REF LV' = neutral CTs; 'W1/W2 CT IN' are residuals of the phase CTs and are not used), OCR HV (CT + VT 150 kV) and OCR LV / incoming (CT 2000/5).",
+    "No breaker status channel in any record, so each episode is one interval plus the span after clearing.",
+    "The mapping is written by hand: inference of transformer roles is not built yet."
+  ],
+  "transformer": {
+    "labels": {"bus_hv": "Bus 150 kV", "bus_lv": "Bus 20 kV", "cb_hv": "CB 150 kV Trafo #2",
+               "cb_lv": "CB incoming 20 kV Trafo #2", "trafo": "Trafo #2"},
+    "ct_side": {"cb_hv": "unknown", "cb_lv": "unknown"},
+    "hv_neutral": true,
+    "lv_neutral": true,
+    "lv_source": "unknown",
+    "zones": [
+      {"id": "diff_87t", "kind": "transformer_diff", "label": "Diff Trafo #2 (RET650)"},
+      {"id": "ref_hv", "kind": "ref", "side": "hv", "label": "REF HV (RET650)"},
+      {"id": "ref_lv", "kind": "ref", "side": "lv", "label": "REF LV (RET650)"},
+      {"id": "mech", "kind": "mechanical", "label": "Buchholz / sudden pressure"}
+    ]
+  },
+  "reference_recorder": "ret650",
+  "recorders": [
+    {"id": "ret650", "label": "RET650 Diff/REF Trafo #2",
+     "comtrade": ["trf2 tbrok 050624/AA1E1Q23FN1_DR300_20240605053558.cfg"]},
+    {"id": "ocr_hv", "label": "OCR HV Trafo #2",
+     "comtrade": ["ocr hv trf 2 tbrok 050624/ocr hv trf 2 tbrok 050624/AA1E1Q23FN2_DR831_20240605053558.cfg"]},
+    {"id": "ocr_lv", "label": "OCR LV / incoming Trafo #2",
+     "comtrade": ["ocr lv trf 2 tbrok 050624/ocr lv trf 2 tbrok 050624/17670141_2024_6_5_5_35_58_452.cfg"]}
+  ],
+  "ct_ratings_a": {"ct_hv": 300, "ct_hv_n": 300, "ct_lv": 2000, "ct_lv_n": 2000},
+  "currents": [
+    {"ct": "ct_hv", "recorder": "ret650", "channels": ["W1 CT IL1", "W1 CT IL2", "W1 CT IL3"]},
+    {"ct": "ct_hv", "recorder": "ocr_hv", "channels": ["CT PHASE L1", "CT PHASE L2", "CT PHASE L3"],
+     "voltages": ["VT PHASE L1", "VT PHASE L2", "VT PHASE L3"], "forward": "hv_terminal"},
+    {"ct": "ct_hv_n", "recorder": "ret650", "channels": ["REF HV"]},
+    {"ct": "ct_lv", "recorder": "ret650", "channels": ["W2 CT IL1", "W2 CT IL2", "W2 CT IL3"]},
+    {"ct": "ct_lv", "recorder": "ocr_lv", "channels": ["IL1", "IL2", "IL3"]},
+    {"ct": "ct_lv_n", "recorder": "ret650", "channels": ["REF LV"]}
+  ],
+  "breakers": [],
+  "zones": [
+    {"zone": "diff_87t", "recorder": "ret650", "channels": ["DIF TRIP"]},
+    {"zone": "ref_hv", "recorder": "ret650", "channels": ["REF DIF W1"]},
+    {"zone": "ref_lv", "recorder": "ret650", "channels": ["REF DIF W2"]},
+    {"zone": "mech", "recorder": "ret650", "channels": ["BUCHHOLZ TRIP", "PRESSURE TRIP"], "weak": true}
+  ]
+}

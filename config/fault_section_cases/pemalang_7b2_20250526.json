@@ -1,0 +1,106 @@
+{
+  "title": "TRIP 7B2 DIA #2 GITET PMLNG 500 kV — CT breakdown (26-05-2025 11:34)",
+  "data_folder": "UPT PURWOKERTO/2025/5. MEI/11.) 26052025 11.34 - TRIP 7B2 DIA #2 GITET PMLNG 500 kV ALAT CT BREAKDOWN",
+  "notes": [
+    "Archives are expected extracted in place: 'TRIP MDCAN-PMLG 1 (26 MEI 2025).rar' into the incident folder, 'CCP B-AB MAIN 2_/OSC_126_12_20180527_053414.rar' into a folder of the same name.",
+    "'PMLNG-1 Main B' from Mandirancan is a 25-05-2025 20:05 teleprotection test record, not this incident, and is left out.",
+    "GE relays only left screenshots of their event lists; the entries below are transcribed from them (weak evidence)."
+  ],
+  "diameter": {
+    "labels": {"bus_a": "Bus A", "bus_b": "Bus B", "cb_a": "CB 7A2", "cb_ab": "CB 7AB2", "cb_b": "CB 7B2"},
+    "ct_side": {"cb_a": "unknown", "cb_ab": "unknown", "cb_b": "unknown"},
+    "bay_a": {"kind": "feeder", "label": "bay diameter 2 sisi A"},
+    "bay_b": {"kind": "line", "label": "Line Mandirancan 1", "remote": "GITET Mandirancan"},
+    "bus_b_bays": [
+      {"id": "d1", "label": "Diameter 1"}, {"id": "d3", "label": "Diameter 3"},
+      {"id": "d4", "label": "Diameter 4"}, {"id": "d5", "label": "Diameter 5"},
+      {"id": "d6", "label": "Diameter 6"}, {"id": "d7", "label": "Diameter 7"},
+      {"id": "d8", "label": "Diameter 8"}
+    ],
+    "zones": [
+      {"id": "busbar_b_main_1", "kind": "busbar", "bus": "b", "label": "BusPro B Main 1 (P746)", "end_zone": "unknown"},
+      {"id": "busbar_b_main_2", "kind": "busbar", "bus": "b", "label": "BusPro B Main 2 (GE)", "end_zone": "unknown"},
+      {"id": "ccp_main_a", "kind": "ccp", "bay": "b", "label": "CCP Main A (P643)"},
+      {"id": "ccp_main_b", "kind": "ccp", "bay": "b", "label": "CCP Main B (GE)"},
+      {"id": "lcd_main_a", "kind": "line_diff", "bay": "b", "label": "LCD Main A (P546)"}
+    ]
+  },
+  "reference_recorder": "pcs902_main_b",
+  "recorders": [
+    {"id": "pcs902_main_b", "label": "PCS-902 Main B Pemalang",
+     "comtrade": ["MAIN B BAY MANDIRANCAN 1/NR MAIN B MDRCN 1.CFG"]},
+    {"id": "p546_main_a", "label": "P546 LCD Main A Pemalang",
+     "comtrade": ["LCD MAIN A BAY MANDIRANCAN 1/DR/Monday 26 May 2025 11.34.44.000.CFG"]},
+    {"id": "p841_cbf_b", "label": "P841 CBF 7B2",
+     "comtrade": ["CBF B DIAMETER 2_/DR/Monday 26 May 2025 11.34.43.000.CFG"],
+     "micom_evt": ["CBF B DIAMETER 2_/Events/2025-05-26 15.03.47.evt"]},
+    {"id": "p643_ccp_a", "label": "P643 CCP Main A",
+     "comtrade": ["CCP AB-B MICOM MAIN A/DR/Monday 26 May 2025 11.34.42.000.CFG",
+                  "CCP AB-B MICOM MAIN A/DR/Monday 26 May 2025 11.34.43.000.CFG"]},
+    {"id": "ge_ccp_b", "label": "GE CCP Main B",
+     "comtrade": ["CCP B-AB MAIN 2_/OSC_126_12_20180527_053414/OSC_126_12_20180527_053414.cfg"],
+     "manual_events": [
+       {"time": "2022-03-22 07:58:08.242585", "signal": "RESET OP", "state": true},
+       {"time": "2025-05-26 11:34:42.871928", "signal": "XFMR PCNT DIFF OP", "state": true},
+       {"time": "2025-05-26 11:34:43.094406", "signal": "XFMR PCNT DIFF OP", "state": false},
+       {"time": "2025-05-26 11:34:44.049399", "signal": "XFMR PCNT DIFF OP", "state": true},
+       {"time": "2025-05-26 11:34:44.214316", "signal": "XFMR PCNT DIFF OP", "state": false},
+       {"time": "2025-05-26 12:40:24.253697", "signal": "RESET OP", "state": false}
+     ]},
+    {"id": "p746_main_1_s", "label": "P746 BusPro B Main 1 fasa S",
+     "micom_evt": ["BUSPRO B MAIN 1 FASA S/2025-05-26 14.40.58.evt"],
+     "align_breaker": "cb_b"},
+    {"id": "ge_buspro_b_main_2", "label": "GE BusPro B Main 2 (screenshot)", "weak": true,
+     "align_breaker": "cb_b",
+     "manual_events": [
+       {"time": "2025-05-25 11:01:30.859967", "signal": "53 P2", "state": true},
+       {"time": "2025-05-26 00:43:07.215525", "signal": "53 P2", "state": false},
+       {"time": "2025-05-26 00:43:07.235536", "signal": "BUS 1 OP", "state": true},
+       {"time": "2025-05-26 00:43:07.413090", "signal": "BUS 1 OP", "state": false},
+       {"time": "2025-05-26 01:46:07.170591", "signal": "RESET OP", "state": true}
+     ]},
+    {"id": "p546_mandirancan", "label": "P546 Main A Mandirancan",
+     "comtrade": ["TRIP MDCAN-PMLG 1 (26 MEI 2025)/DFR/MAIN A/20250526_043445_716_r137.cfg"]}
+  ],
+  "ct_ratings_a": {"ct_line_b": 4000, "ct_cb_b": 4000, "ct_cb_ab": 4000, "ct_line_b_remote": 2000},
+  "currents": [
+    {"ct": "ct_line_b", "recorder": "pcs902_main_b", "channels": ["ia", "ib", "ic"]},
+    {"ct": "ct_line_b", "recorder": "p546_main_a", "channels": ["IA", "IB", "IC"],
+     "voltages": ["VA", "VB", "VC"], "forward": "line_b"},
+    {"ct": "ct_line_b", "recorder": "p643_ccp_a", "channels": ["IA-1", "IB-1", "IC-1"]},
+    {"ct": "ct_line_b", "recorder": "ge_ccp_b", "channels": ["F1-IA", "F2-IB", "F3-IC"]},
+    {"ct": "ct_cb_b", "recorder": "p841_cbf_b", "channels": ["IA", "IB", "IC"]},
+    {"ct": "ct_cb_b", "recorder": "p643_ccp_a", "channels": ["IA-2", "IB-2", "IC-2"]},
+    {"ct": "ct_cb_ab", "recorder": "p643_ccp_a", "channels": ["IA-3", "IB-3", "IC-3"]},
+    {"ct": "ct_line_b_remote", "recorder": "p546_mandirancan", "channels": ["IA", "IB", "IC"],
+     "voltages": ["VA", "VB", "VC"], "forward": "line_b"}
+  ],
+  "breakers": [
+    {"breaker": "cb_b", "recorder": "pcs902_main_b", "channels": ["CB1.52b_PhA", "CB1.52b_PhB", "CB1.52b_PhC"], "open_when": true},
+    {"breaker": "cb_ab", "recorder": "pcs902_main_b", "channels": ["CB2.52b_PhA", "CB2.52b_PhB", "CB2.52b_PhC"], "open_when": true},
+    {"breaker": "cb_b", "recorder": "p546_main_a", "channels": ["L1_CB_B_R_OPN", "L2_CB_B_S_OPN", "L3_CB_B_T_OPN"], "open_when": true},
+    {"breaker": "cb_ab", "recorder": "p546_main_a", "channels": ["L9_CB_AB_R_OPN", "L10_CB_AB_S_OPN", "L11_CB_AB_T_OPN"], "open_when": true},
+    {"breaker": "cb_b", "recorder": "p841_cbf_b", "channels": ["L3 CB OPEN"], "open_when": true},
+    {"breaker": "cb_b", "recorder": "p746_main_1_s", "channels": ["L7 CB CL B.B D2"], "open_when": false},
+    {"breaker": "cb_d1", "recorder": "p746_main_1_s", "channels": ["L2 CB CL B.B D1"], "open_when": false},
+    {"breaker": "cb_d3", "recorder": "p746_main_1_s", "channels": ["L12 CB CL B.B D3"], "open_when": false},
+    {"breaker": "cb_d4", "recorder": "p746_main_1_s", "channels": ["L17 CB CL B.B D4"], "open_when": false},
+    {"breaker": "cb_d5", "recorder": "p746_main_1_s", "channels": ["L22 CB CL B.B D5"], "open_when": false},
+    {"breaker": "cb_d6", "recorder": "p746_main_1_s", "channels": ["L27 CB CL B.B D6"], "open_when": false},
+    {"breaker": "cb_d7", "recorder": "p746_main_1_s", "channels": ["L32 CB CL B.B D7"], "open_when": false},
+    {"breaker": "cb_d8", "recorder": "p746_main_1_s", "channels": ["L37 CB CL B.B D8"], "open_when": false},
+    {"breaker": "cb_b", "recorder": "ge_buspro_b_main_2", "channels": ["53 P2"], "open_when": false},
+    {"breaker": "cb_remote_b", "recorder": "p546_mandirancan", "channels": ["L1_CB_B_R_CLS", "L2_CB_B_S_CLS", "L3_CB_B_T_CLS"], "open_when": false}
+  ],
+  "zones": [
+    {"zone": "ccp_main_a", "recorder": "p643_ccp_a", "channels": ["Idiff Trip"]},
+    {"zone": "ccp_main_b", "recorder": "ge_ccp_b", "channels": ["XFMR PCNT DIFF OP"]},
+    {"zone": "busbar_b_main_2", "recorder": "ge_buspro_b_main_2", "channels": ["BUS 1 OP"]},
+    {"zone": "busbar_b_main_1", "recorder": "p746_main_1_s", "never_operated": true, "weak": true},
+    {"zone": "lcd_main_a", "recorder": "p546_main_a", "channels": ["Diff Trip"]},
+    {"zone": "lcd_main_a", "recorder": "p546_mandirancan", "channels": ["Diff Trip"]}
+  ],
+  "direction_signals": [
+    {"ct": "ct_line_b", "recorder": "p546_main_a", "channels": ["Zone 1 Trip"], "value": "forward", "forward": "line_b"}
+  ]
+}
