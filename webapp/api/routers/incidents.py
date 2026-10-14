@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from ..incidents import service as incident_service
 from ..incidents.batch_upload import UploadedFile, run_batch_upload
@@ -336,7 +337,31 @@ async def upload_records(
         ],
         "errors": result.errors,
         "reconstruction_status": result.reconstruction_status,
+        "event_files": result.event_files,
     }
+
+
+# --- Fault section estimate -------------------------------------------------------
+
+@router.post("/{incident_id}/fault-section")
+async def run_fault_section(incident_id: str):
+    """Where in the bay the fault was, from all included records and event
+    lists. Takes seconds (thousands of hypotheses), so it runs off the event
+    loop; the result is stored as the incident's latest."""
+    _require_multi_comtrade_enabled()
+    try:
+        return await run_in_threadpool(incident_service.run_fault_section, incident_id)
+    except IncidentServiceError as exc:
+        _handle(exc)
+
+
+@router.get("/{incident_id}/fault-section")
+async def get_fault_section(incident_id: str):
+    _require_multi_comtrade_enabled()
+    try:
+        return incident_service.get_fault_section(incident_id)
+    except IncidentServiceError as exc:
+        _handle(exc)
 
 
 # --- Stage 2: reconstruction -----------------------------------------------------

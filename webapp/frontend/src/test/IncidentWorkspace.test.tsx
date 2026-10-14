@@ -29,12 +29,73 @@ function renderWorkspace(incidentId: string) {
   );
 }
 
+const includedIds = bringin.incident.records.filter((r) => r.inclusion_status === "INCLUDED").map((r) => r.analysis_id);
+
+function faultSection(analysisIds: string[] = includedIds): client.FaultSectionOut {
+  const interval = (id: string, label: string): client.FaultSectionInterval => ({
+    id,
+    start_s: 0,
+    end_s: 0.05,
+    start_clock: "11:34:12.000",
+    end_clock: "11:34:12.050",
+    open: [],
+    label,
+    after_clearing: false,
+  });
+  return {
+    incident_id: bringin.incident.incident_id,
+    computed_at: "2026-10-13T08:00:00+00:00",
+    record_count: analysisIds.length,
+    analysis_ids: analysisIds,
+    title: "Uji",
+    template: "diameter",
+    epoch: "2025-05-26T11:34:12",
+    recorders: [{ id: "r1", label: "CCP 7B2", offset_s: 0, alignment: "acuan" }],
+    mapping: [
+      { subject: "CT CB 7B2", rule: "KCL", evidence: "jumlah arus CCP ≈ 0", certain: true },
+      { subject: "CT CB 7A2", rule: "sisi CT", evidence: "sisi CT tidak terbaca", certain: false },
+    ],
+    mapping_choice: "",
+    limits_a: {},
+    notes: [],
+    warnings: [],
+    report_lines: [],
+    episodes: [
+      {
+        start_s: 0,
+        end_s: 0.08,
+        start_clock: "11:34:12.000",
+        end_clock: "11:34:12.080",
+        inferred_assumptions: [],
+        intervals: [interval("S0", "awal: semua CB tertutup"), interval("S1", "+ CB 7B2 open")],
+        summary: {
+          observations: 12,
+          strong_observations: 9,
+          hypotheses: 40,
+          all_strong_consistent: true,
+          consistent: [
+            { section: "stub_cb_b", label: "Stub CB 7B2 sisi Bus B", agreements: 9, weak_mismatches: 0, variants: 2, weak_texts: [] },
+          ],
+          notes: [],
+          inferred: ["CT CB 7B2 di sisi Bus B"],
+          stuck_only: [],
+          rejected: [
+            { section: "bus_b", label: "Bus B", reason: "S0: CT CB 7B2 diprediksi tanpa arus, teramati membawa arus", weak_only: false },
+          ],
+        },
+      },
+    ],
+  };
+}
+
 function mockApi({
   incident = bringin.incident,
   reconstruction = bringin.reconstruction as client.ReconstructionOut | null,
   enabled = true,
+  storedFaultSection = null as client.FaultSectionOut | null,
 } = {}) {
   vi.spyOn(client, "fetchHealth").mockResolvedValue(health(enabled));
+  vi.spyOn(client, "fetchFaultSection").mockResolvedValue(storedFaultSection);
   vi.spyOn(client, "fetchIncident").mockResolvedValue(incident);
   vi.spyOn(client, "listIncidentEvidence").mockResolvedValue([]);
   vi.spyOn(client, "listReconstructions").mockResolvedValue(reconstruction ? [reconstruction] : []);
@@ -119,6 +180,41 @@ describe("IncidentWorkspace", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Muat ulang analisa rekaman" }));
     await waitFor(() => expect(refresh).toHaveBeenCalledWith(bringin.incident.incident_id));
     await waitFor(() => expect(reconstruct).toHaveBeenCalledTimes(1));
+  });
+
+  it("computes where in the bay the fault was when asked", async () => {
+    mockApi();
+    const run = vi.spyOn(client, "runFaultSection").mockResolvedValue(faultSection());
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    expect(await screen.findByRole("heading", { name: "Lokasi gangguan" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Hitung lokasi gangguan" }));
+    await waitFor(() => expect(run).toHaveBeenCalledWith(bringin.incident.incident_id));
+    expect(await screen.findByText("Stub CB 7B2 sisi Bus B")).toBeInTheDocument();
+    expect(screen.getByText("Lokasi yang konsisten dengan semua bukti kuat:")).toBeInTheDocument();
+    expect(screen.getByText("CT CB 7B2 di sisi Bus B")).toBeInTheDocument();
+    expect(screen.getByText("Lokasi lain yang ditolak (1)")).toBeInTheDocument();
+    expect(screen.getByText("belum pasti, diuji sebagai alternatif")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hitung ulang" })).toBeInTheDocument();
+  });
+
+  it("shows the stored fault location and asks for a new run once the records changed", async () => {
+    mockApi({ storedFaultSection: faultSection(["an-old"]) });
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    expect(await screen.findByText("Stub CB 7B2 sisi Bus B")).toBeInTheDocument();
+    expect(screen.getByText(/Rekaman insiden berubah sejak lokasi ini dihitung/)).toBeInTheDocument();
+  });
+
+  it("does not flag the stored fault location when it covers the current records", async () => {
+    mockApi({ storedFaultSection: faultSection() });
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    expect(await screen.findByText("Stub CB 7B2 sisi Bus B")).toBeInTheDocument();
+    expect(screen.queryByText(/Rekaman insiden berubah/)).not.toBeInTheDocument();
   });
 
   it("hides the story and uploads when the multi-COMTRADE feature is disabled", async () => {

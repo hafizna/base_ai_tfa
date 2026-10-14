@@ -88,31 +88,56 @@ export default function Landing() {
         <div className={styles.eyebrow}>PLN AI-Powered DFR Analytics</div>
         <div className={styles.logo}>DFR Analyser</div>
         <p className={styles.subtitle}>
-          Pick the protection family first, then upload a COMTRADE file set or TWS FL export for analysis.
+          Satu kejadian dengan rekaman dari beberapa rele dianalisa sebagai insiden. Satu rekaman dari satu rele
+          dianalisa sesuai keluarga proteksinya.
         </p>
         <button className={styles.simulatorLink} onClick={() => navigate("/simulator")} type="button">
           Event Notification Simulator
         </button>
-        <button className={styles.simulatorLink} onClick={() => navigate("/incidents")} type="button">
-          Incidents
-        </button>
       </header>
 
-      <main className={styles.grid}>
-        {RELAY_OPTIONS.map((opt) => (
-          <button
-            key={opt.id}
-            className={styles.card}
-            onClick={() => select(opt.id)}
-            title={opt.tooltip}
-            type="button"
-          >
-            <span className={styles.cardIcon}>{opt.icon}</span>
-            <span className={styles.cardLabel}>{opt.label}</span>
-            <span className={styles.cardSub}>{opt.subtitle}</span>
-            <span className={styles.cardTooltip}>{opt.tooltip}</span>
+      <main className={styles.main}>
+        <section className={styles.group} aria-labelledby="landing-incidents">
+          <div className={styles.groupHead}>
+            <h2 id="landing-incidents" className={styles.groupTitle}>
+              Analisa gangguan
+            </h2>
+            <p className={styles.groupLead}>Banyak rekaman dari satu kejadian, dibaca bersama.</p>
+          </div>
+          <button className={`${styles.card} ${styles.incidentCard}`} onClick={() => navigate("/incidents")} type="button">
+            <span className={styles.cardIcon}>Insiden</span>
+            <span className={styles.incidentLabel}>Insiden gangguan</span>
+            <span className={styles.incidentSub}>
+              Unggah satu folder kejadian sekaligus (distance, CCP, diff, CBF, REF, OCR…). Urutan kejadian, penyebab,
+              dan lokasi gangguan di bay (diameter 1½ CB atau trafo) disusun dari semua rekamannya.
+            </span>
           </button>
-        ))}
+        </section>
+
+        <section className={styles.group} aria-labelledby="landing-records">
+          <div className={styles.groupHead}>
+            <h2 id="landing-records" className={styles.groupTitle}>
+              Analisa rekaman
+            </h2>
+            <p className={styles.groupLead}>Satu rekaman dari satu rele: pilih keluarga proteksinya dulu.</p>
+          </div>
+          <div className={styles.grid}>
+            {RELAY_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                className={styles.card}
+                onClick={() => select(opt.id)}
+                title={opt.tooltip}
+                type="button"
+              >
+                <span className={styles.cardIcon}>{opt.icon}</span>
+                <span className={styles.cardLabel}>{opt.label}</span>
+                <span className={styles.cardSub}>{opt.subtitle}</span>
+                <span className={styles.cardTooltip}>{opt.tooltip}</span>
+              </button>
+            ))}
+          </div>
+        </section>
       </main>
 
       <footer className={styles.footer}>

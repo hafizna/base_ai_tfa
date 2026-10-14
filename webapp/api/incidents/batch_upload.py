@@ -1,9 +1,16 @@
 """Batch multi-COMTRADE upload — Stage 2.
 
 Pairs uploaded files into COMTRADE records (.cfg+.dat by case-insensitive
-stem, or one .cff each), parses them sequentially (bounded — one record's
-waveform in memory at a time, matching the single-record upload path), saves
-each as a Stage 0 analysis session, and attaches it to an incident.
+stem within one folder, or one .cff each), parses them sequentially (bounded
+— one record's waveform in memory at a time, matching the single-record
+upload path), saves each as a Stage 0 analysis session, keeps its original
+files with the incident (``raw_store``), and attaches it to an incident.
+
+A whole folder may be uploaded: file names then carry their folder path
+("CBF B DIAMETER 2_/DR/Monday ….CFG"). Two relays often name their records
+alike, so pairing is per folder, and the folder path is kept because it says
+which relay a record came from. Relay event lists (MiCOM ``.evt``) uploaded
+alongside are kept with the incident under their folder path.
 
 Default mode is atomic: if any file/pairing error occurs, nothing is saved
 and nothing is attached. ``partial_success=True`` processes every valid pair
@@ -23,8 +30,11 @@ from core.comtrade_parser import ComtradeRecord, parse_comtrade
 from ..record_analysis import build_record_analysis
 from ..routers.upload import _record_to_out  # reuse the exact Stage 0 payload shape
 from ..storage import delete_analysis, save_analysis
+from . import raw_store
 from . import service as incident_service
 from .service import IncidentServiceError
+
+EVENT_SUFFIXES = (".evt",)
 
 
 @dataclass
@@ -62,10 +72,14 @@ class BatchUploadResult:
     records_created: list[BatchRecordResult] = field(default_factory=list)
     errors: list[dict[str, Any]] = field(default_factory=list)
     reconstruction_status: str = "not_run"
+    event_files: list[str] = field(default_factory=list)
 
 
 def _stem(filename: str) -> str:
-    return Path(filename).stem.casefold()
+    """Pairing key: the folder path and the case-insensitive file stem."""
+    rel = raw_store.safe_relative_path(filename)
+    folder, _, name = rel.rpartition("/")
+    return f"{folder.casefold()}/{Path(name).stem.casefold()}" if folder else Path(name).stem.casefold()
 
 
 def _suffix(filename: str) -> str:
@@ -86,7 +100,7 @@ def pair_files(files: list[UploadedFile]) -> tuple[list[RecordPair], list[Pairin
     cff_files = [f for f in files if _suffix(f.filename) == ".cff"]
     cfg_files = [f for f in files if _suffix(f.filename) == ".cfg"]
     dat_files = [f for f in files if _suffix(f.filename) == ".dat"]
-    unsupported = [f for f in files if _suffix(f.filename) not in (".cff", ".cfg", ".dat")]
+    unsupported = [f for f in files if _suffix(f.filename) not in (".cff", ".cfg", ".dat", *EVENT_SUFFIXES)]
 
     pairs: list[RecordPair] = []
     errors: list[PairingError] = []
@@ -139,8 +153,8 @@ def _parse_pair(pair: RecordPair) -> ComtradeRecord:
     dat_file = next(f for f in pair.files if _suffix(f.filename) == ".dat")
     with tempfile.TemporaryDirectory(prefix="dfr_batch_upload_") as tmp_dir:
         tmp = Path(tmp_dir)
-        cfg_path = tmp / cfg_file.filename
-        dat_path = tmp / dat_file.filename
+        cfg_path = tmp / Path(raw_store.safe_relative_path(cfg_file.filename)).name
+        dat_path = tmp / Path(raw_store.safe_relative_path(dat_file.filename)).name
         cfg_path.write_bytes(cfg_file.data)
         dat_path.write_bytes(dat_file.data)
         record = parse_comtrade(str(cfg_path), str(dat_path))
@@ -186,7 +200,8 @@ def run_batch_upload(
     failures: list[BatchRecordResult] = []
 
     for pair in pairs:
-        filenames = [f.filename for f in pair.files]
+        filenames = [raw_store.safe_relative_path(f.filename) for f in pair.files]
+        analysis_id = None
         try:
             record = _parse_pair(pair)
             if record is None or record.total_samples <= 0:
@@ -195,6 +210,7 @@ def run_batch_upload(
             payload = _record_to_out(record)
             analysis_id = save_analysis(payload)
             saved_analysis_ids.append(analysis_id)
+            raw_store.save_record_files(analysis_id, [(f.filename, f.data) for f in pair.files])
 
             incident_record = incident_service.attach_record(
                 incident_id,
@@ -202,7 +218,7 @@ def run_batch_upload(
                 attachment_role=attachment_role,
                 bay_name=bay_name,
                 protection_type=protection_type,
-                source_filename=filenames[0] if pair.kind == "cff" else f"{filenames[0]}+{filenames[1]}",
+                source_filename=filenames[0] if pair.kind == "cff" else f"{filenames[0]}+{Path(filenames[1]).name}",
                 override_warnings=override_warnings,
             )
             attached.append(BatchRecordResult(
@@ -212,6 +228,8 @@ def run_batch_upload(
                 status="created",
             ))
         except (ValueError, IncidentServiceError) as exc:
+            if analysis_id:
+                raw_store.delete_record_files(analysis_id)      # not attached: nothing to keep them for
             failures.append(BatchRecordResult(
                 analysis_id=None,
                 incident_record_id=None,
@@ -220,6 +238,8 @@ def run_batch_upload(
                 error=str(exc),
             ))
         except Exception as exc:  # pragma: no cover - defensive; parser/attach must not crash the batch
+            if analysis_id:
+                raw_store.delete_record_files(analysis_id)
             failures.append(BatchRecordResult(
                 analysis_id=None,
                 incident_record_id=None,
@@ -238,12 +258,15 @@ def run_batch_upload(
                 pass
         for analysis_id in saved_analysis_ids:
             delete_analysis(analysis_id)
+            raw_store.delete_record_files(analysis_id)
 
         result.records_created = []
         result.errors = result.errors + [{"files": f.source_files, "reason": f.error} for f in failures]
         result.reconstruction_status = "aborted_atomic"
         return result
 
+    result.event_files = [raw_store.save_event_file(incident_id, f.filename, f.data)
+                          for f in files if _suffix(f.filename) in EVENT_SUFFIXES]
     result.records_created = attached
     result.errors = result.errors + [{"files": f.source_files, "reason": f.error} for f in failures]
     result.reconstruction_status = "completed" if attached and not failures else ("partial" if attached else "failed")

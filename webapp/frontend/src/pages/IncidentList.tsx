@@ -7,9 +7,12 @@ import {
   listIncidents,
   updateIncident,
   uploadIncidentRecords,
+  type AssetType,
   type IncidentOut,
   type IncidentStatus,
 } from "../api/client";
+import { filesFromDrop, keepSupported } from "../api/uploadFiles";
+import { BAY_TYPE_OPTIONS } from "../components/incidents/bayTypes";
 import { formatDate, isoToMs, readFacts } from "../components/incidents/incidentStory";
 import { useMultiComtradeEnabled } from "../hooks/useFeatureFlags";
 import styles from "./IncidentList.module.css";
@@ -58,7 +61,14 @@ export default function IncidentList() {
   const [creating, setCreating] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [bayType, setBayType] = useState<"" | AssetType>("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Not in React's input typings: lets the picker choose a whole folder.
+    folderInputRef.current?.setAttribute("webkitdirectory", "");
+  }, [multiComtradeEnabled]);
 
   async function load() {
     setLoading(true);
@@ -96,7 +106,7 @@ export default function IncidentList() {
   async function handleCreate() {
     setCreating(true);
     try {
-      const incident = await createIncident({ title: newTitle || "Untitled incident" });
+      const incident = await createIncident({ title: newTitle || "Untitled incident", asset_type: bayType || null });
       setShowCreate(false);
       setNewTitle("");
       navigate(`/incidents/${incident.incident_id}`);
@@ -108,13 +118,19 @@ export default function IncidentList() {
   }
 
   /** Dropped files become a new incident: create, upload, name it from the records, open it. */
-  async function createFromFiles(files: File[]) {
-    if (files.length === 0 || progress) return;
+  async function createFromFiles(picked: File[]) {
+    if (progress) return;
+    // A dropped incident folder also holds photos, settings and archives.
+    const { accepted: files } = keepSupported(picked);
+    if (files.length === 0) {
+      if (picked.length > 0) setError("Tidak ada file COMTRADE (.cfg/.dat/.cff) atau event (.evt) di pilihan ini.");
+      return;
+    }
     setError(null);
     let incidentId: string | null = null;
     try {
       setProgress("Membuat insiden…");
-      const created = await createIncident({ title: "Insiden baru" });
+      const created = await createIncident({ title: "Insiden baru", asset_type: bayType || null });
       incidentId = created.incident_id;
       setProgress(`Menganalisa ${files.length} file…`);
       const result = await uploadIncidentRecords(incidentId, files, { partialSuccess: true });
@@ -137,8 +153,19 @@ export default function IncidentList() {
     } finally {
       setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
+      if (folderInputRef.current) folderInputRef.current.value = "";
     }
   }
+
+  const bayTypeSelect = (
+    <select value={bayType} onChange={(e) => setBayType(e.target.value as "" | AssetType)}>
+      {BAY_TYPE_OPTIONS.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
 
   return (
     <div className={styles.page}>
@@ -167,16 +194,24 @@ export default function IncidentList() {
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
-            void createFromFiles(Array.from(e.dataTransfer.files || []));
+            void filesFromDrop(e.dataTransfer).then(createFromFiles);
           }}
         >
           <input
             ref={inputRef}
             type="file"
             multiple
-            accept=".cfg,.dat,.cff"
+            accept=".cfg,.dat,.cff,.evt"
             className={styles.hiddenInput}
             aria-label="Pilih file COMTRADE untuk insiden baru"
+            onChange={(e) => void createFromFiles(Array.from(e.target.files || []))}
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            className={styles.hiddenInput}
+            aria-label="Pilih folder rekaman untuk insiden baru"
             onChange={(e) => void createFromFiles(Array.from(e.target.files || []))}
           />
           {progress ? (
@@ -185,14 +220,24 @@ export default function IncidentList() {
             </p>
           ) : (
             <>
-              <p className={styles.dropTitle}>Tarik file COMTRADE dari satu kejadian ke sini</p>
+              <p className={styles.dropTitle}>Tarik file atau folder COMTRADE dari satu kejadian ke sini</p>
               <p className={styles.dropHint}>
-                Pasangan .cfg + .dat atau file .cff, boleh beberapa rekaman sekaligus. Insiden baru langsung dibuat
-                dan dianalisa.
+                Pasangan .cfg + .dat atau file .cff, boleh beberapa rekaman sekaligus. Satu folder insiden (beberapa
+                rele, termasuk daftar event MiCOM .evt) juga bisa; foto dan file setting di dalamnya dilewati. Insiden
+                baru langsung dibuat dan dianalisa.
               </p>
-              <button type="button" className={styles.primaryButton} onClick={() => inputRef.current?.click()}>
-                Pilih file
-              </button>
+              <label className={styles.inlineField}>
+                Jenis bay
+                {bayTypeSelect}
+              </label>
+              <div className={styles.dropActions}>
+                <button type="button" className={styles.primaryButton} onClick={() => inputRef.current?.click()}>
+                  Pilih file
+                </button>
+                <button type="button" className={styles.secondaryButton} onClick={() => folderInputRef.current?.click()}>
+                  Pilih folder
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -273,6 +318,10 @@ export default function IncidentList() {
                 placeholder="e.g. GI COMAL Trafo 1 trip 28/09/2024"
                 autoFocus
               />
+            </label>
+            <label className={styles.modalField}>
+              Jenis bay
+              {bayTypeSelect}
             </label>
             <div className={styles.modalActions}>
               <button type="button" onClick={() => setShowCreate(false)}>

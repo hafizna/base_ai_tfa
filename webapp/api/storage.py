@@ -1,10 +1,19 @@
-"""Analysis session storage with PostgreSQL persistence and file fallback."""
+"""Analysis session storage with PostgreSQL persistence and file fallback.
+
+A stored analysis is a cache: it expires after ``ANALYSIS_SESSION_TTL_HOURS``
+in both backends. A record attached to an incident outlives it, because the
+incident keeps the record's original COMTRADE files (``incidents.raw_store``)
+and ``load_analysis`` rebuilds an expired payload from them under the same
+analysis id.
+"""
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -15,7 +24,9 @@ try:
 except Exception:  # pragma: no cover - optional dependency in some local envs
     psycopg = None
 
-ANALYSIS_DIR = Path(tempfile.gettempdir()) / "dfr_fastapi_analysis"
+logger = logging.getLogger(__name__)
+
+ANALYSIS_DIR = Path(os.getenv("ANALYSIS_DATA_DIR", "") or (Path(tempfile.gettempdir()) / "dfr_fastapi_analysis"))
 ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
@@ -41,7 +52,21 @@ def _analysis_path(analysis_id: str) -> Path:
     return ANALYSIS_DIR / f"{analysis_id}.json"
 
 
+def _file_expired(path: Path) -> bool:
+    return time.time() - path.stat().st_mtime > SESSION_TTL_HOURS * 3600
+
+
+def _cleanup_expired_files() -> None:
+    for path in ANALYSIS_DIR.glob("*.json"):
+        try:
+            if _file_expired(path):
+                path.unlink()
+        except OSError:
+            pass
+
+
 def _save_analysis_file(payload: dict[str, Any], analysis_id: str) -> str:
+    _cleanup_expired_files()
     _analysis_path(analysis_id).write_text(
         json.dumps(payload, ensure_ascii=False),
         encoding="utf-8",
@@ -54,6 +79,9 @@ def _load_analysis_file(analysis_id: str) -> dict[str, Any] | None:
     if not path.exists():
         return None
     try:
+        if _file_expired(path):
+            path.unlink()
+            return None
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return None
@@ -196,6 +224,20 @@ def update_analysis(analysis_id: str, payload: dict[str, Any]) -> str:
 
 
 def load_analysis(analysis_id: str) -> dict[str, Any] | None:
+    payload = _load_cached_analysis(analysis_id)
+    if payload is not None:
+        return payload
+    # Expired or never cached here: an incident record keeps its original
+    # files, so rebuild it (lazy import — incidents imports this module).
+    try:
+        from .incidents.raw_store import restore_payload
+        return restore_payload(analysis_id)
+    except Exception as exc:  # pragma: no cover - a corrupt raw file must not break the caller
+        logger.warning("Could not restore analysis %s from its incident record files: %s", analysis_id, exc)
+        return None
+
+
+def _load_cached_analysis(analysis_id: str) -> dict[str, Any] | None:
     if not _db_enabled():
         return _load_analysis_file(analysis_id)
 

@@ -511,6 +511,7 @@
 .relationForm select,
 .relationForm input,
 .field input,
+.field select,
 .field textarea {
   font: inherit;
   font-size: 14px;

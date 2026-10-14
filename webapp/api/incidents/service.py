@@ -10,11 +10,15 @@ should call into this module rather than talking to storage,
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from core.fault_section.mapping import station_key
+
 from ..record_analysis import RecordAnalysis, build_record_analysis
 from ..storage import load_analysis
+from . import raw_store
 from . import storage as incident_storage
 from .models import (
     ASSET_TYPES,
@@ -37,6 +41,7 @@ from .models import (
 )
 from .reconstruction import run_reconstruction as _run_reconstruction
 from .joined_waveform import build_joined_waveform as _build_joined_waveform
+from .fault_section import FaultSectionError, latest_fault_section, run_fault_section as _run_fault_section
 from .time_axis import TimeAxis, build_time_axis, same_station, station_of
 
 
@@ -137,8 +142,9 @@ def update_incident(incident_id: str, patch: dict[str, Any]) -> Incident:
         incident.asset_id = patch["asset_id"]
     if "asset_name" in patch:
         incident.asset_name = patch["asset_name"]
-    if "asset_type" in patch and patch["asset_type"] is not None:
-        if patch["asset_type"] not in ASSET_TYPES:
+    if "asset_type" in patch:
+        # None puts the bay type back to "read from the records".
+        if patch["asset_type"] is not None and patch["asset_type"] not in ASSET_TYPES:
             raise IncidentServiceError(f"Unknown asset_type '{patch['asset_type']}'.")
         incident.asset_type = patch["asset_type"]
     if "voltage_level_kv" in patch:
@@ -165,10 +171,35 @@ def update_incident(incident_id: str, patch: dict[str, Any]) -> Incident:
 
 
 def delete_incident(incident_id: str) -> None:
-    incident_storage.delete_incident(incident_id)
+    incident_storage.delete_incident(incident_id)       # archives: the records and their files stay
+
+
+def _forget_files(analysis_id: str) -> None:
+    """Drop a record's original files once no incident holds the record."""
+    still_held = any(r.analysis_id == analysis_id
+                     for incident in incident_storage.list_incidents()
+                     for r in incident_storage.list_incident_records(incident.incident_id))
+    if not still_held:
+        raw_store.delete_record_files(analysis_id)
 
 
 # --- Record attachment ---------------------------------------------------------
+
+# A COMTRADE station field that names the relay rather than a substation
+# ("NR", "MiCOM", "P643", "RET650", "Relay-1", an IP address): it can neither
+# confirm nor contradict the incident's station.
+_STATION_PLACEHOLDER = re.compile(
+    r"^(NR|NARI|MICOM|SEL|ABB|GE|SIEMENS|SIPROTEC|SCHNEIDER|ALSTOM|AREVA|TOSHIBA|UNKNOWN"
+    r"|RELAY[\s_-]*\d*|IED[\s_-]*\d*|DEVICE[\s_-]*\d*|[A-Z]{1,3}\d{2,4}[A-Z]?|\d+|\d+(\.\d+){3})$",
+    re.IGNORECASE,
+)
+
+
+def _same_station(a: str, b: str) -> bool:
+    """One substation written two ways ("Mojosongo" / "GI MOJOSONGO",
+    "PMLNG" / "GITET PEMALANG") compares equal."""
+    return a == b or (bool(station_key(a)) and station_key(a) == station_key(b))
+
 
 def _attachment_warnings(incident: Incident, analysis: RecordAnalysis, override: bool) -> list[dict[str, Any]]:
     warnings: list[dict[str, Any]] = []
@@ -180,7 +211,14 @@ def _attachment_warnings(incident: Incident, analysis: RecordAnalysis, override:
             "description": "This record has no station name in its COMTRADE header.",
             "requires_review": True,
         })
-    elif incident.station_name and record_station != incident.station_name:
+    elif incident.station_name and _STATION_PLACEHOLDER.match(record_station.strip()):
+        warnings.append({
+            "type": "STATION_NOT_NAMED",
+            "record_station": record_station,
+            "description": "The COMTRADE header names the relay, not a substation; it cannot be checked against the incident's station.",
+            "requires_review": False,
+        })
+    elif incident.station_name and not _same_station(record_station, incident.station_name):
         warnings.append({
             "type": "STATION_MISMATCH",
             "incident_station": incident.station_name,
@@ -233,6 +271,13 @@ def attach_record(
 
     analysis = _canonical_analysis(analysis_id)
     warnings = _attachment_warnings(incident, analysis, override_warnings)
+    if not raw_store.has_record_files(analysis_id) and not raw_store.adopt_retained_upload(analysis_id):
+        warnings.append({
+            "type": "ORIGINAL_FILES_NOT_KEPT",
+            "description": "The record's original files are not kept with the incident, so it can only be opened "
+                           "while its analysis session lasts. Upload it to the incident directly to keep it.",
+            "requires_review": False,
+        })
     blocking = [w for w in warnings if w.get("requires_review") and w["type"] == "STATION_MISMATCH" and not override_warnings]
     if blocking:
         # Name the exact station strings being compared — a station-name
@@ -296,6 +341,7 @@ def detach_record(incident_id: str, incident_record_id: str) -> None:
         raise IncidentServiceError(f"Incident record '{incident_record_id}' not found on incident '{incident_id}'.", status_code=404)
 
     incident_storage.delete_incident_record(incident_record_id)
+    _forget_files(record.analysis_id)
     remaining = incident_storage.list_incident_records(incident_id)
     incident.record_ids = [r.analysis_id for r in remaining]
     incident.updated_at = _now_iso()
@@ -751,3 +797,23 @@ def to_reconstruction_response(
     data["relationships"] = [r.to_dict() for r in relationships]
     data["episodes"] = [e.to_dict() for e in episodes]
     return data
+
+
+# --- Fault section estimate -------------------------------------------------------
+
+def run_fault_section(incident_id: str) -> dict[str, Any]:
+    """Where in the bay the fault was, from every included record (and the
+    relay event lists uploaded with them). Stored as the incident's latest."""
+    incident = get_incident(incident_id)
+    try:
+        return _run_fault_section(incident, incident_storage.list_incident_records(incident_id))
+    except FaultSectionError as exc:
+        raise IncidentServiceError(str(exc), status_code=422) from exc
+
+
+def get_fault_section(incident_id: str) -> dict[str, Any]:
+    get_incident(incident_id)
+    result = latest_fault_section(incident_id)
+    if result is None:
+        raise IncidentServiceError("Lokasi gangguan belum dihitung untuk insiden ini.", status_code=404)
+    return result

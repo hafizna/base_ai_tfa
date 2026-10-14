@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   previewFilePairing,
   uploadIncidentRecords,
   type BatchUploadResponse,
   type FilePairPreview,
 } from "../../api/client";
+import { filesFromDrop, keepSupported } from "../../api/uploadFiles";
 import styles from "./BatchUploadPanel.module.css";
 
 interface Props {
@@ -24,9 +25,11 @@ export default function BatchUploadPanel({
   defaultPartialSuccess = false,
   alwaysReconstruct = false,
 }: Props) {
-  const [files, setFiles] = useState<File[]>(initialFiles ?? []);
+  const initial = keepSupported(initialFiles ?? []);
+  const [files, setFiles] = useState<File[]>(initial.accepted);
+  const [skipped, setSkipped] = useState(initial.skipped);
   const [preview, setPreview] = useState<FilePairPreview | null>(() =>
-    initialFiles && initialFiles.length > 0 ? previewFilePairing(initialFiles) : null,
+    initial.accepted.length > 0 ? previewFilePairing(initial.accepted) : null,
   );
   const [partialSuccess, setPartialSuccess] = useState(defaultPartialSuccess);
   const [overrideWarnings, setOverrideWarnings] = useState(false);
@@ -36,12 +39,20 @@ export default function BatchUploadPanel({
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
-  function setSelectedFiles(next: File[]) {
-    setFiles(next);
+  useEffect(() => {
+    // Not in React's input typings: lets the picker choose a whole folder.
+    folderInputRef.current?.setAttribute("webkitdirectory", "");
+  }, []);
+
+  function setSelectedFiles(picked: File[]) {
+    const { accepted, skipped: dropped } = keepSupported(picked);
+    setFiles(accepted);
+    setSkipped(dropped);
     setResult(null);
     setError(null);
-    setPreview(next.length > 0 ? previewFilePairing(next) : null);
+    setPreview(accepted.length > 0 ? previewFilePairing(accepted) : null);
   }
 
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -51,7 +62,7 @@ export default function BatchUploadPanel({
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragOver(false);
-    setSelectedFiles(Array.from(e.dataTransfer.files || []));
+    void filesFromDrop(e.dataTransfer).then(setSelectedFiles);
   }
 
   async function handleUpload() {
@@ -96,13 +107,38 @@ export default function BatchUploadPanel({
           ref={inputRef}
           type="file"
           multiple
-          accept=".cfg,.dat,.cff"
+          accept=".cfg,.dat,.cff,.evt"
           onChange={handleFileInput}
           className={styles.hiddenInput}
           aria-label="Select COMTRADE files"
         />
+        <input
+          ref={folderInputRef}
+          type="file"
+          multiple
+          onChange={handleFileInput}
+          className={styles.hiddenInput}
+          aria-label="Pilih folder rekaman"
+        />
         <p>Drag and drop .cfg/.dat pairs or .cff files here, or click to browse.</p>
+        <p className={styles.folderHint}>
+          Bisa juga satu folder insiden sekaligus: nama folder tiap rele ikut terbaca, dan daftar event MiCOM
+          (.evt) ikut disimpan.{" "}
+          <button
+            type="button"
+            className={styles.folderButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              folderInputRef.current?.click();
+            }}
+          >
+            Pilih folder
+          </button>
+        </p>
         {files.length > 0 && <p className={styles.fileCount}>{files.length} file(s) selected</p>}
+        {skipped > 0 && (
+          <p className={styles.fileCount}>{skipped} file lain dilewati (foto, setting, arsip — bukan rekaman)</p>
+        )}
       </div>
 
       {preview && (
@@ -115,7 +151,7 @@ export default function BatchUploadPanel({
             <ul className={styles.groupList}>
               {preview.groups.map((g, i) => (
                 <li key={i} className={styles.groupItem}>
-                  <span className={styles.groupBadge}>{g.kind === "cff" ? "CFF" : "CFG+DAT"}</span>
+                  <span className={styles.groupBadge}>{g.kind === "cff" ? "CFF" : g.kind === "evt" ? "EVT" : "CFG+DAT"}</span>
                   <span>{g.files.join(" + ")}</span>
                 </li>
               ))}
@@ -178,6 +214,16 @@ export default function BatchUploadPanel({
                   <span className={styles.resultMeta}>
                     analysis_id: {r.analysis_id} · incident_record_id: {r.incident_record_id}
                   </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {(result.event_files ?? []).length > 0 && (
+            <ul className={styles.resultList}>
+              {(result.event_files ?? []).map((path) => (
+                <li key={path} className={styles.resultItem}>
+                  <span className={styles.resultOk}>✓ {path}</span>
+                  <span className={styles.resultMeta}>daftar event disimpan dengan insiden</span>
                 </li>
               ))}
             </ul>
