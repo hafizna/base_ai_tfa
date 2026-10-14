@@ -12,10 +12,16 @@ services:
       TRAINING_RETENTION_ENABLED: "${TRAINING_RETENTION_ENABLED:-1}"
       TRAINING_DATA_DIR: "/app/training-data"
       TRAINING_ADMIN_TOKEN: "${TRAINING_ADMIN_TOKEN:-}"
+      # Incidents (with their records' original COMTRADE files) and the 24 h
+      # analysis cache live outside the container, so a redeploy keeps them.
+      INCIDENTS_DATA_DIR: "/app/incidents-data"
+      ANALYSIS_DATA_DIR: "/app/analysis-data"
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./training-data:/app/training-data
+      - ./incidents-data:/app/incidents-data
+      - ./analysis-data:/app/analysis-data
     # Docker keeps container logs forever by default; cap them at 3 x 10 MB.
     logging:
       driver: json-file

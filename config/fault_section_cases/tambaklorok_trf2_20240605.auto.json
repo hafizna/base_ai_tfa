@@ -1,0 +1,25 @@
+{
+  "title": "GIS Tambaklorok Blok III — Trafo #2 150/20 kV trip (05-06-2024 05:35) — binatang (burung)",
+  "station": "GIS Tambak Lorok 3",
+  "data_folder": "UPT SEMARANG/2024/05. MEI 2024/20240605_GIS TAMBAKLOROK BLOK III_BAY TRAFO #2_BINATANG (BURUNG)",
+  "recorders": [
+    {
+      "id": "rec1",
+      "comtrade": [
+        "trf2 tbrok 050624/AA1E1Q23FN1_DR300_20240605053558.cfg"
+      ]
+    },
+    {
+      "id": "rec2",
+      "comtrade": [
+        "ocr hv trf 2 tbrok 050624/ocr hv trf 2 tbrok 050624/AA1E1Q23FN2_DR831_20240605053558.cfg"
+      ]
+    },
+    {
+      "id": "rec3",
+      "comtrade": [
+        "ocr lv trf 2 tbrok 050624/ocr lv trf 2 tbrok 050624/17670141_2024_6_5_5_35_58_452.cfg"
+      ]
+    }
+  ]
+}

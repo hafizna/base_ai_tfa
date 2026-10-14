@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { ComtradeData } from "../context/AnalysisContext";
+import { INCIDENT_UPLOAD_SUFFIXES, fileSuffix, uploadPath } from "./uploadFiles";
 
 const BASE = import.meta.env.VITE_API_URL?.trim() || "";
 
@@ -1773,6 +1774,8 @@ export interface BatchUploadResponse {
   records_created: BatchUploadRecordResult[];
   errors: BatchUploadError[];
   reconstruction_status: "completed" | "partial" | "failed" | "aborted_atomic" | "not_run";
+  /** Relay event lists (.evt) kept with the incident, by folder path. */
+  event_files?: string[];
 }
 
 export interface BatchUploadOptions {
@@ -1785,7 +1788,8 @@ export interface BatchUploadOptions {
 
 export async function uploadIncidentRecords(incidentId: string, files: File[], options: BatchUploadOptions = {}) {
   const form = new FormData();
-  files.forEach((file) => form.append("files", file));
+  // The folder path goes with each file: it says which relay a record came from.
+  files.forEach((file) => form.append("files", file, uploadPath(file)));
 
   const params: Record<string, string | boolean> = {};
   if (options.partialSuccess) params.partial_success = true;
@@ -1804,7 +1808,7 @@ export async function uploadIncidentRecords(incidentId: string, files: File[], o
 // --- Client-side file-pairing preview (advisory only — backend pairing is authoritative) ---
 
 export interface FilePairPreviewGroup {
-  kind: "cff" | "cfg_dat";
+  kind: "cff" | "cfg_dat" | "evt";
   stem: string;
   files: string[];
 }
@@ -1819,34 +1823,34 @@ export interface FilePairPreview {
   errors: FilePairPreviewError[];
 }
 
+/** Pairing key: the folder path and the case-insensitive file stem. */
 function fileStem(filename: string): string {
-  const base = filename.split(/[\\/]/).pop() || filename;
+  const parts = filename.split(/[\\/]/);
+  const base = parts.pop() || filename;
   const dot = base.lastIndexOf(".");
-  return (dot > 0 ? base.slice(0, dot) : base).toLowerCase();
-}
-
-function fileSuffix(filename: string): string {
-  const base = filename.split(/[\\/]/).pop() || filename;
-  const dot = base.lastIndexOf(".");
-  return dot >= 0 ? base.slice(dot).toLowerCase() : "";
+  const stem = (dot > 0 ? base.slice(0, dot) : base).toLowerCase();
+  return parts.length ? `${parts.join("/").toLowerCase()}/${stem}` : stem;
 }
 
 /**
  * Client-side preview of how the backend will pair uploaded files, so the
  * batch-upload panel can show groupings/orphans/duplicates before the
  * request is sent. Mirrors webapp/api/incidents/batch_upload.py::pair_files
- * exactly (case-insensitive stem match for .cfg+.dat, standalone .cff),
- * but this preview is advisory only — the backend re-derives pairing from
- * the actual uploaded bytes and is authoritative.
+ * exactly (case-insensitive stem match for .cfg+.dat within one folder,
+ * standalone .cff, .evt event lists kept as they are), but this preview is
+ * advisory only — the backend re-derives pairing from the actual uploaded
+ * bytes and is authoritative.
  */
 export function previewFilePairing(files: File[]): FilePairPreview {
   const groups: FilePairPreviewGroup[] = [];
   const errors: FilePairPreviewError[] = [];
+  const named = files.map((file) => ({ file, name: uploadPath(file) }));
 
-  const cffFiles = files.filter((f) => fileSuffix(f.name) === ".cff");
-  const cfgFiles = files.filter((f) => fileSuffix(f.name) === ".cfg");
-  const datFiles = files.filter((f) => fileSuffix(f.name) === ".dat");
-  const unsupported = files.filter((f) => ![".cff", ".cfg", ".dat"].includes(fileSuffix(f.name)));
+  const cffFiles = named.filter((f) => fileSuffix(f.name) === ".cff");
+  const cfgFiles = named.filter((f) => fileSuffix(f.name) === ".cfg");
+  const datFiles = named.filter((f) => fileSuffix(f.name) === ".dat");
+  const evtFiles = named.filter((f) => fileSuffix(f.name) === ".evt");
+  const unsupported = named.filter((f) => !INCIDENT_UPLOAD_SUFFIXES.includes(fileSuffix(f.name)));
 
   unsupported.forEach((f) => {
     errors.push({ files: [f.name], reason: `Unsupported file type '${fileSuffix(f.name) || "(none)"}'.` });
@@ -1856,15 +1860,15 @@ export function previewFilePairing(files: File[]): FilePairPreview {
     groups.push({ kind: "cff", stem: fileStem(f.name), files: [f.name] });
   });
 
-  const cfgByStem = new Map<string, File[]>();
+  const cfgByStem = new Map<string, string[]>();
   cfgFiles.forEach((f) => {
     const stem = fileStem(f.name);
-    cfgByStem.set(stem, [...(cfgByStem.get(stem) || []), f]);
+    cfgByStem.set(stem, [...(cfgByStem.get(stem) || []), f.name]);
   });
-  const datByStem = new Map<string, File[]>();
+  const datByStem = new Map<string, string[]>();
   datFiles.forEach((f) => {
     const stem = fileStem(f.name);
-    datByStem.set(stem, [...(datByStem.get(stem) || []), f]);
+    datByStem.set(stem, [...(datByStem.get(stem) || []), f.name]);
   });
 
   const allStems = Array.from(new Set([...cfgByStem.keys(), ...datByStem.keys()])).sort();
@@ -1874,21 +1878,103 @@ export function previewFilePairing(files: File[]): FilePairPreview {
 
     if (cfgs.length > 1 || dats.length > 1) {
       errors.push({
-        files: [...cfgs, ...dats].map((f) => f.name),
+        files: [...cfgs, ...dats],
         reason: `Duplicate files for stem '${stem}' — expected exactly one .cfg and one .dat.`,
       });
       return;
     }
     if (cfgs.length > 0 && dats.length === 0) {
-      errors.push({ files: [cfgs[0].name], reason: "Orphan .cfg file with no matching .dat file." });
+      errors.push({ files: [cfgs[0]], reason: "Orphan .cfg file with no matching .dat file." });
       return;
     }
     if (dats.length > 0 && cfgs.length === 0) {
-      errors.push({ files: [dats[0].name], reason: "Orphan .dat file with no matching .cfg file." });
+      errors.push({ files: [dats[0]], reason: "Orphan .dat file with no matching .cfg file." });
       return;
     }
-    groups.push({ kind: "cfg_dat", stem, files: [cfgs[0].name, dats[0].name] });
+    groups.push({ kind: "cfg_dat", stem, files: [cfgs[0], dats[0]] });
+  });
+
+  evtFiles.forEach((f) => {
+    groups.push({ kind: "evt", stem: fileStem(f.name), files: [f.name] });
   });
 
   return { groups, errors };
+}
+
+// --- Fault section estimate --------------------------------------------------
+
+export interface FaultSectionInterval {
+  id: string;
+  start_s: number;
+  end_s: number;
+  start_clock: string;
+  end_clock: string;
+  open: string[];
+  label: string;
+  after_clearing: boolean;
+}
+
+export interface FaultSectionSummary {
+  observations: number;
+  strong_observations: number;
+  hypotheses: number;
+  all_strong_consistent: boolean;
+  consistent: Array<{
+    section: string;
+    label: string;
+    agreements: number;
+    weak_mismatches: number;
+    variants: number;
+    weak_texts: string[];
+  }>;
+  notes: Array<{ text: string; hint: string }>;
+  inferred: string[];
+  stuck_only: string[];
+  rejected: Array<{ section: string; label: string; reason: string; weak_only: boolean }>;
+}
+
+export interface FaultSectionEpisode {
+  start_s: number;
+  end_s: number;
+  start_clock: string;
+  end_clock: string;
+  intervals: FaultSectionInterval[];
+  summary: FaultSectionSummary;
+  inferred_assumptions: string[];
+}
+
+export interface FaultSectionOut {
+  incident_id: string;
+  computed_at: string;
+  record_count: number;
+  /** The included records it was computed from. */
+  analysis_ids?: string[];
+  title: string;
+  template: "diameter" | "transformer";
+  epoch: string;
+  recorders: Array<{ id: string; label: string; offset_s: number; alignment: string }>;
+  mapping: Array<{ subject: string; rule: string; evidence: string; certain: boolean }>;
+  mapping_choice: string;
+  limits_a: Record<string, [number, number]>;
+  notes: string[];
+  warnings: string[];
+  episodes: FaultSectionEpisode[];
+  report_lines: string[];
+}
+
+/** Where in the bay the fault was, computed from every included record (takes seconds). */
+export async function runFaultSection(incidentId: string) {
+  const { data } = await api.post<FaultSectionOut>(`/api/incidents/${incidentId}/fault-section`, {}, { timeout: 300000 });
+  return data;
+}
+
+/** The incident's latest fault section estimate, or null when it has not been computed. */
+export async function fetchFaultSection(incidentId: string): Promise<FaultSectionOut | null> {
+  try {
+    const { data } = await api.get<FaultSectionOut>(`/api/incidents/${incidentId}/fault-section`);
+    return data;
+  } catch (err) {
+    if ((err as { response?: { status?: number } })?.response?.status === 404) return null;
+    throw err;
+  }
 }

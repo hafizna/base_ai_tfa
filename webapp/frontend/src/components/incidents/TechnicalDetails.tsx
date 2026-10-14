@@ -13,6 +13,7 @@ import {
   type RecordRelationshipOut,
   type RelationshipType,
 } from "../../api/client";
+import { BAY_TYPE_OPTIONS } from "./bayTypes";
 import { recordName, type IncidentStory } from "./incidentStory";
 import styles from "./TechnicalDetails.module.css";
 
@@ -552,6 +553,7 @@ function MetaTab({ incident, onSave, onArchive }: Props) {
     voltage_level_kv: incident.voltage_level_kv?.toString() ?? "",
     station_name: incident.station_name ?? "",
     bay_name: incident.bay_name ?? "",
+    asset_type: incident.asset_type ?? "",
     operator_notes: incident.operator_notes ?? "",
   });
   const [saving, setSaving] = useState(false);
@@ -567,6 +569,7 @@ function MetaTab({ incident, onSave, onArchive }: Props) {
         voltage_level_kv: draft.voltage_level_kv ? Number(draft.voltage_level_kv.replace(",", ".").replace(/[^0-9.]/g, "")) : null,
         station_name: draft.station_name || null,
         bay_name: draft.bay_name || null,
+        asset_type: draft.asset_type || null,
         operator_notes: draft.operator_notes || null,
       });
       setSaved(true);
@@ -600,6 +603,19 @@ function MetaTab({ incident, onSave, onArchive }: Props) {
           !draft.station_name && !stationFromRecords ? "Belum diisi: nama GI tidak ada di file CFG." : undefined,
         )}
         {field("bay_name", "Bay")}
+        <label className={styles.field}>
+          <span className={styles.label}>Jenis bay</span>
+          <select value={draft.asset_type} onChange={(e) => setDraft({ ...draft, asset_type: e.target.value })}>
+            {BAY_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+            {draft.asset_type && !BAY_TYPE_OPTIONS.some((o) => o.value === draft.asset_type) && (
+              <option value={draft.asset_type}>{draft.asset_type}</option>
+            )}
+          </select>
+        </label>
       </div>
       <label className={styles.field}>
         <span className={styles.label}>Catatan</span>
@@ -611,8 +627,8 @@ function MetaTab({ incident, onSave, onArchive }: Props) {
         />
       </label>
       <span className={styles.muted}>
-        GI insiden menentukan ujung yang dipakai sebagai acuan jam dan sudut cerita. Jenis aset, keluarga proteksi, dan
-        kualitas jam diisi otomatis dari rekaman.
+        GI insiden menentukan ujung yang dipakai sebagai acuan jam dan sudut cerita. Jenis bay menentukan susunan yang
+        diuji di Lokasi gangguan. Keluarga proteksi dan kualitas jam diisi otomatis dari rekaman.
       </span>
       <div className={styles.toolbar}>
         <button type="button" className={styles.primary} disabled={saving} onClick={save}>

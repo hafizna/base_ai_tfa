@@ -66,7 +66,8 @@ _MAPPING_KEYS = ("currents", "breakers", "zones", "direction_signals")
 
 
 @dataclass
-class _Recorder:
+class Recorder:
+    """One relay or recorder: one clock, its COMTRADE records and event lists."""
     id: str
     label: str
     folder: str
@@ -80,6 +81,37 @@ class _Recorder:
     offset_s: float = 0.0
     alignment: str = ""
 
+    def add_events(self, events: list) -> None:
+        """A relay event list (``MicomEvent``s), read signal by signal."""
+        events = sorted(events, key=lambda e: e.time)
+        if not events:
+            return
+        for name, timeline in signal_timelines(events).items():
+            self.timelines.setdefault(name, []).extend(timeline)
+            self.timelines[name].sort()
+        self._widen(events[0].time, events[-1].time)
+        self.has_event_log = True
+
+    def add_manual_events(self, manual: list[dict[str, Any]]) -> None:
+        """Events transcribed from a screenshot. Each entry is a transition,
+        so a signal's state before its first entry is the opposite of it."""
+        if not manual:
+            return
+        times = [datetime.fromisoformat(e["time"]) for e in manual]
+        self._widen(min(times), max(times))
+        first = self.timeline_span[0]
+        for event, when in sorted(zip(manual, times), key=lambda p: p[1]):
+            timeline = self.timelines.setdefault(event["signal"], [])
+            if not timeline:
+                timeline.append((first, not bool(event["state"])))
+            timeline.append((when, bool(event["state"])))
+            self.transcribed.add(event["signal"])
+
+    def _widen(self, first: datetime, last: datetime) -> None:
+        if self.timeline_span:
+            first, last = min(first, self.timeline_span[0]), max(last, self.timeline_span[1])
+        self.timeline_span = (first, last)
+
 
 @dataclass
 class EpisodeResult:
@@ -92,13 +124,14 @@ class EpisodeResult:
 class CaseResult:
     title: str
     epoch: datetime
-    recorders: list[_Recorder]
+    recorders: list[Recorder]
     loads_a: dict[str, float]
     limits_a: dict[str, tuple[float, float]]
     episodes: list[EpisodeResult]
     notes: list[str] = field(default_factory=list)
     decisions: list[Decision] = field(default_factory=list)
     mapping_choice: str = ""
+    template: str = "diameter"
 
     def clock(self, seconds: float) -> str:
         return (self.epoch + timedelta(seconds=seconds)).strftime("%H:%M:%S.%f")[:-3]
@@ -131,6 +164,7 @@ class CaseResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "title": self.title,
+            "template": self.template,
             "epoch": self.epoch.isoformat(),
             "recorders": [{"id": r.id, "label": r.label, "offset_s": r.offset_s, "alignment": r.alignment}
                           for r in self.recorders],
@@ -139,8 +173,18 @@ class CaseResult:
             "mapping_choice": self.mapping_choice,
             "limits_a": {ct: list(v) for ct, v in self.limits_a.items()},
             "notes": self.notes,
-            "episodes": [{"start_s": e.start_s, "end_s": e.end_s, **e.estimate.to_dict()} for e in self.episodes],
+            "episodes": [self._episode_dict(e) for e in self.episodes],
+            "report_lines": self.report_lines(),
         }
+
+    def _episode_dict(self, episode: EpisodeResult) -> dict[str, Any]:
+        out = {"start_s": episode.start_s, "end_s": episode.end_s,
+               "start_clock": self.clock(episode.start_s), "end_clock": self.clock(episode.end_s),
+               **episode.estimate.to_dict()}
+        for interval in out["intervals"]:
+            interval["start_clock"] = self.clock(interval["start_s"])
+            interval["end_clock"] = self.clock(interval["end_s"])
+        return out
 
 
 # --- loading ------------------------------------------------------------------------
@@ -169,19 +213,19 @@ def _channel(rec: ComtradeRecord, name: str, analog: bool):
 _GENERIC_FOLDERS = {"DR", "DFR", "EVENTS", "EVENT", "COMTRADE", "SETTINGS", "PSL", "RECORDS"}
 
 
-def _folder_label(folder: str) -> str:
+def folder_label(folder: str) -> str:
     """A recorder's folder without the export subfolders ("…/DR", "…/Events")."""
     parts = [p for p in folder.replace("\\", "/").split("/") if p and p.upper() not in _GENERIC_FOLDERS]
     return " / ".join(p.strip(" _") for p in parts) or folder
 
 
-def _load_recorders(case: dict[str, Any], root: Path) -> list[_Recorder]:
+def _load_recorders(case: dict[str, Any], root: Path) -> list[Recorder]:
     recorders = []
     for spec in case["recorders"]:
         paths = list(spec.get("comtrade") or []) + list(spec.get("micom_evt") or [])
         folder = spec.get("folder") or (Path(paths[0]).parent.as_posix() if paths else spec["id"])
         files = tuple(Path(p).name for p in paths) + ((spec["screenshot"],) if spec.get("screenshot") else ())
-        rec = _Recorder(spec["id"], spec.get("label") or _folder_label(folder), folder, files, bool(spec.get("weak")))
+        rec = Recorder(spec["id"], spec.get("label") or folder_label(folder), folder, files, bool(spec.get("weak")))
         for rel in spec.get("comtrade") or []:
             parsed = parse_comtrade(str(root / rel))
             if parsed is None or not len(parsed.time):
@@ -190,31 +234,13 @@ def _load_recorders(case: dict[str, Any], root: Path) -> list[_Recorder]:
         events = []
         for rel in spec.get("micom_evt") or []:
             events.extend(parse_micom_evt(root / rel))
-        events.sort(key=lambda e: e.time)
-        if events:
-            rec.timelines = signal_timelines(events)
-            rec.timeline_span = (events[0].time, events[-1].time)
-            rec.has_event_log = True
-        manual = spec.get("manual_events") or []
-        if manual:
-            # Each transcribed entry is a transition, so a signal's state
-            # before its first entry is the opposite of that entry.
-            times = [datetime.fromisoformat(e["time"]) for e in manual]
-            first, last = min(times), max(times)
-            if rec.timeline_span:
-                first, last = min(first, rec.timeline_span[0]), max(last, rec.timeline_span[1])
-            rec.timeline_span = (first, last)
-            for event, when in sorted(zip(manual, times), key=lambda p: p[1]):
-                timeline = rec.timelines.setdefault(event["signal"], [])
-                if not timeline:
-                    timeline.append((first, not bool(event["state"])))
-                timeline.append((when, bool(event["state"])))
-                rec.transcribed.add(event["signal"])
+        rec.add_events(events)
+        rec.add_manual_events(spec.get("manual_events") or [])
         recorders.append(rec)
     return recorders
 
 
-def _sources(recorders: list[_Recorder], epoch: datetime) -> list[SourceRecorder]:
+def _sources(recorders: list[Recorder], epoch: datetime) -> list[SourceRecorder]:
     """Every three-phase current set of every recorder, for ``infer_mapping``."""
     sources = []
     for rec in recorders:
@@ -222,11 +248,17 @@ def _sources(recorders: list[_Recorder], epoch: datetime) -> list[SourceRecorder
         channels: dict[str, dict[str, str]] = {}
         voltages: dict[str, dict[str, str]] = {}
         ratings: dict[str, float] = {}
+        singles: dict[str, float] = {}
+        voltage_kv = 0.0
         for record in rec.comtrade:
             t = _record_time(epoch, record)
+            in_sets: set[str] = set()
             for key, chans in phase_sets(c.name for c in record.analog_channels).items():
+                in_sets.update(chans.values())
                 if key.startswith("V:"):
                     voltages.setdefault(key, chans)
+                    vt = [_channel(record, chans[p], analog=True) for p in "ABC"]
+                    voltage_kv = max([voltage_kv] + [v.ct_primary / 1000.0 for v in vt if v.ct_primary > 1000])
                     continue
                 analog = [_channel(record, chans[p], analog=True) for p in "ABC"]
                 current_sets.setdefault(key, []).append(CurrentTrace(
@@ -236,16 +268,22 @@ def _sources(recorders: list[_Recorder], epoch: datetime) -> list[SourceRecorder
                 primary = max((a.ct_primary for a in analog), default=0.0)
                 if primary > 10:
                     ratings[key] = primary
+            for ch in record.analog_channels:
+                name = ch.name.strip()
+                if name not in in_sets and ch.unit.upper() in ("A", "KA"):
+                    singles.setdefault(name, ch.ct_primary if ch.ct_primary > 10 else 0.0)
         signals = {c.name.strip() for record in rec.comtrade for c in record.status_channels} | set(rec.timelines)
         sources.append(SourceRecorder(
             id=rec.id, folder=rec.folder, files=rec.files,
             station_names=tuple(r.station_name for r in rec.comtrade),
             current_sets=current_sets, voltage_sets=voltages, current_channels=channels,
-            signals=tuple(sorted(signals)), has_event_log=rec.has_event_log, ratings=ratings))
+            signals=tuple(sorted(signals)), has_event_log=rec.has_event_log, ratings=ratings,
+            single_currents=tuple(singles), single_ratings={k: v for k, v in singles.items() if v},
+            voltage_kv=voltage_kv))
     return sources
 
 
-def _current_traces(case: dict[str, Any], recorders: dict[str, _Recorder], epoch: datetime) -> list[CurrentTrace]:
+def _current_traces(case: dict[str, Any], recorders: dict[str, Recorder], epoch: datetime) -> list[CurrentTrace]:
     traces = []
     for spec in case.get("currents") or []:
         rec = recorders[spec["recorder"]]
@@ -281,7 +319,7 @@ def _combine_edges(series: list[list[tuple[float, bool]]], combine) -> list[tupl
     return out
 
 
-def _signal_traces(case: dict[str, Any], recorders: dict[str, _Recorder], epoch: datetime) -> list[SignalTrace]:
+def _signal_traces(case: dict[str, Any], recorders: dict[str, Recorder], epoch: datetime) -> list[SignalTrace]:
     traces = []
     mappings = ([("breaker", m) for m in case.get("breakers") or []]
                 + [("zone", m) for m in case.get("zones") or []]
@@ -334,7 +372,7 @@ def _signal_traces(case: dict[str, Any], recorders: dict[str, _Recorder], epoch:
 
 # --- alignment ---------------------------------------------------------------------
 
-def _align(case: dict[str, Any], recorders: list[_Recorder], traces: list[CurrentTrace],
+def _align(case: dict[str, Any], recorders: list[Recorder], traces: list[CurrentTrace],
            signals: list[SignalTrace], limits: dict[str, tuple[float, float]]) -> None:
     by_id = {r.id: r for r in recorders}
     reference = case["reference_recorder"]
@@ -360,10 +398,10 @@ def _align(case: dict[str, Any], recorders: list[_Recorder], traces: list[Curren
         rec = by_id[sig.recorder]
         if sig.kind == "breaker" and (rec.id == reference or rec.id in own_onsets):
             aligned_edges.setdefault(sig.subject, []).extend(t + rec.offset_s for t, v in sig.edges[1:] if v)
-    align_on = case.get("align_breakers") or {}
-    for spec in case["recorders"]:
-        rec = by_id[spec["id"]]
-        breaker = spec.get("align_breaker") or align_on.get(rec.id)
+    align_on = dict(case.get("align_breakers") or {})
+    align_on.update({spec["id"]: spec["align_breaker"] for spec in case.get("recorders") or [] if spec.get("align_breaker")})
+    for rec in recorders:
+        breaker = align_on.get(rec.id)
         if not breaker or rec.id in own_onsets or rec.id == reference:
             continue
         reference_open = min(aligned_edges.get(breaker) or [float("nan")])
@@ -382,7 +420,7 @@ def _align(case: dict[str, Any], recorders: list[_Recorder], traces: list[Curren
 
 # --- the run ------------------------------------------------------------------------
 
-def _evaluate(case: dict[str, Any], recorders: list[_Recorder], epoch: datetime):
+def _evaluate(case: dict[str, Any], recorders: list[Recorder], epoch: datetime):
     """Observations and estimates for one complete mapping."""
     for rec in recorders:
         rec.offset_s, rec.alignment = 0.0, ""
@@ -420,23 +458,32 @@ def _score(results: list[EpisodeResult]) -> tuple[int, int, int]:
 
 def run_case(case: dict[str, Any], root: Path) -> CaseResult:
     case = copy.deepcopy(case)
-    recorders = _load_recorders(case, root)
+    return run_recorders(case, _load_recorders(case, root))
+
+
+def run_recorders(case: dict[str, Any], recorders: list[Recorder]) -> CaseResult:
+    """The estimate for recorders already loaded (from files, or from an
+    incident's stored records). ``case`` holds what is known about the bay;
+    whatever mapping it leaves out is inferred."""
+    if not any(r.comtrade for r in recorders):
+        raise ValueError("tidak ada rekaman COMTRADE: lokasi gangguan butuh setidaknya satu rekaman arus")
     decisions: list[Decision] = []
     alternatives: list[list[dict[str, Any]]] = []
     first_trigger = next(r.comtrade[0] for r in recorders if r.comtrade)
     if not case.get("currents"):
-        if "transformer" in case:
-            raise ValueError("pemetaan otomatis belum tersedia untuk bay trafo: tulis 'currents' di case")
         inferred: Mapping = infer_mapping(case, _sources(recorders, datetime.fromisoformat(first_trigger.trigger_time_iso)))
         decisions = inferred.decisions
         for key in _MAPPING_KEYS:
             if not case.get(key):
                 case[key] = getattr(inferred, key)
-        case.setdefault("diameter", inferred.diameter)
+        if "diameter" not in case and "transformer" not in case:
+            case[inferred.template] = inferred.spec
         case.setdefault("ct_ratings_a", inferred.ct_ratings_a)
         case.setdefault("reference_recorder", inferred.reference_recorder)
         case.setdefault("align_breakers", inferred.align_breakers)
         alternatives = inferred.alternatives
+    if not case.get("currents"):
+        raise ValueError("tidak ada arus yang bisa dipetakan ke CT bay ini")
     reference = next(r for r in recorders if r.id == case["reference_recorder"])
     epoch = datetime.fromisoformat(reference.comtrade[0].trigger_time_iso)
 
@@ -458,7 +505,9 @@ def run_case(case: dict[str, Any], root: Path) -> CaseResult:
         choice = (f"{len(evaluated)} kemungkinan pemetaan diuji; dipilih skor {scores[0]} "
                   f"vs berikutnya {scores[1]} (ditentukan oleh {decided_by}): {picked}")
     notes = [f"{r.label}: {r.alignment}" for r in recorders if r.alignment.startswith("tidak")]
-    return CaseResult(case.get("title") or "", epoch, recorders, loads, limits, results, notes, decisions, choice)
+    template = "transformer" if "transformer" in case else "diameter"
+    return CaseResult(case.get("title") or "", epoch, recorders, loads, limits, results, notes, decisions, choice,
+                      template=template)
 
 
 def main(argv: Optional[list[str]] = None) -> int:

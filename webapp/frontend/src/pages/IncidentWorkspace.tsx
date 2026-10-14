@@ -18,7 +18,9 @@ import {
   type ReconstructionOut,
   type RecordRelationshipOut,
 } from "../api/client";
+import { filesFromDrop } from "../api/uploadFiles";
 import BatchUploadPanel from "../components/incidents/BatchUploadPanel";
+import FaultSectionView from "../components/incidents/FaultSectionView";
 import { buildIncidentStory, isReconstructionStale, type IncidentStory } from "../components/incidents/incidentStory";
 import {
   CauseSection,
@@ -197,8 +199,10 @@ export default function IncidentWorkspace() {
     e.preventDefault();
     dragDepth.current = 0;
     setDragActive(false);
-    const files = Array.from(e.dataTransfer.files || []);
-    if (files.length > 0) openUpload(files);
+    // A dropped folder is walked so each record keeps the relay folder it came from.
+    void filesFromDrop(e.dataTransfer).then((files) => {
+      if (files.length > 0) openUpload(files);
+    });
   }
 
   function openDetails() {
@@ -283,6 +287,9 @@ export default function IncidentWorkspace() {
   if (!incident) return null;
 
   const hasRecords = incident.records.length > 0;
+  const includedAnalysisIds = incident.records
+    .filter((r) => r.inclusion_status === "INCLUDED")
+    .map((r) => r.analysis_id);
 
   return (
     <div
@@ -347,8 +354,8 @@ export default function IncidentWorkspace() {
           <section className={styles.emptyCard}>
             <h1 className={styles.emptyTitle}>Belum ada rekaman</h1>
             <p className={styles.muted}>
-              Tarik file COMTRADE dari kejadian ini ke mana saja di halaman, atau pilih filenya. Pasangan .cfg + .dat
-              dan file .cff bisa dicampur.
+              Tarik file atau satu folder COMTRADE dari kejadian ini ke mana saja di halaman, atau pilih filenya.
+              Pasangan .cfg + .dat dan file .cff bisa dicampur.
             </p>
             <button type="button" className={styles.primaryButton} onClick={() => openUpload()}>
               Pilih file
@@ -372,6 +379,14 @@ export default function IncidentWorkspace() {
                 : "Urutan kejadian belum bisa disusun. Lihat Detail teknis untuk rekaman dan riwayat rekonstruksi."}
             </p>
           </section>
+        )}
+
+        {multiComtradeEnabled && hasRecords && (
+          <FaultSectionView
+            key={incident.incident_id}
+            incidentId={incident.incident_id}
+            includedAnalysisIds={includedAnalysisIds}
+          />
         )}
 
         <section

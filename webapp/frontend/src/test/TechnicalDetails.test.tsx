@@ -109,6 +109,17 @@ describe("TechnicalDetails — Rekaman and Data insiden", () => {
     fireEvent.change(screen.getByLabelText("Bay"), { target: { value: "MJSNG2" } });
     fireEvent.change(screen.getByLabelText("Tegangan (kV)"), { target: { value: "150" } });
     fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
-    expect(props.onSave).toHaveBeenCalledWith(expect.objectContaining({ bay_name: "MJSNG2", voltage_level_kv: 150 }));
+    expect(props.onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ bay_name: "MJSNG2", voltage_level_kv: 150, asset_type: null }),
+    );
+  });
+
+  it("sets the bay type the fault location is tested against", async () => {
+    const props = renderDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Data insiden" }));
+
+    fireEvent.change(screen.getByLabelText("Jenis bay"), { target: { value: "TRANSFORMER" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
+    expect(props.onSave).toHaveBeenCalledWith(expect.objectContaining({ asset_type: "TRANSFORMER" }));
   });
 });

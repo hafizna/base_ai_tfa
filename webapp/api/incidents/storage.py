@@ -49,6 +49,7 @@ INCIDENTS_DIR.mkdir(parents=True, exist_ok=True)
 (INCIDENTS_DIR / "relationships").mkdir(parents=True, exist_ok=True)
 (INCIDENTS_DIR / "reconstructions").mkdir(parents=True, exist_ok=True)
 (INCIDENTS_DIR / "episodes").mkdir(parents=True, exist_ok=True)
+(INCIDENTS_DIR / "fault_sections").mkdir(parents=True, exist_ok=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 if DATABASE_URL.startswith("postgres://"):
@@ -207,6 +208,16 @@ def _list_json(kind: str) -> list[dict[str, Any]]:
     return out
 
 
+# --- Fault section estimate (latest per incident, always on the filesystem) ---
+
+def save_fault_section(incident_id: str, result: dict[str, Any]) -> None:
+    _write_json("fault_sections", incident_id, result)
+
+
+def get_fault_section(incident_id: str) -> Optional[dict[str, Any]]:
+    return _read_json("fault_sections", incident_id)
+
+
 # --- Incident CRUD ------------------------------------------------------------
 
 def create_incident(incident: Incident) -> Incident:
@@ -318,9 +329,15 @@ def delete_incident(incident_id: str) -> None:
 
 
 def purge_incident(incident_id: str) -> None:
-    """Hard-delete an incident and its child records/evidence/feedback."""
+    """Hard-delete an incident and its child records/evidence/feedback, with
+    the records' original files and event lists."""
+    from . import raw_store
+
     for rec in list_incident_records(incident_id):
         _delete_json("records", rec.incident_record_id)
+        raw_store.delete_record_files(rec.analysis_id)
+    raw_store.delete_event_files(incident_id)
+    _delete_json("fault_sections", incident_id)
     for ev in list_incident_evidence(incident_id):
         _delete_json("evidence", ev.evidence_id)
     for fb in list_incident_feedback(incident_id):

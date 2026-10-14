@@ -25,6 +25,8 @@ Thumbs.db
 # Runtime data not committed (used by the FastAPI history fallback)
 webapp/history.csv
 training-data/
+incidents-data/
+analysis-data/
 data/features/labeled_features_v2*
 models/candidates/
 data/training-runs/

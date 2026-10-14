@@ -71,14 +71,64 @@
   background: var(--brand-soft);
 }
 
-.grid {
+.main {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  width: 100%;
+  max-width: 1120px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.groupHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+
+.groupTitle {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.groupLead {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 22px;
   width: 100%;
-  max-width: 1120px;
+}
+
+.incidentCard {
+  min-height: 0;
+  border-color: var(--brand-line);
+}
+
+.incidentLabel {
+  font-size: 1.2rem;
+  line-height: 1.3;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.incidentSub {
+  max-width: 72ch;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
 .card {

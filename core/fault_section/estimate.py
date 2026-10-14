@@ -213,56 +213,79 @@ class Estimate:
                 + (f" [{obs.detail}]" if obs.detail else "") + f" — {obs.source}"
                 + (" (bukti lemah)" if obs.weak else ""))
 
-    def report_lines(self) -> list[str]:
-        lines = []
+    def summary(self) -> dict[str, Any]:
+        """What the report says, as data: the consistent locations (with any
+        weak evidence against them), notes that hold for all of them, what
+        the records settled, locations that need a stuck breaker, and each
+        rejected location with the observation that rules it out."""
         best = self.best()
-        strong = sum(1 for o in self.observations if not o.weak)
-        lines.append(f"{len(self.observations)} bukti ({strong} kuat) di {len(self.intervals)} interval, "
-                     f"{len(self.verdicts)} hipotesis diuji.")
-        if not best or best[0].rank[0] > 0:
-            lines.append("Tidak ada lokasi yang konsisten dengan semua bukti kuat; "
-                         "lokasi dengan kontradiksi paling sedikit:")
-        else:
-            lines.append("Lokasi yang konsisten dengan semua bukti kuat:")
-        sections = []
+        sections: list[str] = []
         for verdict in best:
             if verdict.hypothesis.section not in sections:
                 sections.append(verdict.hypothesis.section)
         shared = self.shared_weak_mismatches()
+        consistent = []
         for section in sections:
             group = [v for v in best if v.hypothesis.section == section]
             weak = group[0].contradictions(weak=True)
-            lines.append(f"  ✓ {self.label(group[0])}  ({len(group[0].agreements())} bukti cocok"
-                         + (f", {len(weak)} bukti lemah tidak cocok" if weak else "")
-                         + f"; {len(group)} varian topologi)")
-            for check in weak:
-                if check.observation not in shared:
-                    lines.append(f"      · {self.explain(check, group[0])}")
-        if shared:
-            lines.append("Catatan — tidak cocok dengan semua lokasi di atas, jadi bukan petunjuk lokasi:")
-            for obs in shared:
-                check = next(c for c in best[0].checks if c.observation == obs)
-                hint = ("arah terukur berlawanan: cek polaritas CT/VT atau konvensi forward rele ini"
-                        if obs.kind == DIRECTION and obs.detail.startswith("ΔV/ΔI")
-                        else "keputusan rele tidak sesuai arah arus gangguan" if obs.kind == DIRECTION
-                        else "periksa sumber bukti ini")
-                lines.append(f"  ! {self.explain(check, best[0])} → {hint}")
-        inferred = self.inferred_assumptions()
-        if inferred:
-            lines.append("Disimpulkan dari rekaman (berlaku untuk semua lokasi di atas):")
-            lines.extend(f"  • {text}" for text in inferred)
+            consistent.append({
+                "section": section, "label": self.label(group[0]), "agreements": len(group[0].agreements()),
+                "weak_mismatches": len(weak), "variants": len(group),
+                "weak_texts": [self.explain(c, group[0]) for c in weak if c.observation not in shared],
+            })
+        notes = []
+        for obs in shared:
+            check = next(c for c in best[0].checks if c.observation == obs)
+            hint = ("arah terukur berlawanan: cek polaritas CT/VT atau konvensi forward rele ini"
+                    if obs.kind == DIRECTION and obs.detail.startswith("ΔV/ΔI")
+                    else "keputusan rele tidak sesuai arah arus gangguan" if obs.kind == DIRECTION
+                    else "periksa sumber bukti ini")
+            notes.append({"text": self.explain(check, best[0]), "hint": hint})
         stuck_only = [v for v in self.per_section()
                       if v.hypothesis.section not in sections and v.hypothesis.stuck and v.rank[0] == 0]
-        if stuck_only:
-            lines.append("Hanya konsisten bila ada CB yang gagal membuka:")
-            lines.extend(f"  ? {self.label(v)}" for v in stuck_only)
         skip = set(sections) | {v.hypothesis.section for v in stuck_only}
-        lines.append("Ditolak:")
+        rejected = []
         for verdict in self.per_section(allow_stuck=False):
             if verdict.hypothesis.section in skip:
                 continue
             reasons = self._ordered(verdict.contradictions()) or self._ordered(verdict.contradictions(weak=True))
-            lines.append(f"  ✗ {self.label(verdict)} — {self.explain(reasons[0], verdict)}")
+            rejected.append({"section": verdict.hypothesis.section, "label": self.label(verdict),
+                             "reason": self.explain(reasons[0], verdict) if reasons else "",
+                             "weak_only": not verdict.contradictions()})
+        return {
+            "observations": len(self.observations),
+            "strong_observations": sum(1 for o in self.observations if not o.weak),
+            "hypotheses": len(self.verdicts),
+            "all_strong_consistent": bool(best) and best[0].rank[0] == 0,
+            "consistent": consistent,
+            "notes": notes,
+            "inferred": self.inferred_assumptions(),
+            "stuck_only": [self.label(v) for v in stuck_only],
+            "rejected": rejected,
+        }
+
+    def report_lines(self) -> list[str]:
+        s = self.summary()
+        lines = [f"{s['observations']} bukti ({s['strong_observations']} kuat) di {len(self.intervals)} interval, "
+                 f"{s['hypotheses']} hipotesis diuji."]
+        lines.append("Lokasi yang konsisten dengan semua bukti kuat:" if s["all_strong_consistent"] else
+                     "Tidak ada lokasi yang konsisten dengan semua bukti kuat; lokasi dengan kontradiksi paling sedikit:")
+        for c in s["consistent"]:
+            lines.append(f"  ✓ {c['label']}  ({c['agreements']} bukti cocok"
+                         + (f", {c['weak_mismatches']} bukti lemah tidak cocok" if c["weak_mismatches"] else "")
+                         + f"; {c['variants']} varian topologi)")
+            lines.extend(f"      · {text}" for text in c["weak_texts"])
+        if s["notes"]:
+            lines.append("Catatan — tidak cocok dengan semua lokasi di atas, jadi bukan petunjuk lokasi:")
+            lines.extend(f"  ! {n['text']} → {n['hint']}" for n in s["notes"])
+        if s["inferred"]:
+            lines.append("Disimpulkan dari rekaman (berlaku untuk semua lokasi di atas):")
+            lines.extend(f"  • {text}" for text in s["inferred"])
+        if s["stuck_only"]:
+            lines.append("Hanya konsisten bila ada CB yang gagal membuka:")
+            lines.extend(f"  ? {label}" for label in s["stuck_only"])
+        lines.append("Ditolak:")
+        lines.extend(f"  ✗ {r['label']} — {r['reason']}" for r in s["rejected"])
         return lines
 
     def _ordered(self, checks: list[Check]) -> list[Check]:
@@ -285,6 +308,7 @@ class Estimate:
             "best": [{"section": v.hypothesis.section, "label": self.label(v), "rank": list(v.rank),
                       "assumptions": list(self.topologies[v.hypothesis.variant].assumptions)} for v in self.best()],
             "inferred_assumptions": self.inferred_assumptions(),
+            "summary": self.summary(),
             "sections": [{"section": v.hypothesis.section, "label": self.label(v), "rank": list(v.rank),
                           "checks": [check_dict(c, v) for c in v.checks]} for v in self.per_section()],
         }
