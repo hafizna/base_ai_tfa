@@ -69,3 +69,37 @@ def test_micom_vendor_ggio_tor_is_tier1_but_comm_failure_is_tier4():
     assert comm_step["mapping"]["ln"] == "GGIO_CF"
     assert comm_step["classification"]["tier"] == 4
     assert alarm_notifications
+
+
+def test_transformer_internal_fault_groups_87t_ref_master_trip_and_lockout():
+    result = process_scenario(_scenario("trafo-ibt-87t-ref-internal"))
+
+    incident = result["incidents"][0]
+    tier1_notifications = [item for item in result["notifications"] if item["tier"] == 1]
+    measurement_ids = {item["event_id"] for item in result["artifacts"]["ignored_measurements"]}
+
+    assert incident["asset_type"] == "transformer"
+    assert incident["title"] == "Gangguan Internal Trafo: 87T + REF"
+    assert len(tier1_notifications) == 1
+    assert tier1_notifications[0]["title"] == "GANGGUAN: 87T DIFFERENTIAL TRIP"
+    assert tier1_notifications[0]["event_ids"] == ["e301", "e302", "e303", "e304"]
+    assert "e307" in measurement_ids
+
+
+def test_transformer_ocr_pickup_is_context_then_backup_trip_notifies():
+    result = process_scenario(_scenario("trafo-ibt-ocr-gfr-backup"))
+
+    incident = result["incidents"][0]
+    pickup_step = next(
+        step
+        for step in result["trace"]
+        if step["raw_event"] and step["raw_event"]["signal_ref"] == "TR_OCR_PICKUP"
+    )
+    tier1_notifications = [item for item in result["notifications"] if item["tier"] == 1]
+
+    assert incident["title"] == "Gangguan Backup Trafo: OCR/GFR"
+    assert pickup_step["classification"]["category"] == "ARTIFACT"
+    assert pickup_step["decision"] == "attached_artifact"
+    assert len(tier1_notifications) == 1
+    assert tier1_notifications[0]["title"] == "GANGGUAN: OCR 51 HV TRIP"
+    assert tier1_notifications[0]["event_ids"] == ["e402", "e403", "e404"]
