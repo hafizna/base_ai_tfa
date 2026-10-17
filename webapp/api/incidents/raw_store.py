@@ -56,13 +56,24 @@ def _record_dir(analysis_id: str) -> Path:
 
 
 def save_record_files(analysis_id: str, files: Iterable[tuple[str, bytes]]) -> Path:
-    """Keep a record's original files; ``files`` are (uploaded path, bytes)."""
+    """Keep a record's original files; ``files`` are (uploaded path, bytes).
+
+    Stored under short names ("record.cfg", "record.dat"): a DFR names its
+    files after the station, bay and maker ("240226,010033697,0,GI JEPARA,
+    TANJUNG JATI 1-2,Qualitrol LLC.cfg"), which can run past a path-length
+    limit. The manifest keeps the uploaded path."""
     target = _record_dir(analysis_id)
     target.mkdir(parents=True, exist_ok=True)
     entries = []
+    used: set[str] = set()
     for uploaded, data in files:
         rel = safe_relative_path(uploaded)
-        stored = PurePosixPath(rel).name
+        suffix = PurePosixPath(rel).suffix.lower()
+        stored, n = f"record{suffix}", 1
+        while stored in used:
+            n += 1
+            stored = f"record_{n}{suffix}"
+        used.add(stored)
         (target / stored).write_bytes(data)
         entries.append({"stored_name": stored, "uploaded_path": rel})
     (target / _MANIFEST).write_text(json.dumps({"analysis_id": analysis_id, "files": entries},

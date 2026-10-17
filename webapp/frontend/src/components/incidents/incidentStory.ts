@@ -19,6 +19,7 @@ import type {
   PhaseValues,
   PhysicalCauseRecordEntry,
   ProtectionOperation,
+  RecloseOutcomeSource,
   ReconstructionOut,
   TimeAxisPlacement,
 } from "../../api/client";
@@ -204,7 +205,17 @@ export interface RecordFacts {
   fctMs: number | null;
   clearingAxisMs: number | null;
   phases: string[];
-  reclose: { axisMs: number; abs: number | null; success: boolean | null } | null;
+  reclose: {
+    axisMs: number;
+    abs: number | null;
+    success: boolean | null;
+    /** From the waveform when the record has no breaker contacts. */
+    singlePole: boolean | null;
+    loadRestored: boolean | null;
+    deadTimeMs: number | null;
+  } | null;
+  /** Phases still open when the record ended (dead time outlasted the recording). */
+  openAtEnd: string[];
   electrical: ElectricalMeasurements;
   ops: ProtectionOperation[];
   selectedLine: string | null;
@@ -218,7 +229,9 @@ export interface RecordFacts {
  * MOJOSONGO,BRINGIN 1-2,Qualitrol LLC.cfg") goes by its leading date and time.
  */
 export function recordName(record: IncidentRecordOut): string {
-  const stem = (record.source_filename ?? "").split(/\.(?:cfg|dat|cff)\b/i)[0].trim();
+  // A record uploaded with its folder is stored as "CBF B/DR/rec.cfg+rec.dat": the name is the file's.
+  const path = (record.source_filename ?? "").split(/\.(?:cfg|dat|cff)\b/i)[0];
+  const stem = (path.split(/[\\/]/).pop() ?? path).trim();
   const comname = /^(\d{6},\d{6,9}),[+-]?\d/.exec(stem);
   return (comname ? comname[1] : stem) || record.analysis_id.slice(0, 8);
 }
@@ -255,8 +268,16 @@ export function readFacts(record: IncidentRecordOut, placement: TimeAxisPlacemen
     phases: ew?.faulted_phases ?? [],
     reclose:
       last && typeof last.time === "number"
-        ? { axisMs: last.time * 1000, abs: toAbs(last.time * 1000), success: last.success ?? null }
+        ? {
+            axisMs: last.time * 1000,
+            abs: toAbs(last.time * 1000),
+            success: last.success ?? null,
+            singlePole: typeof last.single_pole === "boolean" ? last.single_pole : null,
+            loadRestored: typeof last.load_restored === "boolean" ? last.load_restored : null,
+            deadTimeMs: typeof last.dead_time_ms === "number" ? last.dead_time_ms : null,
+          }
         : null,
+    openAtEnd: ew?.open_at_end_phases ?? [],
     electrical: snap.electrical_measurements ?? {},
     ops: Array.isArray(snap.protection_operations) ? snap.protection_operations : [],
     selectedLine: selected,
@@ -352,17 +373,20 @@ function afterRecloseBullet(facts: RecordFacts): string | null {
   return parts.length ? parts.join(", ") : null;
 }
 
-/** "Single-pole reclose" / "3-pole reclose" when the auto-reclose channel says which. */
+/** "Single-pole reclose" / "3-pole reclose" when the auto-reclose channel (or the waveform) says which. */
 function recloseMode(facts: RecordFacts): string | null {
   const names = facts.ops.filter((op) => op.role === "reclose").map((op) => op.name.toUpperCase());
   if (names.some((n) => /\b1P\b|1-?POLE|SINGLE/.test(n))) return "Single-pole reclose";
   if (names.some((n) => /\b3P\b|3-?POLE|THREE/.test(n))) return "3-pole reclose";
+  if (facts.reclose?.singlePole === true) return "Single-pole reclose";
+  if (facts.reclose?.singlePole === false) return "3-pole reclose";
   return null;
 }
 
 /** Dead time of a reclose captured inside the fault record itself (seconds). */
 function singleRecordDeadTimeS(facts: RecordFacts): number | null {
   if (!facts.reclose || facts.inceptionAxisMs === null) return null;
+  if (facts.reclose.deadTimeMs !== null) return facts.reclose.deadTimeMs / 1000;
   const t0 = facts.inceptionAxisMs;
   const breakerOpened = facts.ops
     .filter((op) => op.role === "breaker")
@@ -424,6 +448,10 @@ interface EpisodeView {
   trip: TripReading | null;
   deadTimeS: number | null;
   refaultAfterS: number | null;
+  /** Set when the outcome was read from another recorder because this end did not record the reclose. */
+  recloseSource: RecloseOutcomeSource | null;
+  /** This end's phases still open when its record ended. */
+  openAtEnd: string[];
 }
 
 function strengthOf(confidence: number | null): string {
@@ -529,6 +557,12 @@ function episodeOtherRecorders(episode: FaultEpisodeOut): EpisodeOtherRecorder[]
   return Array.isArray(value) ? (value as EpisodeOtherRecorder[]) : [];
 }
 
+/** `observed_facts.reclose_outcome_source` (absent when this end recorded its own reclose). */
+function recloseSourceOf(episode: FaultEpisodeOut): RecloseOutcomeSource | null {
+  const value = (episode.observed_facts as { reclose_outcome_source?: unknown }).reclose_outcome_source;
+  return value && typeof value === "object" ? (value as RecloseOutcomeSource) : null;
+}
+
 function buildEpisodeViews(reconstruction: ReconstructionOut, factsById: Map<string, RecordFacts>): EpisodeView[] {
   const episodes = [...(reconstruction.episodes ?? [])].sort((a, b) => a.episode_index - b.episode_index);
   const relationships = reconstruction.relationships ?? [];
@@ -541,7 +575,12 @@ function buildEpisodeViews(reconstruction: ReconstructionOut, factsById: Map<str
     const own = members.filter((f) => !otherIds.has(f.record.incident_record_id));
     const fault = own.find((f) => f.inceptionAxisMs !== null && f.eventClass !== "RECLOSE_CAPTURE") ?? own[0] ?? null;
     const capture = own.find((f) => f.eventClass === "RECLOSE_CAPTURE") ?? null;
-    const reclose = capture ?? (fault?.reclose ? fault : null);
+    // When this end's record stopped inside the dead time, the reclose is the
+    // one another recorder saw (the far end, or a second device here).
+    const recloseSource = recloseSourceOf(episode);
+    const sourceRecord = recloseSource?.record_id ? (factsById.get(recloseSource.record_id) ?? null) : null;
+    const reclose = capture ?? (fault?.reclose ? fault : null) ?? sourceRecord;
+    const openAtEnd = [...new Set(own.flatMap((f) => f.openAtEnd))];
     const facts = episode.observed_facts as Record<string, number | undefined>;
     const relDeadTime = relationships.find(
       (r) =>
@@ -550,7 +589,10 @@ function buildEpisodeViews(reconstruction: ReconstructionOut, factsById: Map<str
         !otherIds.has(r.left_record_id),
     )?.metrics?.dead_time_s as number | undefined;
     const deadTimeS =
-      facts.reclose_dead_time_s ?? relDeadTime ?? (reclose && reclose === fault ? singleRecordDeadTimeS(fault) : null);
+      facts.reclose_dead_time_s ??
+      relDeadTime ??
+      (reclose && reclose === fault ? singleRecordDeadTimeS(fault) : null) ??
+      (reclose && reclose === sourceRecord ? (recloseSource?.dead_time_s ?? null) : null);
     return {
       episode,
       number: i + 1,
@@ -561,6 +603,8 @@ function buildEpisodeViews(reconstruction: ReconstructionOut, factsById: Map<str
       trip: fault ? readTrip(fault) : null,
       deadTimeS: deadTimeS ?? null,
       refaultAfterS: facts.seconds_after_previous_reclose ?? null,
+      recloseSource: capture || fault?.reclose ? null : recloseSource,
+      openAtEnd,
     };
   });
 }
@@ -574,6 +618,11 @@ function lineName(incident: IncidentOut, views: EpisodeView[], records: RecordFa
     records[0]?.station ||
     "—"
   );
+}
+
+/** Where a reclose this end did not record was seen: "ujung GI TANJUNGJATI". */
+function sourceWhere(source: RecloseOutcomeSource): string {
+  return source.same_station ? "perekam lain di GI ini" : `ujung ${source.station || "lain"}`;
 }
 
 function buildNarrative(line: string, views: EpisodeView[]): string {
@@ -592,18 +641,27 @@ function buildNarrative(line: string, views: EpisodeView[]): string {
     } else {
       clause = `lalu terjadi gangguan baru di fasa ${phases}`;
     }
+    const seenAt = view.recloseSource ? ` (terlihat di ${sourceWhere(view.recloseSource)})` : "";
     if (view.episode.reclose_outcome === "successful") {
       const after = view.deadTimeS !== null ? ` setelah ${formatNumber(view.deadTimeS)} detik` : "";
-      clause += `, berhasil reclose${after}`;
+      clause += `, berhasil reclose${after}${seenAt}`;
     } else if (view.episode.reclose_outcome === "failed") {
-      clause += ", reclose gagal";
+      clause += `, reclose gagal${seenAt}`;
     }
     sentences.push(clause);
   });
   let text = `${sentences.join(", ")}.`;
-  const last = views[views.length - 1].episode.reclose_outcome;
-  if (last === null) text += " Tidak ada reclose berikutnya yang terekam.";
-  else if (last === "successful") text += " Reclose bertahan sampai akhir rekaman.";
+  const lastView = views[views.length - 1];
+  const last = lastView.episode.reclose_outcome;
+  if (last === null) {
+    text += lastView.openAtEnd.length
+      ? " Rekaman berakhir saat dead time, jadi hasil reclose belum terlihat."
+      : " Tidak ada reclose berikutnya yang terekam.";
+  } else if (last === "successful") {
+    text += lastView.recloseSource
+      ? ` Reclose bertahan sampai akhir rekaman ${sourceWhere(lastView.recloseSource)}.`
+      : " Reclose bertahan sampai akhir rekaman.";
+  }
   return text;
 }
 
@@ -672,21 +730,36 @@ function buildSequence(views: EpisodeView[]): SequenceEntry[] {
 
     if (view.reclose) {
       const success = episode.reclose_outcome !== "failed";
+      const source = view.recloseSource;
       if (view.deadTimeS !== null) {
         entries.push({
           type: "connector",
-          connector: { kind: "dead_time", label: `Dead time ${formatNumber(view.deadTimeS)} s`, detail: "CB open" },
+          connector: {
+            kind: "dead_time",
+            label: `Dead time ${formatNumber(view.deadTimeS)} s`,
+            detail: source && !source.same_station ? `CB open · ${sourceWhere(source)}` : "CB open",
+          },
         });
       }
       const recloseBullets: string[] = [];
       const sameRecord = view.reclose === fault;
       const mode = recloseMode(view.reclose);
       if (mode) recloseBullets.push(mode);
+      if (source) {
+        recloseBullets.push(`Terlihat di rekaman ${sourceWhere(source)}`);
+        if (view.openAtEnd.length) {
+          recloseBullets.push(`Rekaman ujung ini berakhir saat PMT fasa ${poleLabel(view.openAtEnd)} masih terbuka`);
+        }
+      }
       const power = afterRecloseBullet(view.reclose);
       if (power) recloseBullets.push(power);
+      if (view.reclose.reclose?.loadRestored === false) {
+        recloseBullets.push("Tegangan line kembali; arus beban belum terlihat sampai akhir rekaman");
+      }
       recloseBullets.push(success ? "No fault current" : "Gangguan masih ada saat CB menutup");
       for (const other of view.others) {
         if (other.same_station || !other.reclose_outcome) continue;
+        if (source && other.recorder === source.recorder) continue; // already the card's own reading
         const after = other.reclose_dead_time_s !== null ? ` setelah dead time ${formatNumber(other.reclose_dead_time_s)} s` : "";
         recloseBullets.push(`Ujung ${other.station}: reclose ${other.reclose_outcome === "successful" ? "berhasil" : "gagal"}${after}`);
       }
@@ -710,13 +783,25 @@ function buildSequence(views: EpisodeView[]): SequenceEntry[] {
   });
 
   if (views.length > 0) {
-    const last = views[views.length - 1].episode.reclose_outcome;
+    const lastView = views[views.length - 1];
+    const last = lastView.episode.reclose_outcome;
     const [headline, note] =
       last === "successful"
-        ? ["Line kembali beroperasi", "Reclose bertahan sampai akhir rekaman."]
+        ? [
+            "Line kembali beroperasi",
+            lastView.recloseSource
+              ? `Reclose bertahan sampai akhir rekaman ${sourceWhere(lastView.recloseSource)}.`
+              : "Reclose bertahan sampai akhir rekaman.",
+          ]
         : last === "failed"
           ? ["Reclose gagal — line trip lagi", "Kemungkinan gangguan permanen. Pastikan dengan log gardu."]
-          : ["Tidak ada reclose berikutnya terekam", "Kemungkinan lockout. Pastikan dengan log gardu."];
+          : lastView.openAtEnd.length
+            ? [
+                "Hasil reclose tidak terekam",
+                `Rekaman berakhir saat PMT fasa ${poleLabel(lastView.openAtEnd)} masih terbuka (dead time belum ` +
+                  "selesai), bukan lockout. Tambahkan rekaman berikutnya atau rekaman ujung lain.",
+              ]
+            : ["Tidak ada reclose berikutnya terekam", "Kemungkinan lockout. Pastikan dengan log gardu."];
     entries.push({
       type: "card",
       card: { kind: "after", title: "Sesudahnya", time: null, headline, bullets: [note], recordId: null, recordName: null, emphasis: false },
@@ -977,7 +1062,9 @@ export function buildIncidentStory(incident: IncidentOut, reconstruction: Recons
           ? "Final state: line in service"
           : last.episode.reclose_outcome === "failed"
             ? "Final state: trip after failed reclose"
-            : "Final state: trip — no further reclose",
+            : last.openAtEnd.length
+              ? "Final state: not recorded — record ended in dead time"
+              : "Final state: trip — no further reclose",
       tone: "neutral",
     });
   }
@@ -998,7 +1085,13 @@ export function buildIncidentStory(incident: IncidentOut, reconstruction: Recons
   const signal = (reconstruction.incident_hypotheses ?? [])
     .filter((h) => PATTERNS[h.hypothesis])
     .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
-  const station = records.find((r) => r.station)?.station ?? incident.station_name;
+  // The clock the story's times are read on: the time axis's reference
+  // recorder, not whichever record happens to start first.
+  const referenceGroup = reconstruction.alignment?.time_axis?.reference_group ?? null;
+  const station =
+    records.find((r) => r.station && referenceGroup !== null && r.placement?.clock_group === referenceGroup)?.station ??
+    records.find((r) => r.station)?.station ??
+    incident.station_name;
 
   return {
     chips,

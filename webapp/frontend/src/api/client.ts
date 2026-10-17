@@ -197,7 +197,15 @@ export interface CanonicalEventWindow {
     cb_open_verified?: boolean;
     dead_time_ms?: number | null;
     source?: string;
+    /** Read from the waveform: the phases whose pole opened, whether only they did. */
+    phases?: string[];
+    single_pole?: boolean;
+    /** False when only the line voltage came back (the far end may have closed first). */
+    load_restored?: boolean;
+    command_time?: number;
   }>;
+  /** Phases still open when the record ended: the dead time outlasted the recording. */
+  open_at_end_phases?: string[];
   warnings: string[];
   sequence?: RecordSequence;
 }
@@ -1560,7 +1568,23 @@ export interface EpisodeOtherRecorder {
   fault_start_difference_ms: number | null;
   reclose_outcome: "successful" | "failed" | null;
   reclose_dead_time_s: number | null;
+  reclose_record_id?: string | null;
+  open_at_end_phases?: string[];
   clock: { method: TimeAxisPlacement["method"] | null; zone_offset_h: number | null; clock_offset_ms: number | null };
+}
+
+/**
+ * Whose reclose an episode's outcome is when its own end did not record one
+ * (`observed_facts.reclose_outcome_source`): its record ended inside the dead
+ * time, say, and the far end's record shows the line coming back.
+ */
+export interface RecloseOutcomeSource {
+  recorder: string;
+  station: string;
+  same_station: boolean;
+  record_id: string | null;
+  dead_time_s: number | null;
+  reason: "this_end_open_at_end" | "not_recorded_at_this_end";
 }
 
 export interface PhysicalCauseRecordEntry {

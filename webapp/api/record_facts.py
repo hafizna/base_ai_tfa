@@ -142,7 +142,7 @@ _PHASE_TOKENS = {"A": "A", "B": "B", "C": "C", "R": "A", "S": "B", "T": "C", "L1
 
 
 def _tokens(name: str) -> list[str]:
-    upper = re.sub(r"\bA\s*/\s*R\b", "AR", (name or "").upper())
+    upper = re.sub(r"\bA\s*[./\\-]\s*R\b", "AR", (name or "").upper())
     upper = re.sub(r"\bZONE\s+([1-5])\b", r"ZONE\1", upper)
     return [t for t in re.split(r"[^A-Z0-9]+", upper) if t]
 

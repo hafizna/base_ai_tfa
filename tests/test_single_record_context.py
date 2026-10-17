@@ -65,12 +65,37 @@ def test_one_record_preserves_two_episodes_and_sotf_after_reclose():
     assert any("SOTF/TOR" in e["text"] for e in result["evidence"])
 
 
-def test_reclose_command_without_a_contact_return_does_not_confirm_closure():
-    payload = full_reclose_refault_payload()
+def _command_only(payload):
     payload["status_channels"] = [ch for ch in payload["status_channels"] if ch["name"] in {"DIST Trip B", "A/R Close"}]
+    return payload
+
+
+def test_reclose_command_without_a_close_does_not_confirm_closure():
+    """An AR close command is not a closed breaker: with no contact coming
+    back and phase B still dead after the command, nothing confirms a close."""
+    payload = _command_only(full_reclose_refault_payload())
+    time = np.asarray(payload["time"])
+    for ch in payload["analog_channels"]:
+        if ch["phase"] == "B":
+            ch["samples"] = np.where(time >= 1.6, 0.0, ch["samples"]).tolist()
     window = build_event_window(payload)
     assert not window.sequence.get("mechanical_close_confirmed")
     assert not window.sequence.get("sotf_after_reclose")
+    assert window.open_at_end_phases == ["B"]
+
+
+def test_current_through_the_pole_again_confirms_the_close_without_contacts():
+    """The same command, and phase B carrying current again after its 1 s dead
+    time: the pole closed — onto the fault. A record without breaker contacts
+    (an external DFR) shows a single-pole reclose this way."""
+    window = build_event_window(_command_only(full_reclose_refault_payload()))
+    assert window.sequence["mechanical_close_confirmed"] is True
+    assert window.sequence["restoration_outcome"] == "failed"
+    close = window.reclose_events[-1]
+    assert close["source"] == "waveform_phase" and close["phases"] == ["B"] and close["single_pole"] is True
+    assert close["success"] is False
+    assert abs(close["command_time"] - 1.5) < 0.01
+    assert 950 < close["dead_time_ms"] < 1100
 
 
 def test_sotf_enable_is_not_a_sotf_trip():

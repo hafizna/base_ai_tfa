@@ -95,6 +95,8 @@ def _reclose_row(row: dict[str, Any], episode: FaultEpisode, records_by_id: dict
     if outcome is None:
         row = copy.deepcopy(row)
         row["title"] = row["title"].replace("reclose tidak terekam di rekaman ini", "tidak ada reclose yang terekam di insiden ini")
+        if facts.get("open_at_end_phases"):
+            row["title"] += "; reclose tidak terekam di rekaman lain insiden ini"
         return row
     other_ids = {rid for o in facts.get("other_recorders") or [] for rid in o["member_record_ids"]}
     capture = next(
@@ -105,13 +107,25 @@ def _reclose_row(row: dict[str, Any], episode: FaultEpisode, records_by_id: dict
     )
     row = copy.deepcopy(row)
     mode = row["title"].split(";")[0].split(", reclose")[0]
+    source = facts.get("reclose_outcome_source") or {}
     dead = facts.get("reclose_dead_time_s")
+    if dead is None and capture is None:
+        dead = source.get("dead_time_s")
     after = f" setelah {_num(dead)} s" if isinstance(dead, (int, float)) else ""
-    where = f" (rekaman {_name(capture)})" if capture is not None else ""
+    where = (f" (rekaman {_name(capture)})" if capture is not None
+             else f" (terlihat di {source['station']})" if source.get("station") else "")
     row["title"] = f"{mode}, reclose {'berhasil' if outcome == 'successful' else 'gagal'}{after}{where}"
     if capture is not None:
         row["evidence"] = [
             f"Reclose terekam di {_name(capture)}: rekaman dimulai saat PMT terbuka dan menangkap PMT menutup."
+        ] + row["evidence"]
+    elif source:
+        open_phases = facts.get("open_at_end_phases") or []
+        lead = (f"Rekaman GI ini berakhir saat PMT fasa {_phases_text(open_phases).replace('-N', '')} masih terbuka"
+                if open_phases else "Rekaman GI ini tidak menangkap reclose")
+        row["evidence"] = [
+            f"{lead}; reclose dibaca dari rekaman {source.get('station') or 'perekam lain'}"
+            + (" (GI yang sama)." if source.get("same_station") else " (ujung lain line).")
         ] + row["evidence"]
     row["rules"] = sorted(set(row["rules"]) | {"F6.4", "F6.5"}, key=_rule_order)
     return row

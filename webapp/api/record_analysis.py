@@ -222,6 +222,9 @@ def build_record_analysis(analysis_id: str, payload: dict) -> RecordAnalysis:
         "faulted_phases": event_window.faulted_phases if event_window else [],
         "reclose_attempted": bool(event_window.reclose_events) if event_window else False,
         "reclose_events": event_window.reclose_events if event_window else [],
+        # The record ended with these phases still open (dead time running):
+        # it cannot show the reclose, which is not the same as a lockout.
+        "open_at_end_phases": event_window.open_at_end_phases if event_window else [],
         "sequence": event_window.sequence if event_window else {},
     }
 

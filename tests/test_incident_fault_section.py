@@ -84,6 +84,23 @@ def test_folder_upload_pairs_same_named_records_per_folder_and_keeps_event_lists
     assert all(raw_store.has_record_files(r.analysis_id) for r in result.records_created)
 
 
+def test_original_files_are_kept_under_short_names(stores):
+    """A DFR names its files after station, bay and maker; with the folder
+    path that can run past a path-length limit, so the stored copy is short."""
+    from webapp.api.incidents import raw_store
+    from webapp.api.incidents.batch_upload import run_batch_upload
+
+    incident = stores.create_incident(title="long names")
+    cfg, dat = synthetic_cfg_dat_bytes()
+    long = "Eksternal sisi jepara/240226,010033697,0,GI JEPARA,TANJUNG JATI 1-2,Qualitrol LLC"
+    created = run_batch_upload(incident.incident_id, [_file(f"{long}.cfg", cfg), _file(f"{long}.dat", dat)])
+    analysis_id = created.records_created[0].analysis_id
+
+    assert sorted(p.name for p in raw_store._record_dir(analysis_id).iterdir()) == ["manifest.json", "record.cfg", "record.dat"]
+    assert raw_store.uploaded_paths(analysis_id) == [f"{long}.cfg", f"{long}.dat"]
+    assert raw_store.parse_record(analysis_id).total_samples > 0
+
+
 def test_detaching_the_last_holder_drops_the_original_files(stores):
     from webapp.api.incidents import raw_store
     from webapp.api.incidents.batch_upload import run_batch_upload
@@ -126,6 +143,21 @@ def test_fault_section_without_records_is_a_clear_422(stores):
     with pytest.raises(stores.IncidentServiceError) as exc_info:
         stores.run_fault_section(incident.incident_id)
     assert exc_info.value.status_code == 422
+
+
+def test_line_records_from_two_substations_say_why_there_is_no_bay_location(stores):
+    from webapp.api.incidents.batch_upload import run_batch_upload
+
+    incident = stores.create_incident(title="line")
+    for station in ("GI JEPARA", "GI TANJUNGJATI"):
+        cfg, dat = synthetic_cfg_dat_bytes(station_name=station, rec_dev_id=f"DFR {station}")
+        run_batch_upload(incident.incident_id, [_file(f"{station}/x.cfg", cfg), _file(f"{station}/x.dat", dat)],
+                         override_warnings=True)
+    with pytest.raises(stores.IncidentServiceError) as exc_info:
+        stores.run_fault_section(incident.incident_id)
+    assert exc_info.value.status_code == 422
+    message = str(exc_info.value)
+    assert "rekaman line dari GI JEPARA dan GI TANJUNGJATI" in message and "Double Ended FL" in message
 
 
 def test_the_bay_type_can_go_back_to_automatic(stores):

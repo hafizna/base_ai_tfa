@@ -43,6 +43,8 @@ class EventWindow:
     confidence: float                # 0-1
     faulted_phases: list[str] = field(default_factory=list)
     reclose_events: list[dict] = field(default_factory=list)
+    # Phases still open when the record ended: the dead time outlasted it.
+    open_at_end_phases: list[str] = field(default_factory=list)
     fault_episodes: list[dict] = field(default_factory=list)
     sequence: dict = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
@@ -66,6 +68,7 @@ class EventWindow:
             "confidence": self.confidence,
             "faulted_phases": self.faulted_phases,
             "reclose_events": self.reclose_events,
+            "open_at_end_phases": self.open_at_end_phases,
             "fault_episodes": self.fault_episodes,
             "sequence": self.sequence,
             "warnings": self.warnings,
@@ -214,6 +217,7 @@ def build_event_window(payload: dict) -> EventWindow:
         confidence=float(fault.confidence),
         faulted_phases=_normalize_fault_phase_list(fault.faulted_phases),
         reclose_events=list(fault.reclose_events or []),
+        open_at_end_phases=list(getattr(fault, "open_at_end_phases", None) or []),
         warnings=warnings,
     )
     if result.method != "dead_time_recording" and result.inception_time_ms is not None:

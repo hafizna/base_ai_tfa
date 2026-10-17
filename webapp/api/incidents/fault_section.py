@@ -26,7 +26,8 @@ from typing import Any, Optional
 import numpy as np
 
 from core.comtrade_parser import AnalogChannel, ComtradeRecord, StatusChannel
-from core.fault_section.case import Recorder, folder_label, run_recorders
+from core.fault_section.case import NoBayCurrents, Recorder, folder_label, run_recorders
+from core.fault_section.mapping import station_key
 from core.micom_evt_parser import parse_micom_evt
 
 from ..storage import load_analysis
@@ -127,6 +128,26 @@ def _case(incident: Incident) -> dict[str, Any]:
     return {"title": title, "station": incident.station_name or "", "asset_type": incident.asset_type}
 
 
+def _not_a_bay(records: list[IncidentRecord]) -> str:
+    """Why no CT of a bay was found, in the reader's terms."""
+    stations: dict[str, str] = {}
+    for record in records:
+        name = (record.station_name or "").strip()
+        if name:
+            stations.setdefault(station_key(name), name)
+    if len(stations) >= 2:
+        return (
+            f"Rekaman insiden ini adalah rekaman line dari {' dan '.join(stations.values())}: arusnya terbaca, "
+            "tetapi tidak ada rele-rele di dalam satu bay untuk dibandingkan. Lokasi gangguan per bagian bay butuh "
+            "beberapa rele di satu bay (CCP, CBF, diff diameter; atau diff, REF, OCR trafo). Untuk letak gangguan "
+            "di sepanjang line (km), pakai Double Ended FL dengan rekaman kedua ujung ini."
+        )
+    return (
+        "Arus di rekaman ini tidak dikenali sebagai CT sebuah bay (CCP, CBF, diff diameter; atau diff, REF, OCR "
+        "trafo). Lokasi gangguan per bagian bay butuh rekaman beberapa rele di dalam bay itu."
+    )
+
+
 def run_fault_section(incident: Incident, records: list[IncidentRecord]) -> dict[str, Any]:
     included = [r for r in records if r.inclusion_status == "INCLUDED"]
     if not included:
@@ -134,6 +155,8 @@ def run_fault_section(incident: Incident, records: list[IncidentRecord]) -> dict
     recorders, warnings = build_recorders(incident.incident_id, included)
     try:
         result = run_recorders(_case(incident), recorders)
+    except NoBayCurrents as exc:
+        raise FaultSectionError(_not_a_bay(included)) from exc
     except ValueError as exc:
         raise FaultSectionError(str(exc)) from exc
     out = result.to_dict()

@@ -10,6 +10,7 @@ import {
 } from "../components/incidents/incidentStory";
 import bringinRaw from "./fixtures/incident_bringin.json";
 import cibatuRaw from "./fixtures/incident_cibatu.json";
+import tjatiJeparaRaw from "./fixtures/incident_tjati_jepara_open_at_end.json";
 import twoEndedRaw from "./fixtures/incident_two_ended.json";
 
 // Real API responses (incident + reconstruction) built from the field records:
@@ -20,6 +21,7 @@ type Fixture = { incident: IncidentOut; reconstruction: ReconstructionOut };
 const bringin = bringinRaw as unknown as Fixture;
 const cibatu = cibatuRaw as unknown as Fixture;
 const twoEnded = twoEndedRaw as unknown as Fixture;
+const tjatiJepara = tjatiJeparaRaw as unknown as Fixture;
 
 function cards(sequence: SequenceEntry[]) {
   return sequence.flatMap((e) => (e.type === "card" ? [e.card] : []));
@@ -197,6 +199,54 @@ describe("incident story — Cibatu teleprotection-aided trip", () => {
     expect(story.cause.ai[0].note).toBeUndefined();
     expect(story.cause.footnote).toContain("searah");
     expect(story.checklist.map((c) => c.id)).toEqual(["lds", "remote-z1", "two-ended", "bay"]);
+  });
+});
+
+describe("incident story — Jepara record ends in the dead time, Tanjungjati sees the reclose", () => {
+  // Tanjungjati–Jepara #1, 26 Feb 2024: R-N fault, single-pole trip at both
+  // ends. The Jepara DFR stops 0.8 s in, with pole R still open; the
+  // Tanjungjati DFR (no breaker contacts) shows pole R closing ~1.0 s later and
+  // the load current coming back.
+  const story = buildIncidentStory(tjatiJepara.incident, tjatiJepara.reconstruction);
+
+  it("reads the reclose from the far end, and says so", () => {
+    expect(story.headline).toBe("Gangguan sementara, reclose berhasil");
+    expect(story.chips.map((c) => c.label)).toEqual(["Reclose successful", "Final state: line in service"]);
+    expect(story.narrative).toBe(
+      "Line TJ JATI 1 trip karena gangguan fasa R-N, berhasil reclose setelah 1,0 detik (terlihat di ujung GI " +
+        "TANJUNGJATI). Reclose bertahan sampai akhir rekaman ujung GI TANJUNGJATI.",
+    );
+    expect(story.tiles.find((t) => t.label === "Dead time")?.value).toBe("1,0 s");
+    expect(story.sequenceMeta).toBe("Dari 2 rekaman · waktu menurut jam DFR GI JEPARA");
+  });
+
+  it("shows the far end's reclose card and this end's open pole", () => {
+    const [, reclose, after] = cards(story.sequence);
+    expect(reclose).toMatchObject({ title: "Reclose successful", headline: "Line bertegangan kembali", recordName: "ZQF" });
+    expect(reclose.bullets).toEqual([
+      "Single-pole reclose",
+      "Terlihat di rekaman ujung GI TANJUNGJATI",
+      "Rekaman ujung ini berakhir saat PMT fasa R masih terbuka",
+      "No fault current",
+    ]);
+    expect(after).toMatchObject({ headline: "Line kembali beroperasi", bullets: ["Reclose bertahan sampai akhir rekaman ujung GI TANJUNGJATI."] });
+    expect(connectors(story.sequence)).toEqual([
+      { kind: "dead_time", label: "Dead time 1,0 s", detail: "CB open · ujung GI TANJUNGJATI" },
+    ]);
+  });
+
+  it("does not call a record that stopped in the dead time a lockout", () => {
+    const reconstruction = structuredClone(tjatiJepara.reconstruction);
+    for (const episode of reconstruction.episodes ?? []) {
+      episode.reclose_outcome = null;
+      delete (episode.observed_facts as Record<string, unknown>).reclose_outcome_source;
+    }
+    const alone = buildIncidentStory(tjatiJepara.incident, reconstruction);
+    expect(alone.chips.map((c) => c.label)).toEqual(["Final state: not recorded — record ended in dead time"]);
+    expect(alone.narrative).toContain("Rekaman berakhir saat dead time, jadi hasil reclose belum terlihat.");
+    const after = cards(alone.sequence).at(-1);
+    expect(after?.headline).toBe("Hasil reclose tidak terekam");
+    expect(after?.bullets[0]).toContain("PMT fasa R masih terbuka (dead time belum selesai), bukan lockout");
   });
 });
 
