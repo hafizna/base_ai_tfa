@@ -199,6 +199,18 @@ describe("IncidentWorkspace", () => {
     expect(screen.getByRole("button", { name: "Hitung ulang" })).toBeInTheDocument();
   });
 
+  it("explains, without an error, why line records have no bay location", async () => {
+    mockApi();
+    const detail = "Rekaman insiden ini adalah rekaman line dari GI JEPARA dan GI TANJUNGJATI: arusnya terbaca.";
+    vi.spyOn(client, "runFaultSection").mockRejectedValue({ response: { status: 422, data: { detail } } });
+
+    renderWorkspace(bringin.incident.incident_id);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Hitung lokasi gangguan" }));
+    expect(await screen.findByText(detail)).toBeInTheDocument();
+    expect(screen.getByText(detail)).toHaveAttribute("role", "status");
+  });
+
   it("shows the stored fault location and asks for a new run once the records changed", async () => {
     mockApi({ storedFaultSection: faultSection(["an-old"]) });
 

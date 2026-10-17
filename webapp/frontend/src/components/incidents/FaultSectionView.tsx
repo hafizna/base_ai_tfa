@@ -43,6 +43,8 @@ export default function FaultSectionView({ incidentId, includedAnalysisIds }: Pr
   const [loaded, setLoaded] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Why this incident's records cannot be placed on a bay (a 422): an answer, not a failure.
+  const [note, setNote] = useState<string | null>(null);
 
   // The page mounts one view per incident (keyed by its id), so the state starts empty for each.
   useEffect(() => {
@@ -65,10 +67,13 @@ export default function FaultSectionView({ incidentId, includedAnalysisIds }: Pr
   async function handleRun() {
     setRunning(true);
     setError(null);
+    setNote(null);
     try {
       setResult(await runFaultSection(incidentId));
     } catch (err) {
-      setError(errorText(err, "Lokasi gangguan gagal dihitung."));
+      const text = errorText(err, "Lokasi gangguan gagal dihitung.");
+      if ((err as { response?: { status?: number } })?.response?.status === 422) setNote(text);
+      else setError(text);
     } finally {
       setRunning(false);
     }
@@ -103,13 +108,18 @@ export default function FaultSectionView({ incidentId, includedAnalysisIds }: Pr
 
       {running && <p className={styles.meta}>Rekaman dibaca ulang dari file aslinya; biasanya butuh beberapa detik.</p>}
       {error && <div className={styles.error}>{error}</div>}
+      {note && (
+        <div className={styles.note} role="status">
+          {note}
+        </div>
+      )}
       {stale && !running && (
         <div className={styles.warning}>
           Rekaman insiden berubah sejak lokasi ini dihitung. Hitung ulang supaya semua rekaman ikut diuji.
         </div>
       )}
 
-      {loaded && !result && !running && !error && (
+      {loaded && !result && !running && !error && !note && (
         <p className={styles.meta}>
           Belum dihitung. Paling berguna bila rekaman beberapa rele di satu bay sudah lengkap (misalnya CCP, diff, CBF
           di satu diameter, atau diff/REF/OCR di satu trafo).

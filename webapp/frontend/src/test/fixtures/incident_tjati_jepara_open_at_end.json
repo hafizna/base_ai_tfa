@@ -1,0 +1,5494 @@
+{
+ "incident": {
+  "incident_id": "dbec19546f2c48d295ee7e228361c729",
+  "title": "tjati_jpr_20240226",
+  "status": "DRAFT",
+  "station_name": null,
+  "bay_name": null,
+  "asset_id": null,
+  "asset_name": null,
+  "asset_type": null,
+  "voltage_level_kv": null,
+  "protection_family": null,
+  "incident_start_iso": "2024-02-26T01:00:33.897554",
+  "incident_end_iso": "2024-02-26T01:00:33.897554",
+  "clock_assessment": "UNKNOWN",
+  "clock_assessment_reason": null,
+  "record_ids": [
+   "4d9e1457cd864e34ad777a2a6ef6d558",
+   "1d82c63060154d5484a1223ed5791900"
+  ],
+  "evidence_ids": [],
+  "observed_summary": {
+   "record_count": 2,
+   "records_with_absolute_time": 2,
+   "records_without_absolute_time": 0,
+   "protection_types": [],
+   "faulted_phase_sets": [
+    [
+     "A"
+    ],
+    [
+     "A"
+    ]
+   ],
+   "reclose_outcomes": [
+    null,
+    "successful"
+   ],
+   "cause_hypotheses_per_record": [
+    {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    },
+    {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "top_hypothesis": null,
+     "confidence": null,
+     "scope": "RECORD_LOCAL_SIGNATURE"
+    }
+   ]
+  },
+  "incident_interpretation": {
+   "summary": "Multiple records are attached. Automated inter-record reconstruction has not yet been performed.",
+   "scope": "INCIDENT_RECORD_COLLECTION_SUMMARY"
+  },
+  "incident_hypotheses": [],
+  "missing_evidence": [
+   {
+    "type": "BAY_NAME_UNDETERMINED",
+    "description": "Bay name has not been set for this incident."
+   },
+   {
+    "type": "REMOTE_END_UNAVAILABLE",
+    "description": "No remote-end record is attached."
+   }
+  ],
+  "operator_notes": null,
+  "created_at": "2026-10-15T06:44:11.440318+00:00",
+  "updated_at": "2026-10-15T06:44:22.101857+00:00",
+  "schema_version": "stage2",
+  "records": [
+   {
+    "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+    "source_filename": "jepara/240226,010033697,0,GI JEPARA,TANJUNG JATI 1-2,Qualitrol LLC.cfg+240226,010033697,0,GI JEPARA,TANJUNG JATI 1-2,Qualitrol LLC.dat",
+    "station_name": "GI JEPARA",
+    "bay_name": null,
+    "relay_id": "TANJUNG JATI 1-2",
+    "relay_model": null,
+    "protection_type": null,
+    "record_start_iso": "2024-02-26T01:00:33.697554",
+    "trigger_time_iso": "2024-02-26T01:00:33.897554",
+    "trigger_offset_s": 0.2,
+    "sequence_index": 0,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "source_metadata": {
+      "duration_s": 0.800273,
+      "station_name": "GI JEPARA",
+      "rec_dev_id": "TANJUNG JATI 1-2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 20488,
+      "trigger_time_s": 0.2,
+      "start_time_iso": "2024-02-26T01:00:33.697554",
+      "trigger_time_iso": "2024-02-26T01:00:33.897554",
+      "trigger_offset_s": 0.2,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 11,
+      "status_channel_count": 48,
+      "parser_warnings": [],
+      "timing_warnings": [],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 200.0,
+      "inception_idx": 4412,
+      "inception_time_ms": 172.34374582767487,
+      "clearing_idx": 6985,
+      "clearing_time_ms": 272.8515565395355,
+      "fault_duration_ms": 78.47656309604645,
+      "method": "status_waveform_aligned",
+      "timing_source": "status_waveform_aligned",
+      "confidence": 0.9,
+      "faulted_phases": [
+       "A"
+      ],
+      "reclose_events": [],
+      "open_at_end_phases": [
+       "A"
+      ],
+      "fault_episodes": [
+       {
+        "episode_index": 0,
+        "inception_time_ms": 172.34374582767487,
+        "clearing_time_ms": 272.8515565395355,
+        "fault_duration_ms": 78.47656309604645,
+        "faulted_phases": [
+         "A"
+        ],
+        "detection_method": "status_waveform_aligned",
+        "confidence": 0.9,
+        "reclose_events": []
+       }
+      ],
+      "sequence": {
+       "episode_count": 1,
+       "mechanical_close_confirmed": false,
+       "restoration_outcome": "unknown",
+       "refault_after_reclose": false,
+       "refault_evidence": null,
+       "sotf_after_reclose": false,
+       "reclose_times_ms": [],
+       "sotf_trips": [],
+       "timeline": [
+        {
+         "kind": "fault_inception",
+         "time_ms": 172.34374582767487,
+         "episode_index": 0
+        },
+        {
+         "kind": "fault_cleared",
+         "time_ms": 272.8515565395355,
+         "episode_index": 0
+        }
+       ],
+       "interpretation": "FAULT_EVENT"
+      },
+      "warnings": []
+     },
+     "fault_episodes": [
+      {
+       "episode_index": 0,
+       "inception_time_ms": 172.34374582767487,
+       "clearing_time_ms": 272.8515565395355,
+       "fault_duration_ms": 78.47656309604645,
+       "faulted_phases": [
+        "A"
+       ],
+       "detection_method": "status_waveform_aligned",
+       "confidence": 0.9,
+       "reclose_events": []
+      }
+     ],
+     "protection_operations": [
+      {
+       "name": "F21 TRIP TJ JATI 1",
+       "role": "trip",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        194.375
+       ],
+       "off_ms": [
+        272.852
+       ]
+      },
+      {
+       "name": "AR IN PROGRESS TJ JATI 1",
+       "role": "reclose",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        202.383
+       ],
+       "off_ms": []
+      },
+      {
+       "name": "DIST SEND TJ JATI 1",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        229.883
+       ],
+       "off_ms": [
+        326.875
+       ]
+      },
+      {
+       "name": "CB OPEN R TJ JATI 1",
+       "role": "breaker",
+       "zone": null,
+       "phase": "A",
+       "initially_on": false,
+       "on_ms": [
+        230.352
+       ],
+       "off_ms": []
+      },
+      {
+       "name": "AR NOT READY TJ JATI 1",
+       "role": "reclose",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        238.867
+       ],
+       "off_ms": []
+      },
+      {
+       "name": "DIST RECEIVE TJ JATI 1",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        239.883
+       ],
+       "off_ms": [
+        334.375
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "prefault": {
+       "current_rms": {
+        "A": 360.511,
+        "B": 366.876,
+        "C": 358.639
+       },
+       "voltage_rms": {
+        "A": 86.252,
+        "B": 87.323,
+        "C": 85.384
+       }
+      },
+      "fault": {
+       "current_peak": {
+        "A": 9889.358,
+        "B": 1319.887,
+        "C": 687.907
+       },
+       "current_rms_max": {
+        "A": 5870.089,
+        "B": 742.432,
+        "C": 450.326
+       },
+       "voltage_rms_min": {
+        "A": 8.948,
+        "B": 84.365,
+        "C": 83.239
+       }
+      },
+      "after_clearing": {
+       "current_rms": {
+        "A": 5.255,
+        "B": 334.234,
+        "C": 359.865
+       },
+       "voltage_rms": {
+        "A": 13.654,
+        "B": 87.193,
+        "C": 85.524
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 360.7,
+        "B": 366.4,
+        "C": 358.5
+       },
+       "nominal_voltage": {
+        "A": 86.301,
+        "B": 87.323,
+        "C": 85.336
+       },
+       "none_threshold": 36.1,
+       "high_threshold": 1082.0
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 180.0,
+         "current_rms": 360.8,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 190.0,
+         "end_ms": 250.0,
+         "current_rms": 4626.2,
+         "voltage_pu": 0.402
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 260.0,
+         "end_ms": 300.0,
+         "current_rms": 1.0,
+         "voltage_pu": 0.153
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 310.0,
+         "end_ms": 330.0,
+         "current_rms": 0.9,
+         "voltage_pu": 0.142
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 340.0,
+         "end_ms": 800.0,
+         "current_rms": 1.1,
+         "voltage_pu": 0.199
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 800.0,
+         "current_rms": 337.8,
+         "voltage_pu": 1.0
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 20.0,
+         "end_ms": 800.0,
+         "current_rms": 360.4,
+         "voltage_pu": 1.003
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 172.4,
+        "phase": "A",
+        "kind": "disturbance_start",
+        "value": 5846.2
+       },
+       {
+        "t_ms": 240.2,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 5846.2
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 172.4,
+       "fault_clearing_ms": 240.2,
+       "fct_ms": 67.8,
+       "high_current_phases": [
+        "A"
+       ],
+       "sagged_phases": [
+        "A"
+       ],
+       "ceased": {
+        "A": 240.2
+       },
+       "zero_current_pattern": "single_phase",
+       "zero_spans": [
+        {
+         "phase": "A",
+         "start_ms": 240.2,
+         "end_ms": null
+        }
+       ],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 172.4,
+         "end_ms": 250.0,
+         "high_current_phases": [
+          "A"
+         ],
+         "sagged_phases": [
+          "A"
+         ],
+         "ceased": {
+          "A": 240.2
+         },
+         "back_to_load": {},
+         "clearing_ms": 240.2
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": true,
+      "fault_start_ms": 172.34374582767487,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dengan proteksi bekerja",
+        "evidence": [
+         "Arus R naik ke 9,9 kA puncak (prefault 361 A rms).",
+         "Tegangan R turun ke 0,39 pu.",
+         "Proteksi operate: F21 TRIP TJ JATI 1 +22,1 ms."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": true,
+         "protection_operated": true
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "R-N, satu fasa ke tanah",
+        "evidence": [
+         "Tegangan R 0,39 pu; S 0,98 dan T 0,99 pu.",
+         "Loop R-N 3,4 Ω; loop lain ≥ 16 Ω. I0/I1 1,05."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "A"
+         ],
+         "ground": true,
+         "label": "R-N",
+         "voltage_pu": {
+          "A": 0.392,
+          "B": 0.985,
+          "C": 0.987
+         },
+         "loops_ohm": {
+          "AB": 19.688,
+          "BC": 209.117,
+          "CA": 24.122,
+          "AN": 3.423,
+          "BN": 18.258,
+          "CN": 15.698
+         },
+         "i0_i1": 1.054,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": false,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "68 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Trip +22,1 ms → arus R nol ±68 ms → CB OPEN R TJ JATI 1 +58,1 ms.",
+         "Waktu interupsi PMT 46 ms (wajar 30–80 ms)."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.3",
+         "F3.4",
+         "F3.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "fct_ms": 67.8,
+         "clearing_ms": 67.9,
+         "trip_ms": 22.1,
+         "interruption_ms": 45.8,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Trip, elemen yang men-trip tidak terekam",
+        "evidence": [
+         "Trip +22,1 ms.",
+         "Tidak ada kanal zona yang aktif sebelum trip."
+        ],
+        "rules": [
+         "F5.1"
+        ],
+        "confidence": "low",
+        "value": {
+         "kind": "trip_without_zone",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "excluded_earth_pilot_channels": [],
+         "receive_at_trip": null,
+         "send_active": null,
+         "sotf_active": null,
+         "trip_zones": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Mode trip tidak terekam; rekaman berakhir saat PMT R masih terbuka (dead time belum selesai)",
+        "evidence": [
+         "AR IN PROGRESS TJ JATI 1 +30,1 ms.",
+         "AR NOT READY TJ JATI 1 +66,6 ms.",
+         "CB OPEN R TJ JATI 1 +58,1 ms.",
+         "Fasa R tetap mati sampai akhir rekaman: hasil reclose ada di rekaman berikutnya atau rekaman ujung lain."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": null,
+         "poles": [],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null,
+         "sequence": {
+          "episode_count": 1,
+          "mechanical_close_confirmed": false,
+          "restoration_outcome": "unknown",
+          "refault_after_reclose": false,
+          "refault_evidence": null,
+          "sotf_after_reclose": false,
+          "reclose_times_ms": [],
+          "sotf_trips": [],
+          "timeline": [
+           {
+            "kind": "fault_inception",
+            "time_ms": 172.34374582767487,
+            "episode_index": 0
+           },
+           {
+            "kind": "fault_cleared",
+            "time_ms": 272.8515565395355,
+            "episode_index": 0
+           }
+          ],
+          "interpretation": "FAULT_EVENT"
+         }
+        },
+        "conflicts": []
+       },
+       {
+        "key": "flag_breaker_contact",
+        "step": 9,
+        "label": "Ditandai",
+        "title": "Kontak bantu PMT berubah sebelum arus padam",
+        "evidence": [
+         "CB OPEN R TJ JATI 1 +58,1 ms, arus baru padam ±68 ms.",
+         "Kontak bantu seharusnya berubah setelah PMT memutus arus; cek pemetaan kanal."
+        ],
+        "rules": [
+         "F3.4"
+        ],
+        "confidence": "flag",
+        "value": {},
+        "conflicts": []
+       }
+      ],
+      "flag_count": 1,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "fault_start",
+       "events": [
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 22.1,
+         "channel": "F21 TRIP TJ JATI 1",
+         "role": "Trip",
+         "change": "Aktif: trip"
+        },
+        {
+         "t_ms": 30.1,
+         "channel": "AR IN PROGRESS TJ JATI 1",
+         "role": "Reclose",
+         "change": "Aktif"
+        },
+        {
+         "t_ms": 57.6,
+         "channel": "DIST SEND TJ JATI 1",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal dikirim"
+        },
+        {
+         "t_ms": 58.1,
+         "channel": "CB OPEN R TJ JATI 1",
+         "role": "PMT",
+         "change": "Aktif (pole R)"
+        },
+        {
+         "t_ms": 66.6,
+         "channel": "AR NOT READY TJ JATI 1",
+         "role": "Reclose",
+         "change": "Aktif"
+        },
+        {
+         "t_ms": 67.6,
+         "channel": "DIST RECEIVE TJ JATI 1",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal diterima"
+        },
+        {
+         "t_ms": 67.9,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 100.6,
+         "channel": "F21 TRIP TJ JATI 1",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 154.6,
+         "channel": "DIST SEND TJ JATI 1",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 162.1,
+         "channel": "DIST RECEIVE TJ JATI 1",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        }
+       ],
+       "silent": [
+        {
+         "channel": "F5051 TRIP TJ JATI 1",
+         "role": "Trip"
+        },
+        {
+         "channel": "CB NOT READY TJ JATI 1",
+         "role": "PMT"
+        },
+        {
+         "channel": "CB OPEN S TJ JATI 1",
+         "role": "PMT"
+        },
+        {
+         "channel": "CB OPEN T TJ JATI 1",
+         "role": "PMT"
+        },
+        {
+         "channel": "AR CLOSE TJ JATI 1",
+         "role": "Reclose"
+        },
+        {
+         "channel": "CB POLEDISCREPANCY TJ JATI 1",
+         "role": "PMT"
+        },
+        {
+         "channel": "TP FAIL TJ JATI 1",
+         "role": null
+        },
+        {
+         "channel": "DEF TRIP TJ JATI 1",
+         "role": "Trip"
+        },
+        {
+         "channel": "VT FAIL TJ JATI 1",
+         "role": null
+        },
+        {
+         "channel": "BAR TJ JATI 1",
+         "role": null
+        },
+        {
+         "channel": "Digital_17",
+         "role": null
+        },
+        {
+         "channel": "Digital_18",
+         "role": null
+        },
+        {
+         "channel": "Digital_19",
+         "role": null
+        },
+        {
+         "channel": "Digital_20",
+         "role": null
+        },
+        {
+         "channel": "Digital_21",
+         "role": "Proteksi"
+        },
+        {
+         "channel": "Digital_22",
+         "role": null
+        },
+        {
+         "channel": "Digital_23",
+         "role": null
+        },
+        {
+         "channel": "Digital_24",
+         "role": null
+        },
+        {
+         "channel": "Digital_25",
+         "role": null
+        },
+        {
+         "channel": "Digital_26",
+         "role": null
+        },
+        {
+         "channel": "Digital_27",
+         "role": null
+        },
+        {
+         "channel": "Digital_28",
+         "role": null
+        },
+        {
+         "channel": "Digital_29",
+         "role": null
+        },
+        {
+         "channel": "Digital_30",
+         "role": null
+        },
+        {
+         "channel": "Digital_31",
+         "role": null
+        },
+        {
+         "channel": "Digital_32",
+         "role": null
+        },
+        {
+         "channel": "Digital_49",
+         "role": null
+        },
+        {
+         "channel": "Digital_50",
+         "role": "Proteksi"
+        },
+        {
+         "channel": "Digital_51",
+         "role": "Proteksi"
+        },
+        {
+         "channel": "Digital_52",
+         "role": null
+        },
+        {
+         "channel": "Digital_53",
+         "role": null
+        },
+        {
+         "channel": "Digital_54",
+         "role": null
+        },
+        {
+         "channel": "Digital_55",
+         "role": null
+        },
+        {
+         "channel": "Digital_56",
+         "role": null
+        },
+        {
+         "channel": "Digital_57",
+         "role": null
+        },
+        {
+         "channel": "Digital_58",
+         "role": null
+        },
+        {
+         "channel": "Digital_59",
+         "role": null
+        },
+        {
+         "channel": "Digital_60",
+         "role": null
+        },
+        {
+         "channel": "Digital_61",
+         "role": null
+        },
+        {
+         "channel": "Digital_62",
+         "role": null
+        },
+        {
+         "channel": "Digital_63",
+         "role": null
+        },
+        {
+         "channel": "Digital_64",
+         "role": null
+        }
+       ],
+       "channel_count": 48
+      }
+     },
+     "observed_facts": {
+      "faulted_phases": [
+       "A"
+      ],
+      "reclose_attempted": false,
+      "reclose_events": [],
+      "open_at_end_phases": [
+       "A"
+      ],
+      "sequence": {
+       "episode_count": 1,
+       "mechanical_close_confirmed": false,
+       "restoration_outcome": "unknown",
+       "refault_after_reclose": false,
+       "refault_evidence": null,
+       "sotf_after_reclose": false,
+       "reclose_times_ms": [],
+       "sotf_trips": [],
+       "timeline": [
+        {
+         "kind": "fault_inception",
+         "time_ms": 172.34374582767487,
+         "episode_index": 0
+        },
+        {
+         "kind": "fault_cleared",
+         "time_ms": 272.8515565395355,
+         "episode_index": 0
+        }
+       ],
+       "interpretation": "FAULT_EVENT"
+      }
+     },
+     "protection_interpretation": {
+      "event_class": "FAULT_EVENT",
+      "summary": "Fault detected from available waveform/status evidence."
+     },
+     "event_context": {
+      "scope": "recorded_interval_only",
+      "restoration_outcome": "unknown",
+      "mechanical_close_confirmed": false,
+      "refault_after_reclose": false,
+      "sotf_after_reclose": false,
+      "episode_count": 1,
+      "timing_confidence": 0.9,
+      "outcome_is_physical_cause": false,
+      "summary": "Hasil pemulihan belum dapat ditentukan dari rekaman ini."
+     },
+     "episode_signatures": {
+      "schema_version": "episode_signatures_v1",
+      "episodes": [
+       {
+        "episode_index": 0,
+        "inception_time_ms": 172.34374582767487,
+        "clearing_time_ms": 272.8515565395355,
+        "faulted_phases": [
+         "A"
+        ],
+        "after_reclose": false,
+        "reference": "first_episode_prefault",
+        "sample_rate_hz": 25599.414,
+        "nyquist_hz": 12799.707,
+        "channels": [
+         {
+          "id": "VR TJ JATI 1",
+          "phase": "A",
+          "name": "VA",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 104.187088,
+          "rms": 31.115189,
+          "prefault_rms": 86.292055,
+          "cycles": [
+           {
+            "rms": 39.354051,
+            "dc_mean": 5.700607,
+            "fundamental_rms": 37.184216,
+            "fit_residual_ratio": 0.293683
+           },
+           {
+            "rms": 34.415443,
+            "dc_mean": 0.509115,
+            "fundamental_rms": 34.395276,
+            "fit_residual_ratio": 0.030868
+           },
+           {
+            "rms": 35.264605,
+            "dc_mean": -0.985127,
+            "fundamental_rms": 35.222078,
+            "fit_residual_ratio": 0.040374
+           },
+           {
+            "rms": 25.94644,
+            "dc_mean": 3.643481,
+            "fundamental_rms": 14.742096,
+            "fit_residual_ratio": 0.810779
+           },
+           {
+            "rms": 14.70889,
+            "dc_mean": 1.581357,
+            "fundamental_rms": 14.569703,
+            "fit_residual_ratio": 0.073043
+           }
+          ]
+         },
+         {
+          "id": "VS  TJ JATI 1",
+          "phase": "B",
+          "name": "VB",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 123.969376,
+          "rms": 85.382232,
+          "prefault_rms": 87.269893,
+          "cycles": [
+           {
+            "rms": 87.15129,
+            "dc_mean": -0.160421,
+            "fundamental_rms": 87.115916,
+            "fit_residual_ratio": 0.02843
+           },
+           {
+            "rms": 85.632103,
+            "dc_mean": -0.144003,
+            "fundamental_rms": 85.599996,
+            "fit_residual_ratio": 0.02733
+           },
+           {
+            "rms": 84.949728,
+            "dc_mean": -0.325647,
+            "fundamental_rms": 84.90907,
+            "fit_residual_ratio": 0.030697
+           },
+           {
+            "rms": 84.393447,
+            "dc_mean": 0.06168,
+            "fundamental_rms": 84.431214,
+            "fit_residual_ratio": 0.031726
+           },
+           {
+            "rms": 85.921527,
+            "dc_mean": 0.252184,
+            "fundamental_rms": 85.804893,
+            "fit_residual_ratio": 0.028241
+           }
+          ]
+         },
+         {
+          "id": "VT  TJ JATI 1",
+          "phase": "C",
+          "name": "VC",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 121.073418,
+          "rms": 84.300447,
+          "prefault_rms": 85.396831,
+          "cycles": [
+           {
+            "rms": 84.494753,
+            "dc_mean": -0.222709,
+            "fundamental_rms": 84.477755,
+            "fit_residual_ratio": 0.019884
+           },
+           {
+            "rms": 84.332098,
+            "dc_mean": -0.062943,
+            "fundamental_rms": 84.317578,
+            "fit_residual_ratio": 0.018541
+           },
+           {
+            "rms": 83.811598,
+            "dc_mean": 0.158452,
+            "fundamental_rms": 83.793608,
+            "fit_residual_ratio": 0.020632
+           },
+           {
+            "rms": 83.706858,
+            "dc_mean": 0.575589,
+            "fundamental_rms": 83.663103,
+            "fit_residual_ratio": 0.022363
+           },
+           {
+            "rms": 84.609481,
+            "dc_mean": 0.304776,
+            "fundamental_rms": 84.623999,
+            "fit_residual_ratio": 0.016603
+           }
+          ]
+         },
+         {
+          "id": "Channel 4",
+          "phase": null,
+          "name": "Channel 4",
+          "measurement": "voltage",
+          "unit": "mV",
+          "peak_abs": 217.941299,
+          "rms": 60.40746,
+          "prefault_rms": 42.714277,
+          "cycles": [
+           {
+            "rms": 72.049541,
+            "dc_mean": 37.765235,
+            "fundamental_rms": 49.685005,
+            "fit_residual_ratio": 0.499719
+           },
+           {
+            "rms": 65.999663,
+            "dc_mean": 30.780917,
+            "fundamental_rms": 56.988253,
+            "fit_residual_ratio": 0.19215
+           },
+           {
+            "rms": 65.519192,
+            "dc_mean": 30.953707,
+            "fundamental_rms": 56.726202,
+            "fit_residual_ratio": 0.164929
+           },
+           {
+            "rms": 50.921214,
+            "dc_mean": 30.897249,
+            "fundamental_rms": 21.402019,
+            "fit_residual_ratio": 0.67546
+           },
+           {
+            "rms": 42.580331,
+            "dc_mean": 36.686041,
+            "fundamental_rms": 7.757134,
+            "fit_residual_ratio": 0.474704
+           }
+          ]
+         },
+         {
+          "id": "IR  TJ JATI 1",
+          "phase": "A",
+          "name": "IA",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 9889.357567,
+          "rms": 4269.165556,
+          "prefault_rms": 360.659897,
+          "cycles": [
+           {
+            "rms": 4982.255123,
+            "dc_mean": 2391.680536,
+            "fundamental_rms": 4342.700798,
+            "fit_residual_ratio": 0.09908
+           },
+           {
+            "rms": 4643.319464,
+            "dc_mean": 634.298119,
+            "fundamental_rms": 4598.01798,
+            "fit_residual_ratio": 0.027506
+           },
+           {
+            "rms": 4696.241739,
+            "dc_mean": 11.641712,
+            "fundamental_rms": 4685.625121,
+            "fit_residual_ratio": 0.067157
+           },
+           {
+            "rms": 4810.79115,
+            "dc_mean": -2845.251834,
+            "fundamental_rms": 3332.778117,
+            "fit_residual_ratio": 0.411925
+           },
+           {
+            "rms": 18.492716,
+            "dc_mean": -17.803343,
+            "fundamental_rms": 0.982274,
+            "fit_residual_ratio": 0.265051
+           }
+          ]
+         },
+         {
+          "id": "IS  TJ JATI 1",
+          "phase": "B",
+          "name": "IB",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 1319.886565,
+          "rms": 465.092545,
+          "prefault_rms": 366.813984,
+          "cycles": [
+           {
+            "rms": 316.111405,
+            "dc_mean": -2.546251,
+            "fundamental_rms": 314.792548,
+            "fit_residual_ratio": 0.090895
+           },
+           {
+            "rms": 379.826341,
+            "dc_mean": 55.103269,
+            "fundamental_rms": 375.247078,
+            "fit_residual_ratio": 0.05404
+           },
+           {
+            "rms": 385.402668,
+            "dc_mean": 59.603306,
+            "fundamental_rms": 370.102912,
+            "fit_residual_ratio": 0.23217
+           },
+           {
+            "rms": 752.194458,
+            "dc_mean": 123.67078,
+            "fundamental_rms": 705.891359,
+            "fit_residual_ratio": 0.306069
+           },
+           {
+            "rms": 357.558595,
+            "dc_mean": -104.500383,
+            "fundamental_rms": 340.876992,
+            "fit_residual_ratio": 0.065325
+           }
+          ]
+         },
+         {
+          "id": "IT  TJ JATI 1",
+          "phase": "C",
+          "name": "IC",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 687.906677,
+          "rms": 407.071696,
+          "prefault_rms": 358.726169,
+          "cycles": [
+           {
+            "rms": 368.510428,
+            "dc_mean": 26.192176,
+            "fundamental_rms": 367.073557,
+            "fit_residual_ratio": 0.052262
+           },
+           {
+            "rms": 404.710371,
+            "dc_mean": 61.90576,
+            "fundamental_rms": 399.339512,
+            "fit_residual_ratio": 0.054479
+           },
+           {
+            "rms": 425.129441,
+            "dc_mean": 32.168778,
+            "fundamental_rms": 423.631252,
+            "fit_residual_ratio": 0.036195
+           },
+           {
+            "rms": 434.395915,
+            "dc_mean": 42.735019,
+            "fundamental_rms": 431.69079,
+            "fit_residual_ratio": 0.055613
+           },
+           {
+            "rms": 399.101832,
+            "dc_mean": -23.378503,
+            "fundamental_rms": 398.281767,
+            "fit_residual_ratio": 0.028939
+           }
+          ]
+         },
+         {
+          "id": "IN  TJ JATI 1",
+          "phase": "N",
+          "name": "IN",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 9094.389915,
+          "rms": 4251.04021,
+          "prefault_rms": 14.996356,
+          "cycles": [
+           {
+            "rms": 5068.030868,
+            "dc_mean": -2394.732635,
+            "fundamental_rms": 4442.312904,
+            "fit_residual_ratio": 0.091714
+           },
+           {
+            "rms": 4747.931088,
+            "dc_mean": -741.42657,
+            "fundamental_rms": 4687.346446,
+            "fit_residual_ratio": 0.031182
+           },
+           {
+            "rms": 4795.639709,
+            "dc_mean": -98.285379,
+            "fundamental_rms": 4788.711614,
+            "fit_residual_ratio": 0.049671
+           },
+           {
+            "rms": 4409.958393,
+            "dc_mean": 2645.249191,
+            "fundamental_rms": 3072.672643,
+            "fit_residual_ratio": 0.392078
+           },
+           {
+            "rms": 363.451615,
+            "dc_mean": 133.769027,
+            "fundamental_rms": 337.538302,
+            "fit_residual_ratio": 0.074339
+           }
+          ]
+         },
+         {
+          "id": "Channel 13",
+          "phase": null,
+          "name": "Channel 13",
+          "measurement": "voltage",
+          "unit": "mV",
+          "peak_abs": 116.399391,
+          "rms": 42.645034,
+          "prefault_rms": 15.023544,
+          "cycles": [
+           {
+            "rms": 47.074243,
+            "dc_mean": -4.934311,
+            "fundamental_rms": 37.520907,
+            "fit_residual_ratio": 0.594736
+           },
+           {
+            "rms": 54.280379,
+            "dc_mean": -14.564992,
+            "fundamental_rms": 50.252857,
+            "fit_residual_ratio": 0.266254
+           },
+           {
+            "rms": 48.183589,
+            "dc_mean": -11.488581,
+            "fundamental_rms": 45.447022,
+            "fit_residual_ratio": 0.231329
+           },
+           {
+            "rms": 36.07387,
+            "dc_mean": -10.68785,
+            "fundamental_rms": 15.875911,
+            "fit_residual_ratio": 0.847033
+           },
+           {
+            "rms": 18.821902,
+            "dc_mean": -6.548196,
+            "fundamental_rms": 6.390539,
+            "fit_residual_ratio": 0.873635
+           }
+          ]
+         }
+        ],
+        "limitations": [
+         "Signature is not a confirmed physical cause.",
+         "Distortion can also arise from DC offset, CT response, switching or other arcs."
+        ],
+        "duration_ms": 100.50781071186066
+       }
+      ],
+      "comparison": [],
+      "used_by_deployed_model": false
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "status_waveform_aligned",
+      "timing_confidence": 0.9,
+      "no_fault_gate_reasons": [
+       "kanal proteksi beroperasi (TRIP/Op)",
+       "lonjakan arus 27.40× prefault",
+       "voltage sag 86.2%",
+       "ketidakseimbangan urutan (I0/I1 90.3%, I2/I1 97.3%)"
+      ],
+      "line_selection": {
+       "selected_line": "TJ JATI 1",
+       "method": "status_protection",
+       "flags": [
+        "OTHER_LINE_IMPACTED"
+       ],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing TJ JATI 1, selected because its own protection operated (trip/operate status channels). Other lines — TJ JATI 2: carried fault-related current without operating (parallel infeed / through-fault).",
+       "lines": [
+        {
+         "line": "TJ JATI 1",
+         "state": "SELECTED",
+         "prefault_current_a": 366.5,
+         "peak_current_a": 5870.1,
+         "final_current_a": 361.1,
+         "superimposed_current_a": 5508.8,
+         "current_interrupted": false,
+         "status_channel_count": 16,
+         "protection_operations": [
+          "F21 TRIP TJ JATI 1"
+         ],
+         "breaker_operations": [
+          "CB OPEN R TJ JATI 1"
+         ],
+         "reclose_operations": [
+          "AR IN PROGRESS TJ JATI 1"
+         ],
+         "teleprotection_or_pickup": [
+          "DIST SEND TJ JATI 1",
+          "DIST RECEIVE TJ JATI 1"
+         ],
+         "breaker_open_throughout": false
+        },
+        {
+         "line": "TJ JATI 2",
+         "state": "IMPACTED",
+         "prefault_current_a": 365.9,
+         "peak_current_a": 2295.7,
+         "final_current_a": 596.9,
+         "superimposed_current_a": 1932.2,
+         "current_interrupted": false,
+         "status_channel_count": 16,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [],
+    "created_at": "2026-10-15T06:44:13.188295+00:00"
+   },
+   {
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "analysis_id": "1d82c63060154d5484a1223ed5791900",
+    "source_filename": "tjati/ZQF.cfg+ZQF.dat",
+    "station_name": "GI TANJUNGJATI",
+    "bay_name": null,
+    "relay_id": "JEPARA 1 2",
+    "relay_model": null,
+    "protection_type": null,
+    "record_start_iso": "2024-02-26T01:00:33.649895",
+    "trigger_time_iso": "2024-02-26T01:00:33.859843",
+    "trigger_offset_s": 0.209948,
+    "sequence_index": 1,
+    "manual_order": null,
+    "order_source": "UPLOAD_ORDER",
+    "attachment_role": "UNKNOWN",
+    "inclusion_status": "INCLUDED",
+    "exclusion_reason": null,
+    "canonical_snapshot": {
+     "record_id": "1d82c63060154d5484a1223ed5791900",
+     "source_metadata": {
+      "duration_s": 2.539948,
+      "station_name": "GI TANJUNGJATI",
+      "rec_dev_id": "JEPARA 1 2",
+      "rev_year": "1999",
+      "frequency": 50.0,
+      "total_samples": 48768,
+      "trigger_time_s": 0.209948,
+      "start_time_iso": "2024-02-26T01:00:33.649895",
+      "trigger_time_iso": "2024-02-26T01:00:33.859843",
+      "trigger_offset_s": 0.209948,
+      "time_code": "0",
+      "local_code": "0",
+      "clock_quality": "0"
+     },
+     "data_quality": {
+      "has_voltage_channels": true,
+      "has_current_channels": true,
+      "has_digital_channels": true,
+      "protection_operated": true,
+      "current_only": false,
+      "analog_channel_count": 8,
+      "status_channel_count": 32,
+      "parser_warnings": [
+       "Channel VN JEPARA 1: voltage too low (0.9 kV) - check scaling",
+       "Channel VN JEPARA 2: voltage too low (0.8 kV) - check scaling"
+      ],
+      "timing_warnings": [
+       "Channel VN JEPARA 1: voltage too low (0.9 kV) - check scaling",
+       "Channel VN JEPARA 2: voltage too low (0.8 kV) - check scaling"
+      ],
+      "multi_line_record": true
+     },
+     "event_window": {
+      "record_start_ms": 0.0,
+      "trigger_time_ms": 209.948,
+      "inception_idx": 4224,
+      "inception_time_ms": 219.9999988079071,
+      "clearing_idx": 6221,
+      "clearing_time_ms": 324.0104019641876,
+      "fault_duration_ms": 79.89582419395447,
+      "method": "status_waveform_aligned",
+      "timing_source": "status_waveform_aligned",
+      "confidence": 0.9,
+      "faulted_phases": [
+       "A"
+      ],
+      "reclose_events": [
+       {
+        "time": 1.3068749904632568,
+        "success": true,
+        "cb_open_verified": true,
+        "dead_time_ms": 982.9,
+        "source": "waveform_phase",
+        "phases": [
+         "A"
+        ],
+        "single_pole": true,
+        "load_restored": true,
+        "confidence": 0.8,
+        "command_time": 1.2407292127609253
+       }
+      ],
+      "open_at_end_phases": [],
+      "fault_episodes": [
+       {
+        "episode_index": 0,
+        "inception_time_ms": 219.9999988079071,
+        "clearing_time_ms": 324.0104019641876,
+        "fault_duration_ms": 79.89582419395447,
+        "faulted_phases": [
+         "A"
+        ],
+        "detection_method": "status_waveform_aligned",
+        "confidence": 0.9,
+        "reclose_events": [
+         {
+          "time": 1.3068749904632568,
+          "success": true,
+          "cb_open_verified": true,
+          "dead_time_ms": 982.9,
+          "source": "waveform_phase",
+          "phases": [
+           "A"
+          ],
+          "single_pole": true,
+          "load_restored": true,
+          "confidence": 0.8,
+          "command_time": 1.2407292127609253
+         }
+        ]
+       }
+      ],
+      "sequence": {
+       "episode_count": 1,
+       "mechanical_close_confirmed": true,
+       "restoration_outcome": "successful",
+       "refault_after_reclose": false,
+       "refault_evidence": null,
+       "sotf_after_reclose": false,
+       "reclose_times_ms": [
+        1306.8749904632568
+       ],
+       "sotf_trips": [],
+       "timeline": [
+        {
+         "kind": "fault_inception",
+         "time_ms": 219.9999988079071,
+         "episode_index": 0
+        },
+        {
+         "kind": "fault_cleared",
+         "time_ms": 324.0104019641876,
+         "episode_index": 0
+        },
+        {
+         "kind": "breaker_reclosed",
+         "time_ms": 1306.8749904632568
+        }
+       ],
+       "interpretation": "RECLOSE_SUCCESSFUL"
+      },
+      "warnings": [
+       "Channel VN JEPARA 1: voltage too low (0.9 kV) - check scaling",
+       "Channel VN JEPARA 2: voltage too low (0.8 kV) - check scaling"
+      ]
+     },
+     "fault_episodes": [
+      {
+       "episode_index": 0,
+       "inception_time_ms": 219.9999988079071,
+       "clearing_time_ms": 324.0104019641876,
+       "fault_duration_ms": 79.89582419395447,
+       "faulted_phases": [
+        "A"
+       ],
+       "detection_method": "status_waveform_aligned",
+       "confidence": 0.9,
+       "reclose_events": [
+        {
+         "time": 1.3068749904632568,
+         "success": true,
+         "cb_open_verified": true,
+         "dead_time_ms": 982.9,
+         "source": "waveform_phase",
+         "phases": [
+          "A"
+         ],
+         "single_pole": true,
+         "load_restored": true,
+         "confidence": 0.8,
+         "command_time": 1.2407292127609253
+        }
+       ]
+      }
+     ],
+     "protection_operations": [
+      {
+       "name": "LP JPARA 1 OPRT",
+       "role": "trip",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        244.115,
+        244.375,
+        244.635,
+        245.26
+       ],
+       "off_ms": [
+        244.219,
+        244.479,
+        245.208,
+        324.01
+       ]
+      },
+      {
+       "name": "TX JPARA 1",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        251.667,
+        252.135
+       ],
+       "off_ms": [
+        251.979,
+        313.854
+       ]
+      },
+      {
+       "name": "RX JPARA 1",
+       "role": "teleprotection",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        292.604,
+        293.177,
+        293.75
+       ],
+       "off_ms": [
+        292.969,
+        293.594,
+        383.073
+       ]
+      },
+      {
+       "name": "A/R JPARA 1",
+       "role": "reclose",
+       "zone": null,
+       "phase": null,
+       "initially_on": false,
+       "on_ms": [
+        1240.729,
+        1240.99,
+        1241.25
+       ],
+       "off_ms": [
+        1240.885,
+        1241.094,
+        1439.74
+       ]
+      }
+     ],
+     "electrical_measurements": {
+      "current_unit": "A",
+      "voltage_unit": "kV",
+      "prefault": {
+       "current_rms": {
+        "A": 357.205,
+        "B": 364.053,
+        "C": 354.894
+       },
+       "voltage_rms": {
+        "A": 88.113,
+        "B": 87.961,
+        "C": 87.249
+       }
+      },
+      "fault": {
+       "current_peak": {
+        "A": 15188.985,
+        "B": 1370.019,
+        "C": 651.864
+       },
+       "current_rms_max": {
+        "A": 9664.913,
+        "B": 768.467,
+        "C": 440.549
+       },
+       "voltage_rms_min": {
+        "A": 6.518,
+        "B": 79.561,
+        "C": 81.436
+       }
+      },
+      "after_clearing": {
+       "current_rms": {
+        "A": 18.99,
+        "B": 331.949,
+        "C": 356.81
+       },
+       "voltage_rms": {
+        "A": 14.744,
+        "B": 88.049,
+        "C": 87.275
+       }
+      }
+     },
+     "analog_trace": {
+      "cycle_ms": 20.0,
+      "reference": {
+       "current_unit": "A",
+       "voltage_unit": "kV",
+       "load_current": {
+        "A": 355.8,
+        "B": 363.6,
+        "C": 354.6
+       },
+       "nominal_voltage": {
+        "A": 88.159,
+        "B": 87.919,
+        "C": 87.266
+       },
+       "none_threshold": 35.6,
+       "high_threshold": 1067.3
+      },
+      "phases": {
+       "A": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 219.9,
+         "current_rms": 355.8,
+         "voltage_pu": 1.0
+        },
+        {
+         "current": "high",
+         "voltage": "sag",
+         "start_ms": 229.9,
+         "end_ms": 289.9,
+         "current_rms": 8396.8,
+         "voltage_pu": 0.586
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 299.9,
+         "end_ms": 309.9,
+         "current_rms": 177.0,
+         "voltage_pu": 0.079
+        },
+        {
+         "current": "load",
+         "voltage": "sag",
+         "start_ms": 319.9,
+         "end_ms": 349.9,
+         "current_rms": 78.9,
+         "voltage_pu": 0.161
+        },
+        {
+         "current": "load",
+         "voltage": "dead",
+         "start_ms": 359.9,
+         "end_ms": 359.9,
+         "current_rms": 41.6,
+         "voltage_pu": 0.147
+        },
+        {
+         "current": "none",
+         "voltage": "dead",
+         "start_ms": 369.9,
+         "end_ms": 379.9,
+         "current_rms": 27.7,
+         "voltage_pu": 0.148
+        },
+        {
+         "current": "none",
+         "voltage": "sag",
+         "start_ms": 389.9,
+         "end_ms": 1309.9,
+         "current_rms": 1.1,
+         "voltage_pu": 0.2
+        },
+        {
+         "current": "none",
+         "voltage": "normal",
+         "start_ms": 1319.9,
+         "end_ms": 1319.9,
+         "current_rms": 1.0,
+         "voltage_pu": 0.932
+        },
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 1329.9,
+         "end_ms": 2539.9,
+         "current_rms": 350.0,
+         "voltage_pu": 1.0
+        }
+       ],
+       "B": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 2539.9,
+         "current_rms": 357.2,
+         "voltage_pu": 1.001
+        }
+       ],
+       "C": [
+        {
+         "current": "load",
+         "voltage": "normal",
+         "start_ms": 19.9,
+         "end_ms": 2539.9,
+         "current_rms": 353.4,
+         "voltage_pu": 1.001
+        }
+       ]
+      },
+      "events": [
+       {
+        "t_ms": 220.1,
+        "phase": "A",
+        "kind": "disturbance_start",
+        "value": 9423.5
+       },
+       {
+        "t_ms": 279.9,
+        "phase": "A",
+        "kind": "disturbance_start",
+        "value": 113.5
+       },
+       {
+        "t_ms": 289.9,
+        "phase": "A",
+        "kind": "current_back_to_load",
+        "value": 204.7
+       },
+       {
+        "t_ms": 343.8,
+        "phase": "A",
+        "kind": "current_ceased",
+        "value": 113.5
+       },
+       {
+        "t_ms": 1326.4,
+        "phase": "A",
+        "kind": "current_return",
+        "value": 306.9
+       }
+      ],
+      "summary": {
+       "starts_dead": false,
+       "fault_start_ms": 220.1,
+       "fault_clearing_ms": 289.9,
+       "fct_ms": 69.8,
+       "high_current_phases": [
+        "A"
+       ],
+       "sagged_phases": [
+        "A"
+       ],
+       "ceased": {},
+       "zero_current_pattern": null,
+       "zero_spans": [],
+       "current_returns": {},
+       "voltage_returns": {},
+       "dead_time_ms": {},
+       "energization_ms": null,
+       "refault_ms": null,
+       "disturbances": [
+        {
+         "kind": "fault",
+         "start_ms": 220.1,
+         "end_ms": 289.9,
+         "high_current_phases": [
+          "A"
+         ],
+         "sagged_phases": [
+          "A"
+         ],
+         "ceased": {},
+         "back_to_load": {
+          "A": 289.9
+         },
+         "clearing_ms": 289.9
+        },
+        {
+         "kind": "fault",
+         "start_ms": 279.9,
+         "end_ms": 349.9,
+         "high_current_phases": [],
+         "sagged_phases": [
+          "A"
+         ],
+         "ceased": {
+          "A": 343.8
+         },
+         "back_to_load": {},
+         "clearing_ms": 343.8
+        }
+       ]
+      },
+      "warnings": []
+     },
+     "reasoning": {
+      "schema": "reasoning.v1",
+      "has_fault": true,
+      "fault_start_ms": 219.9999988079071,
+      "conclusions": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dengan proteksi bekerja",
+        "evidence": [
+         "Arus R naik ke 15,2 kA puncak (prefault 357 A rms).",
+         "Tegangan R turun ke 0,59 pu.",
+         "Proteksi operate: LP JPARA 1 OPRT +24,1 ms."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": true,
+         "protection_operated": true
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "R-N, satu fasa ke tanah",
+        "evidence": [
+         "Tegangan R 0,59 pu; S 0,92 dan T 0,95 pu.",
+         "Loop R-N 2,9 Ω; loop lain ≥ 8,7 Ω. I0/I1 0,98."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "A"
+         ],
+         "ground": true,
+         "label": "R-N",
+         "voltage_pu": {
+          "A": 0.587,
+          "B": 0.923,
+          "C": 0.946
+         },
+         "loops_ohm": {
+          "AB": 12.733,
+          "BC": 210.334,
+          "CA": 12.496,
+          "AN": 2.894,
+          "BN": 8.716,
+          "CN": 9.586
+         },
+         "i0_i1": 0.979,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": false,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "70 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Trip +24,1 ms → arus fasa terganggu nol ±70 ms.",
+         "Waktu interupsi PMT 46 ms (wajar 30–80 ms)."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.3",
+         "F3.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "fct_ms": 69.8,
+         "clearing_ms": 69.9,
+         "trip_ms": 24.1,
+         "interruption_ms": 45.8,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Trip, elemen yang men-trip tidak terekam",
+        "evidence": [
+         "Trip +24,1 ms.",
+         "Tidak ada kanal zona yang aktif sebelum trip."
+        ],
+        "rules": [
+         "F5.1"
+        ],
+        "confidence": "low",
+        "value": {
+         "kind": "trip_without_zone",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "excluded_earth_pilot_channels": [],
+         "receive_at_trip": null,
+         "send_active": null,
+         "sotf_active": null,
+         "trip_zones": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Mode trip tidak terekam, SPAR, reclose berhasil setelah 1,0 s",
+        "evidence": [
+         "A/R JPARA 1 +1020,7 → +1020,9 ms.",
+         "Fasa R mati sejak trip, perintah reclose +1020,7 ms, line bertegangan kembali +1086,9 ms (dari gelombang; status PMT tidak terekam)."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2",
+         "F6.4",
+         "F6.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": null,
+         "poles": [],
+         "ar_mode": "SPAR",
+         "reclose_success": true,
+         "dead_time_s": 1.017,
+         "sequence": {
+          "episode_count": 1,
+          "mechanical_close_confirmed": true,
+          "restoration_outcome": "successful",
+          "refault_after_reclose": false,
+          "refault_evidence": null,
+          "sotf_after_reclose": false,
+          "reclose_times_ms": [
+           1306.8749904632568
+          ],
+          "sotf_trips": [],
+          "timeline": [
+           {
+            "kind": "fault_inception",
+            "time_ms": 219.9999988079071,
+            "episode_index": 0
+           },
+           {
+            "kind": "fault_cleared",
+            "time_ms": 324.0104019641876,
+            "episode_index": 0
+           },
+           {
+            "kind": "breaker_reclosed",
+            "time_ms": 1306.8749904632568
+           }
+          ],
+          "interpretation": "RECLOSE_SUCCESSFUL"
+         }
+        },
+        "conflicts": []
+       }
+      ],
+      "flag_count": 0,
+      "conflict_count": 0,
+      "signals": {
+       "reference": "fault_start",
+       "events": [
+        {
+         "t_ms": 0.1,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 24.1,
+         "channel": "LP JPARA 1 OPRT",
+         "role": "Trip",
+         "change": "Aktif: trip"
+        },
+        {
+         "t_ms": 24.2,
+         "channel": "LP JPARA 1 OPRT",
+         "role": "Trip",
+         "change": "Bounce 1,1 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 31.7,
+         "channel": "TX JPARA 1",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal dikirim"
+        },
+        {
+         "t_ms": 32.0,
+         "channel": "TX JPARA 1",
+         "role": "Teleproteksi",
+         "change": "Bounce 0,1 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 59.9,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Gangguan mulai"
+        },
+        {
+         "t_ms": 69.9,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus kembali ke beban"
+        },
+        {
+         "t_ms": 72.6,
+         "channel": "RX JPARA 1",
+         "role": "Teleproteksi",
+         "change": "Aktif: sinyal diterima"
+        },
+        {
+         "t_ms": 73.0,
+         "channel": "RX JPARA 1",
+         "role": "Teleproteksi",
+         "change": "Bounce 0,7 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 93.9,
+         "channel": "TX JPARA 1",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 104.0,
+         "channel": "LP JPARA 1 OPRT",
+         "role": "Trip",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 123.8,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus padam (PMT memutus)"
+        },
+        {
+         "t_ms": 163.1,
+         "channel": "RX JPARA 1",
+         "role": "Teleproteksi",
+         "change": "Reset"
+        },
+        {
+         "t_ms": 1020.7,
+         "channel": "A/R JPARA 1",
+         "role": "Reclose",
+         "change": "Aktif"
+        },
+        {
+         "t_ms": 1020.9,
+         "channel": "A/R JPARA 1",
+         "role": "Reclose",
+         "change": "Bounce 0,4 ms, diabaikan",
+         "muted": true
+        },
+        {
+         "t_ms": 1106.4,
+         "channel": "Arus fasa R",
+         "role": "Gelombang",
+         "change": "Arus kembali"
+        },
+        {
+         "t_ms": 1219.7,
+         "channel": "A/R JPARA 1",
+         "role": "Reclose",
+         "change": "Reset"
+        }
+       ],
+       "silent": [
+        {
+         "channel": "CB JPARA 1 OPEN",
+         "role": "PMT"
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "OCR JPARA 1 OPRT",
+         "role": "Trip"
+        },
+        {
+         "channel": "DEF JPARA 1 OPRT",
+         "role": "Trip"
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SF6 JPARA 1 STG2",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "LP JPARA 2 OPRT",
+         "role": "Trip"
+        },
+        {
+         "channel": "CB JPARA 2 OPEN",
+         "role": "PMT"
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "OCR JPARA 2 OPRT",
+         "role": "Trip"
+        },
+        {
+         "channel": "A/R JPARA 2",
+         "role": "Reclose"
+        },
+        {
+         "channel": "TX JPARA 2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "RX JPARA 2",
+         "role": "Teleproteksi"
+        },
+        {
+         "channel": "DEF JPARA 2 OPRT",
+         "role": "Trip"
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SF6 JPARA 2 STG2",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        },
+        {
+         "channel": "SPARE",
+         "role": null
+        }
+       ],
+       "channel_count": 32
+      }
+     },
+     "observed_facts": {
+      "faulted_phases": [
+       "A"
+      ],
+      "reclose_attempted": true,
+      "reclose_events": [
+       {
+        "time": 1.3068749904632568,
+        "success": true,
+        "cb_open_verified": true,
+        "dead_time_ms": 982.9,
+        "source": "waveform_phase",
+        "phases": [
+         "A"
+        ],
+        "single_pole": true,
+        "load_restored": true,
+        "confidence": 0.8,
+        "command_time": 1.2407292127609253
+       }
+      ],
+      "open_at_end_phases": [],
+      "sequence": {
+       "episode_count": 1,
+       "mechanical_close_confirmed": true,
+       "restoration_outcome": "successful",
+       "refault_after_reclose": false,
+       "refault_evidence": null,
+       "sotf_after_reclose": false,
+       "reclose_times_ms": [
+        1306.8749904632568
+       ],
+       "sotf_trips": [],
+       "timeline": [
+        {
+         "kind": "fault_inception",
+         "time_ms": 219.9999988079071,
+         "episode_index": 0
+        },
+        {
+         "kind": "fault_cleared",
+         "time_ms": 324.0104019641876,
+         "episode_index": 0
+        },
+        {
+         "kind": "breaker_reclosed",
+         "time_ms": 1306.8749904632568
+        }
+       ],
+       "interpretation": "RECLOSE_SUCCESSFUL"
+      }
+     },
+     "protection_interpretation": {
+      "event_class": "RECLOSE_SUCCESSFUL",
+      "summary": "Fault detected from available waveform/status evidence."
+     },
+     "event_context": {
+      "scope": "recorded_interval_only",
+      "restoration_outcome": "successful",
+      "mechanical_close_confirmed": true,
+      "refault_after_reclose": false,
+      "sotf_after_reclose": false,
+      "episode_count": 1,
+      "timing_confidence": 0.9,
+      "outcome_is_physical_cause": false,
+      "summary": "Pemulihan bertahan sampai akhir rekaman; penyebab fisik dinilai terpisah."
+     },
+     "episode_signatures": {
+      "schema_version": "episode_signatures_v1",
+      "episodes": [
+       {
+        "episode_index": 0,
+        "inception_time_ms": 219.9999988079071,
+        "clearing_time_ms": 324.0104019641876,
+        "faulted_phases": [
+         "A"
+        ],
+        "after_reclose": false,
+        "reference": "first_episode_prefault",
+        "sample_rate_hz": 19195.899,
+        "nyquist_hz": 9597.95,
+        "channels": [
+         {
+          "id": "VR JEPARA 1",
+          "phase": "A",
+          "name": "VA",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 112.662956,
+          "rms": 39.135981,
+          "prefault_rms": 88.152891,
+          "cycles": [
+           {
+            "rms": 52.889021,
+            "dc_mean": 2.079917,
+            "fundamental_rms": 52.529686,
+            "fit_residual_ratio": 0.101232
+           },
+           {
+            "rms": 51.688416,
+            "dc_mean": 1.332285,
+            "fundamental_rms": 51.656858,
+            "fit_residual_ratio": 0.023587
+           },
+           {
+            "rms": 46.540592,
+            "dc_mean": 6.128765,
+            "fundamental_rms": 43.732974,
+            "fit_residual_ratio": 0.317204
+           },
+           {
+            "rms": 8.449965,
+            "dc_mean": -1.012256,
+            "fundamental_rms": 5.263863,
+            "fit_residual_ratio": 0.773039
+           },
+           {
+            "rms": 15.271933,
+            "dc_mean": 0.228016,
+            "fundamental_rms": 15.171903,
+            "fit_residual_ratio": 0.123862
+           }
+          ]
+         },
+         {
+          "id": "VS JEPARA 1",
+          "phase": "B",
+          "name": "VB",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 124.147148,
+          "rms": 82.946068,
+          "prefault_rms": 87.906786,
+          "cycles": [
+           {
+            "rms": 81.780257,
+            "dc_mean": -1.536101,
+            "fundamental_rms": 81.73317,
+            "fit_residual_ratio": 0.058251
+           },
+           {
+            "rms": 82.04817,
+            "dc_mean": 0.380743,
+            "fundamental_rms": 82.036289,
+            "fit_residual_ratio": 0.016373
+           },
+           {
+            "rms": 80.113615,
+            "dc_mean": 0.061272,
+            "fundamental_rms": 80.004197,
+            "fit_residual_ratio": 0.011225
+           },
+           {
+            "rms": 86.464756,
+            "dc_mean": 1.193465,
+            "fundamental_rms": 86.422019,
+            "fit_residual_ratio": 0.028245
+           },
+           {
+            "rms": 86.124276,
+            "dc_mean": 0.140768,
+            "fundamental_rms": 86.227871,
+            "fit_residual_ratio": 0.012122
+           }
+          ]
+         },
+         {
+          "id": "VT JEPARA 1",
+          "phase": "C",
+          "name": "VC",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 123.557556,
+          "rms": 85.489101,
+          "prefault_rms": 87.263612,
+          "cycles": [
+           {
+            "rms": 83.858425,
+            "dc_mean": -1.563758,
+            "fundamental_rms": 83.719924,
+            "fit_residual_ratio": 0.054252
+           },
+           {
+            "rms": 81.578533,
+            "dc_mean": 0.562955,
+            "fundamental_rms": 81.564427,
+            "fit_residual_ratio": 0.017267
+           },
+           {
+            "rms": 83.118279,
+            "dc_mean": 0.341512,
+            "fundamental_rms": 83.118358,
+            "fit_residual_ratio": 0.009086
+           },
+           {
+            "rms": 85.29755,
+            "dc_mean": 1.185222,
+            "fundamental_rms": 85.232198,
+            "fit_residual_ratio": 0.036588
+           },
+           {
+            "rms": 87.085178,
+            "dc_mean": 0.316082,
+            "fundamental_rms": 87.045292,
+            "fit_residual_ratio": 0.006601
+           }
+          ]
+         },
+         {
+          "id": "VN JEPARA 1",
+          "phase": "N",
+          "name": "VN",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 0.67931,
+          "rms": 0.323407,
+          "prefault_rms": 0.326108,
+          "cycles": [
+           {
+            "rms": 0.322463,
+            "dc_mean": -0.303617,
+            "fundamental_rms": 0.102154,
+            "fit_residual_ratio": 0.103616
+           },
+           {
+            "rms": 0.315471,
+            "dc_mean": -0.297999,
+            "fundamental_rms": 0.093646,
+            "fit_residual_ratio": 0.139935
+           },
+           {
+            "rms": 0.32337,
+            "dc_mean": -0.306862,
+            "fundamental_rms": 0.098709,
+            "fit_residual_ratio": 0.092801
+           },
+           {
+            "rms": 0.316861,
+            "dc_mean": -0.303373,
+            "fundamental_rms": 0.086665,
+            "fit_residual_ratio": 0.092281
+           },
+           {
+            "rms": 0.319607,
+            "dc_mean": -0.306393,
+            "fundamental_rms": 0.087198,
+            "fit_residual_ratio": 0.066542
+           }
+          ]
+         },
+         {
+          "id": "IR JEPARA 1",
+          "phase": "A",
+          "name": "IA",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 15188.985352,
+          "rms": 6516.957625,
+          "prefault_rms": 357.80088,
+          "cycles": [
+           {
+            "rms": 8591.073402,
+            "dc_mean": 3854.872889,
+            "fundamental_rms": 7599.24055,
+            "fit_residual_ratio": 0.134754
+           },
+           {
+            "rms": 8463.834439,
+            "dc_mean": 258.144564,
+            "fundamental_rms": 8455.356901,
+            "fit_residual_ratio": 0.032741
+           },
+           {
+            "rms": 8470.943037,
+            "dc_mean": -242.881379,
+            "fundamental_rms": 8394.996524,
+            "fit_residual_ratio": 0.129374
+           },
+           {
+            "rms": 1658.221203,
+            "dc_mean": -1637.076212,
+            "fundamental_rms": 204.733353,
+            "fit_residual_ratio": 0.100483
+           },
+           {
+            "rms": 964.400436,
+            "dc_mean": -953.231604,
+            "fundamental_rms": 113.436906,
+            "fit_residual_ratio": 0.095685
+           }
+          ]
+         },
+         {
+          "id": "IS JEPARA 1",
+          "phase": "B",
+          "name": "IB",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 1370.019409,
+          "rms": 491.967714,
+          "prefault_rms": 375.407686,
+          "cycles": [
+           {
+            "rms": 352.925946,
+            "dc_mean": -80.667994,
+            "fundamental_rms": 341.440814,
+            "fit_residual_ratio": 0.117182
+           },
+           {
+            "rms": 448.388124,
+            "dc_mean": -144.66687,
+            "fundamental_rms": 423.806975,
+            "fit_residual_ratio": 0.050417
+           },
+           {
+            "rms": 447.512172,
+            "dc_mean": -127.023531,
+            "fundamental_rms": 420.223237,
+            "fit_residual_ratio": 0.189336
+           },
+           {
+            "rms": 777.595389,
+            "dc_mean": -125.964909,
+            "fundamental_rms": 728.309138,
+            "fit_residual_ratio": 0.310655
+           },
+           {
+            "rms": 323.55154,
+            "dc_mean": 15.223827,
+            "fundamental_rms": 321.518632,
+            "fit_residual_ratio": 0.113304
+           }
+          ]
+         },
+         {
+          "id": "IT JEPARA 1",
+          "phase": "C",
+          "name": "IC",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 651.864075,
+          "rms": 383.153291,
+          "prefault_rms": 354.886974,
+          "cycles": [
+           {
+            "rms": 331.185063,
+            "dc_mean": -13.710529,
+            "fundamental_rms": 330.299204,
+            "fit_residual_ratio": 0.06408
+           },
+           {
+            "rms": 351.622288,
+            "dc_mean": -36.037239,
+            "fundamental_rms": 348.821012,
+            "fit_residual_ratio": 0.073253
+           },
+           {
+            "rms": 378.465594,
+            "dc_mean": 1.857603,
+            "fundamental_rms": 378.223512,
+            "fit_residual_ratio": 0.036127
+           },
+           {
+            "rms": 409.830115,
+            "dc_mean": -7.308149,
+            "fundamental_rms": 408.434603,
+            "fit_residual_ratio": 0.080502
+           },
+           {
+            "rms": 404.578772,
+            "dc_mean": 44.585532,
+            "fundamental_rms": 401.477149,
+            "fit_residual_ratio": 0.043094
+           }
+          ]
+         },
+         {
+          "id": "IN JEPARA 1",
+          "phase": "N",
+          "name": "IN",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 15056.402344,
+          "rms": 6444.082455,
+          "prefault_rms": 20.582517,
+          "cycles": [
+           {
+            "rms": 8518.490122,
+            "dc_mean": -3880.385489,
+            "fundamental_rms": 7505.043964,
+            "fit_residual_ratio": 0.135269
+           },
+           {
+            "rms": 8348.333388,
+            "dc_mean": -254.159602,
+            "fundamental_rms": 8340.600541,
+            "fit_residual_ratio": 0.030411
+           },
+           {
+            "rms": 8345.538948,
+            "dc_mean": 248.513219,
+            "fundamental_rms": 8277.048628,
+            "fit_residual_ratio": 0.122457
+           },
+           {
+            "rms": 1827.704552,
+            "dc_mean": 1679.954055,
+            "fundamental_rms": 605.858826,
+            "fit_residual_ratio": 0.212746
+           },
+           {
+            "rms": 883.169099,
+            "dc_mean": 803.50576,
+            "fundamental_rms": 364.987039,
+            "fit_residual_ratio": 0.060577
+           }
+          ]
+         }
+        ],
+        "limitations": [
+         "Signature is not a confirmed physical cause.",
+         "Distortion can also arise from DC offset, CT response, switching or other arcs."
+        ],
+        "duration_ms": 104.01040315628052
+       }
+      ],
+      "comparison": [],
+      "used_by_deployed_model": false
+     },
+     "cause_hypotheses": [],
+     "missing_evidence": [
+      {
+       "type": "REMOTE_END_RECORD",
+       "description": "Remote-end COMTRADE has not been provided (single-record analysis only)."
+      }
+     ],
+     "provenance": {
+      "timing_source": "status_waveform_aligned",
+      "timing_confidence": 0.9,
+      "no_fault_gate_reasons": [
+       "lonjakan arus 42.72× prefault",
+       "voltage sag 90.2%",
+       "ketidakseimbangan urutan (I0/I1 96.6%, I2/I1 94.6%)"
+      ],
+      "line_selection": {
+       "selected_line": "JEPARA 1",
+       "method": "superimposed_current",
+       "flags": [
+        "OTHER_LINE_IMPACTED"
+       ],
+       "requires_review": false,
+       "summary": "Multi-line record (2 lines). Analysing JEPARA 1, selected because largest superimposed (fault minus prefault) current — no line-specific operation evidence. Other lines — JEPARA 2: carried fault-related current without operating (parallel infeed / through-fault).",
+       "lines": [
+        {
+         "line": "JEPARA 1",
+         "state": "SELECTED",
+         "prefault_current_a": 363.8,
+         "peak_current_a": 9664.9,
+         "final_current_a": 358.2,
+         "superimposed_current_a": 9308.9,
+         "current_interrupted": false,
+         "status_channel_count": 0,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        },
+        {
+         "line": "JEPARA 2",
+         "state": "IMPACTED",
+         "prefault_current_a": 359.5,
+         "peak_current_a": 2280.8,
+         "final_current_a": 352.4,
+         "superimposed_current_a": 1921.3,
+         "current_interrupted": false,
+         "status_channel_count": 0,
+         "protection_operations": [],
+         "breaker_operations": [],
+         "reclose_operations": [],
+         "teleprotection_or_pickup": [],
+         "breaker_open_throughout": false
+        }
+       ]
+      },
+      "schema_version": "stage0"
+     }
+    },
+    "attachment_warnings": [],
+    "created_at": "2026-10-15T06:44:16.725132+00:00"
+   }
+  ],
+  "provenance": {
+   "schema_version": "stage2",
+   "incident_engine_version": "stage1.0",
+   "record_snapshot_versions": [
+    {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "status_waveform_aligned"
+    },
+    {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "canonical_schema_version": "stage0",
+     "model_version": null,
+     "feature_version": null,
+     "timing_source": "status_waveform_aligned"
+    }
+   ],
+   "created_at": "2026-10-15T06:44:11.440318+00:00",
+   "updated_at": "2026-10-15T06:44:22.101857+00:00"
+  }
+ },
+ "reconstruction": {
+  "reconstruction_id": "4f7e484ed35f463296684d924dbe78a1",
+  "incident_id": "dbec19546f2c48d295ee7e228361c729",
+  "engine_version": "stage2.0",
+  "schema_version": "stage2",
+  "same_bay_status": "CONFIRMED_SAME_BAY",
+  "same_bay_evidence": [
+   {
+    "type": "OTHER_LINE_END",
+    "description": "Records from ['GI TANJUNGJATI'] were lined up with this end's on a fault both recorded — the other end of the line, not another bay."
+   },
+   {
+    "type": "STATION_NAME_CONSISTENT",
+    "description": "All records report the same station 'GI JEPARA'."
+   },
+   {
+    "type": "SAME_RELAY_ID",
+    "description": "All records report the same relay/device id 'TANJUNG JATI 1-2'."
+   }
+  ],
+  "same_bay_override": null,
+  "alignment": {
+   "status": "LIKELY_ALIGNED",
+   "confidence": 0.55,
+   "order_source": "ABSOLUTE_TIME",
+   "record_order": [
+    "9026cd31ef664401a67fd92a71c93f3d",
+    "6a27cc4ec55e423f9082bc8b2d5a05ef"
+   ],
+   "pairwise_gaps_ms": [],
+   "overlap_groups": [],
+   "warnings": [],
+   "assumptions": [
+    "At least one record reports non-nominal clock quality; millisecond-level gaps are indicative, not exact."
+   ],
+   "time_axis": {
+    "reference_group": "GI JEPARA | TANJUNG JATI 1-2",
+    "zero_iso": "2024-02-26T01:00:33.649854",
+    "records": [
+     {
+      "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+      "clock_group": "GI JEPARA | TANJUNG JATI 1-2",
+      "method": "reference_clock",
+      "correction_s": 0.0,
+      "zone_offset_h": null,
+      "clock_offset_ms": null,
+      "aligned_on": null,
+      "start_iso": "2024-02-26T01:00:33.697554",
+      "offset_s": 0.0477,
+      "span_s": 0.800273
+     },
+     {
+      "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+      "clock_group": "GI TANJUNGJATI | JEPARA 1 2",
+      "method": "fault_aligned",
+      "correction_s": -4.1e-05,
+      "zone_offset_h": null,
+      "clock_offset_ms": 0.041,
+      "aligned_on": {
+       "reference_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+       "record_id": "9026cd31ef664401a67fd92a71c93f3d",
+       "agreeing_pairs": 1,
+       "candidate_pairs": 1
+      },
+      "start_iso": "2024-02-26T01:00:33.649854",
+      "offset_s": 0.0,
+      "span_s": 2.539948
+     }
+    ],
+    "warnings": []
+   }
+  },
+  "timeline_event_ids": [
+   "4f7e484ed35f463296684d924dbe78a1-1",
+   "4f7e484ed35f463296684d924dbe78a1-8",
+   "4f7e484ed35f463296684d924dbe78a1-2",
+   "4f7e484ed35f463296684d924dbe78a1-3",
+   "4f7e484ed35f463296684d924dbe78a1-10",
+   "4f7e484ed35f463296684d924dbe78a1-9",
+   "4f7e484ed35f463296684d924dbe78a1-11",
+   "4f7e484ed35f463296684d924dbe78a1-4",
+   "4f7e484ed35f463296684d924dbe78a1-5",
+   "4f7e484ed35f463296684d924dbe78a1-6",
+   "4f7e484ed35f463296684d924dbe78a1-7"
+  ],
+  "relationship_ids": [
+   "4f7e484ed35f463296684d924dbe78a1-12"
+  ],
+  "episode_ids": [
+   "4f7e484ed35f463296684d924dbe78a1-13"
+  ],
+  "observed_incident_facts": {
+   "record_count": 2,
+   "episode_count": 1,
+   "incident_duration_ms": 37.752,
+   "phase_sequence": [
+    [
+     "A"
+    ]
+   ],
+   "reclose_sequence": [
+    "successful"
+   ]
+  },
+  "protection_sequence_interpretation": {
+   "event_class": "SINGLE_TRANSIENT_FAULT",
+   "summary": "A single transient fault episode was cleared with a successful reclose."
+  },
+  "incident_hypotheses": [
+   {
+    "hypothesis": "SINGLE_TRANSIENT_NO_RECURRENCE",
+    "mechanism_signal": "CONSISTENT_WITH_TRANSIENT_STRIKE_OR_SWITCHING",
+    "confidence": 0.4,
+    "episode_indices": [
+     0
+    ],
+    "evidence_for": [
+     "A single 78 ms fault episode cleared on the first reclose attempt, with no recurrence or escalation seen in the attached records."
+    ],
+    "evidence_against": [],
+    "description": "A short, one-off fault that cleared on the first reclose is the classic transient-fault shape most consistent with a single lightning strike or switching transient. Not a confirmed cause, and does not rule out a physical cause that happened not to recur within the attached records."
+   }
+  ],
+  "physical_cause_evidence": {
+   "scope": "RECORD_LOCAL_SIGNATURES",
+   "records": [
+    {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+     "top_hypothesis": "PETIR",
+     "confidence": 0.61,
+     "cause_ranking": [
+      {
+       "cause": "PETIR",
+       "label": "Petir / Lightning",
+       "confidence": 0.61
+      },
+      {
+       "cause": "BENDA_ASING",
+       "label": "Benda Asing",
+       "confidence": 0.381
+      },
+      {
+       "cause": "LAYANG",
+       "label": "Layang-Layang / Kite",
+       "confidence": 0.004
+      },
+      {
+       "cause": "POHON",
+       "label": "Pohon / Vegetasi",
+       "confidence": 0.003
+      },
+      {
+       "cause": "PERALATAN",
+       "label": "Peralatan Rusak / Anomali Proteksi",
+       "confidence": 0.002
+      },
+      {
+       "cause": "HEWAN",
+       "label": "Hewan / Binatang",
+       "confidence": 0.0
+      },
+      {
+       "cause": "KONDUKTOR",
+       "label": "Konduktor / Tower",
+       "confidence": 0.0
+      }
+     ],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v2.shared-2026-10",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": "status_waveform_aligned",
+     "timing_confidence": 0.9,
+     "raw_probabilities": {
+      "BENDA_ASING": 0.3308,
+      "HEWAN": 0.0,
+      "KONDUKTOR": 0.0,
+      "LAYANG": 0.0003,
+      "PERALATAN": 0.0001,
+      "PETIR": 0.6685,
+      "POHON": 0.0003
+     },
+     "calibrated_probabilities": {
+      "BENDA_ASING": 0.3813,
+      "HEWAN": 0.0003,
+      "KONDUKTOR": 0.0002,
+      "LAYANG": 0.0035,
+      "PERALATAN": 0.0016,
+      "PETIR": 0.6096,
+      "POHON": 0.0035
+     },
+     "applied_caps": [],
+     "evidence_role": "inception",
+     "fault_type": "unknown",
+     "event_context": {
+      "scope": "recorded_interval_only",
+      "restoration_outcome": "unknown",
+      "mechanical_close_confirmed": false,
+      "refault_after_reclose": false,
+      "sotf_after_reclose": false,
+      "episode_count": 1,
+      "timing_confidence": 0.9,
+      "outcome_is_physical_cause": false,
+      "summary": "Hasil pemulihan belum dapat ditentukan dari rekaman ini.",
+      "rule": {
+       "fired": true,
+       "scope": "context",
+       "rule_name": "explicit_failed_reclose",
+       "label": "Hasil pemulihan / urutan gangguan",
+       "confidence": 0.9,
+       "confidence_kind": "rule_heuristic",
+       "evidence": "reclose_successful=False, dur=100ms, peak_i=9889A - pemulihan gagal pada percobaan reclose yang terekam. Penyebab spesifik belum dapat ditentukan dari rekaman ini saja."
+      }
+     },
+     "cause_assessment": {
+      "status": "hypothesis",
+      "confirmed": false,
+      "requires_review": true,
+      "confidence_kind": "model_score",
+      "evidence_scope": "first_episode_waveform_and_legacy_record_features",
+      "legacy_context_features_used": [
+       "fault_count",
+       "reclose_enc",
+       "trip_type_enc",
+       "zone_enc"
+      ],
+      "additional_episodes_evaluated_by_model": false
+     },
+     "episode_signatures": {
+      "schema_version": "episode_signatures_v1",
+      "episodes": [
+       {
+        "episode_index": 0,
+        "inception_time_ms": 172.34374582767487,
+        "clearing_time_ms": 272.8515565395355,
+        "faulted_phases": [
+         "A"
+        ],
+        "after_reclose": false,
+        "reference": "first_episode_prefault",
+        "sample_rate_hz": 25599.414,
+        "nyquist_hz": 12799.707,
+        "channels": [
+         {
+          "id": "VR TJ JATI 1",
+          "phase": "A",
+          "name": "VA",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 104.187088,
+          "rms": 31.115189,
+          "prefault_rms": 86.292055,
+          "cycles": [
+           {
+            "rms": 39.354051,
+            "dc_mean": 5.700607,
+            "fundamental_rms": 37.184216,
+            "fit_residual_ratio": 0.293683
+           },
+           {
+            "rms": 34.415443,
+            "dc_mean": 0.509115,
+            "fundamental_rms": 34.395276,
+            "fit_residual_ratio": 0.030868
+           },
+           {
+            "rms": 35.264605,
+            "dc_mean": -0.985127,
+            "fundamental_rms": 35.222078,
+            "fit_residual_ratio": 0.040374
+           },
+           {
+            "rms": 25.94644,
+            "dc_mean": 3.643481,
+            "fundamental_rms": 14.742096,
+            "fit_residual_ratio": 0.810779
+           },
+           {
+            "rms": 14.70889,
+            "dc_mean": 1.581357,
+            "fundamental_rms": 14.569703,
+            "fit_residual_ratio": 0.073043
+           }
+          ]
+         },
+         {
+          "id": "VS  TJ JATI 1",
+          "phase": "B",
+          "name": "VB",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 123.969376,
+          "rms": 85.382232,
+          "prefault_rms": 87.269893,
+          "cycles": [
+           {
+            "rms": 87.15129,
+            "dc_mean": -0.160421,
+            "fundamental_rms": 87.115916,
+            "fit_residual_ratio": 0.02843
+           },
+           {
+            "rms": 85.632103,
+            "dc_mean": -0.144003,
+            "fundamental_rms": 85.599996,
+            "fit_residual_ratio": 0.02733
+           },
+           {
+            "rms": 84.949728,
+            "dc_mean": -0.325647,
+            "fundamental_rms": 84.90907,
+            "fit_residual_ratio": 0.030697
+           },
+           {
+            "rms": 84.393447,
+            "dc_mean": 0.06168,
+            "fundamental_rms": 84.431214,
+            "fit_residual_ratio": 0.031726
+           },
+           {
+            "rms": 85.921527,
+            "dc_mean": 0.252184,
+            "fundamental_rms": 85.804893,
+            "fit_residual_ratio": 0.028241
+           }
+          ]
+         },
+         {
+          "id": "VT  TJ JATI 1",
+          "phase": "C",
+          "name": "VC",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 121.073418,
+          "rms": 84.300447,
+          "prefault_rms": 85.396831,
+          "cycles": [
+           {
+            "rms": 84.494753,
+            "dc_mean": -0.222709,
+            "fundamental_rms": 84.477755,
+            "fit_residual_ratio": 0.019884
+           },
+           {
+            "rms": 84.332098,
+            "dc_mean": -0.062943,
+            "fundamental_rms": 84.317578,
+            "fit_residual_ratio": 0.018541
+           },
+           {
+            "rms": 83.811598,
+            "dc_mean": 0.158452,
+            "fundamental_rms": 83.793608,
+            "fit_residual_ratio": 0.020632
+           },
+           {
+            "rms": 83.706858,
+            "dc_mean": 0.575589,
+            "fundamental_rms": 83.663103,
+            "fit_residual_ratio": 0.022363
+           },
+           {
+            "rms": 84.609481,
+            "dc_mean": 0.304776,
+            "fundamental_rms": 84.623999,
+            "fit_residual_ratio": 0.016603
+           }
+          ]
+         },
+         {
+          "id": "Channel 4",
+          "phase": null,
+          "name": "Channel 4",
+          "measurement": "voltage",
+          "unit": "mV",
+          "peak_abs": 217.941299,
+          "rms": 60.40746,
+          "prefault_rms": 42.714277,
+          "cycles": [
+           {
+            "rms": 72.049541,
+            "dc_mean": 37.765235,
+            "fundamental_rms": 49.685005,
+            "fit_residual_ratio": 0.499719
+           },
+           {
+            "rms": 65.999663,
+            "dc_mean": 30.780917,
+            "fundamental_rms": 56.988253,
+            "fit_residual_ratio": 0.19215
+           },
+           {
+            "rms": 65.519192,
+            "dc_mean": 30.953707,
+            "fundamental_rms": 56.726202,
+            "fit_residual_ratio": 0.164929
+           },
+           {
+            "rms": 50.921214,
+            "dc_mean": 30.897249,
+            "fundamental_rms": 21.402019,
+            "fit_residual_ratio": 0.67546
+           },
+           {
+            "rms": 42.580331,
+            "dc_mean": 36.686041,
+            "fundamental_rms": 7.757134,
+            "fit_residual_ratio": 0.474704
+           }
+          ]
+         },
+         {
+          "id": "IR  TJ JATI 1",
+          "phase": "A",
+          "name": "IA",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 9889.357567,
+          "rms": 4269.165556,
+          "prefault_rms": 360.659897,
+          "cycles": [
+           {
+            "rms": 4982.255123,
+            "dc_mean": 2391.680536,
+            "fundamental_rms": 4342.700798,
+            "fit_residual_ratio": 0.09908
+           },
+           {
+            "rms": 4643.319464,
+            "dc_mean": 634.298119,
+            "fundamental_rms": 4598.01798,
+            "fit_residual_ratio": 0.027506
+           },
+           {
+            "rms": 4696.241739,
+            "dc_mean": 11.641712,
+            "fundamental_rms": 4685.625121,
+            "fit_residual_ratio": 0.067157
+           },
+           {
+            "rms": 4810.79115,
+            "dc_mean": -2845.251834,
+            "fundamental_rms": 3332.778117,
+            "fit_residual_ratio": 0.411925
+           },
+           {
+            "rms": 18.492716,
+            "dc_mean": -17.803343,
+            "fundamental_rms": 0.982274,
+            "fit_residual_ratio": 0.265051
+           }
+          ]
+         },
+         {
+          "id": "IS  TJ JATI 1",
+          "phase": "B",
+          "name": "IB",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 1319.886565,
+          "rms": 465.092545,
+          "prefault_rms": 366.813984,
+          "cycles": [
+           {
+            "rms": 316.111405,
+            "dc_mean": -2.546251,
+            "fundamental_rms": 314.792548,
+            "fit_residual_ratio": 0.090895
+           },
+           {
+            "rms": 379.826341,
+            "dc_mean": 55.103269,
+            "fundamental_rms": 375.247078,
+            "fit_residual_ratio": 0.05404
+           },
+           {
+            "rms": 385.402668,
+            "dc_mean": 59.603306,
+            "fundamental_rms": 370.102912,
+            "fit_residual_ratio": 0.23217
+           },
+           {
+            "rms": 752.194458,
+            "dc_mean": 123.67078,
+            "fundamental_rms": 705.891359,
+            "fit_residual_ratio": 0.306069
+           },
+           {
+            "rms": 357.558595,
+            "dc_mean": -104.500383,
+            "fundamental_rms": 340.876992,
+            "fit_residual_ratio": 0.065325
+           }
+          ]
+         },
+         {
+          "id": "IT  TJ JATI 1",
+          "phase": "C",
+          "name": "IC",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 687.906677,
+          "rms": 407.071696,
+          "prefault_rms": 358.726169,
+          "cycles": [
+           {
+            "rms": 368.510428,
+            "dc_mean": 26.192176,
+            "fundamental_rms": 367.073557,
+            "fit_residual_ratio": 0.052262
+           },
+           {
+            "rms": 404.710371,
+            "dc_mean": 61.90576,
+            "fundamental_rms": 399.339512,
+            "fit_residual_ratio": 0.054479
+           },
+           {
+            "rms": 425.129441,
+            "dc_mean": 32.168778,
+            "fundamental_rms": 423.631252,
+            "fit_residual_ratio": 0.036195
+           },
+           {
+            "rms": 434.395915,
+            "dc_mean": 42.735019,
+            "fundamental_rms": 431.69079,
+            "fit_residual_ratio": 0.055613
+           },
+           {
+            "rms": 399.101832,
+            "dc_mean": -23.378503,
+            "fundamental_rms": 398.281767,
+            "fit_residual_ratio": 0.028939
+           }
+          ]
+         },
+         {
+          "id": "IN  TJ JATI 1",
+          "phase": "N",
+          "name": "IN",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 9094.389915,
+          "rms": 4251.04021,
+          "prefault_rms": 14.996356,
+          "cycles": [
+           {
+            "rms": 5068.030868,
+            "dc_mean": -2394.732635,
+            "fundamental_rms": 4442.312904,
+            "fit_residual_ratio": 0.091714
+           },
+           {
+            "rms": 4747.931088,
+            "dc_mean": -741.42657,
+            "fundamental_rms": 4687.346446,
+            "fit_residual_ratio": 0.031182
+           },
+           {
+            "rms": 4795.639709,
+            "dc_mean": -98.285379,
+            "fundamental_rms": 4788.711614,
+            "fit_residual_ratio": 0.049671
+           },
+           {
+            "rms": 4409.958393,
+            "dc_mean": 2645.249191,
+            "fundamental_rms": 3072.672643,
+            "fit_residual_ratio": 0.392078
+           },
+           {
+            "rms": 363.451615,
+            "dc_mean": 133.769027,
+            "fundamental_rms": 337.538302,
+            "fit_residual_ratio": 0.074339
+           }
+          ]
+         },
+         {
+          "id": "Channel 13",
+          "phase": null,
+          "name": "Channel 13",
+          "measurement": "voltage",
+          "unit": "mV",
+          "peak_abs": 116.399391,
+          "rms": 42.645034,
+          "prefault_rms": 15.023544,
+          "cycles": [
+           {
+            "rms": 47.074243,
+            "dc_mean": -4.934311,
+            "fundamental_rms": 37.520907,
+            "fit_residual_ratio": 0.594736
+           },
+           {
+            "rms": 54.280379,
+            "dc_mean": -14.564992,
+            "fundamental_rms": 50.252857,
+            "fit_residual_ratio": 0.266254
+           },
+           {
+            "rms": 48.183589,
+            "dc_mean": -11.488581,
+            "fundamental_rms": 45.447022,
+            "fit_residual_ratio": 0.231329
+           },
+           {
+            "rms": 36.07387,
+            "dc_mean": -10.68785,
+            "fundamental_rms": 15.875911,
+            "fit_residual_ratio": 0.847033
+           },
+           {
+            "rms": 18.821902,
+            "dc_mean": -6.548196,
+            "fundamental_rms": 6.390539,
+            "fit_residual_ratio": 0.873635
+           }
+          ]
+         }
+        ],
+        "limitations": [
+         "Signature is not a confirmed physical cause.",
+         "Distortion can also arise from DC offset, CT response, switching or other arcs."
+        ],
+        "duration_ms": 100.50781071186066
+       }
+      ],
+      "comparison": [],
+      "used_by_deployed_model": false
+     },
+     "skip_reason": null
+    },
+    {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "top_hypothesis": "BENDA_ASING",
+     "confidence": 0.888,
+     "cause_ranking": [
+      {
+       "cause": "BENDA_ASING",
+       "label": "Benda Asing",
+       "confidence": 0.888
+      },
+      {
+       "cause": "PETIR",
+       "label": "Petir / Lightning",
+       "confidence": 0.093
+      },
+      {
+       "cause": "PERALATAN",
+       "label": "Peralatan Rusak / Anomali Proteksi",
+       "confidence": 0.017
+      },
+      {
+       "cause": "KONDUKTOR",
+       "label": "Konduktor / Tower",
+       "confidence": 0.002
+      },
+      {
+       "cause": "HEWAN",
+       "label": "Hewan / Binatang",
+       "confidence": 0.0
+      },
+      {
+       "cause": "LAYANG",
+       "label": "Layang-Layang / Kite",
+       "confidence": 0.0
+      },
+      {
+       "cause": "POHON",
+       "label": "Pohon / Vegetasi",
+       "confidence": 0.0
+      }
+     ],
+     "model_version": "untrained+a6c3e8ed7b41",
+     "feature_version": "v2.shared-2026-10",
+     "calibration_method": "temperature_T1.5",
+     "timing_source": "status_waveform_aligned",
+     "timing_confidence": 0.9,
+     "raw_probabilities": {
+      "BENDA_ASING": 0.9646,
+      "HEWAN": 0.0,
+      "KONDUKTOR": 0.0001,
+      "LAYANG": 0.0,
+      "PERALATAN": 0.0026,
+      "PETIR": 0.0327,
+      "POHON": 0.0
+     },
+     "calibrated_probabilities": {
+      "BENDA_ASING": 0.8876,
+      "HEWAN": 0.0002,
+      "KONDUKTOR": 0.0016,
+      "LAYANG": 0.0001,
+      "PERALATAN": 0.0171,
+      "PETIR": 0.0929,
+      "POHON": 0.0005
+     },
+     "applied_caps": [],
+     "evidence_role": "remote_end",
+     "fault_type": "transient",
+     "event_context": {
+      "scope": "recorded_interval_only",
+      "restoration_outcome": "successful",
+      "mechanical_close_confirmed": true,
+      "refault_after_reclose": false,
+      "sotf_after_reclose": false,
+      "episode_count": 1,
+      "timing_confidence": 0.9,
+      "outcome_is_physical_cause": false,
+      "summary": "Pemulihan bertahan sampai akhir rekaman; penyebab fisik dinilai terpisah."
+     },
+     "cause_assessment": {
+      "status": "hypothesis",
+      "confirmed": false,
+      "requires_review": true,
+      "confidence_kind": "model_score",
+      "evidence_scope": "first_episode_waveform_and_legacy_record_features",
+      "legacy_context_features_used": [
+       "fault_count",
+       "reclose_enc",
+       "trip_type_enc",
+       "zone_enc"
+      ],
+      "additional_episodes_evaluated_by_model": false
+     },
+     "episode_signatures": {
+      "schema_version": "episode_signatures_v1",
+      "episodes": [
+       {
+        "episode_index": 0,
+        "inception_time_ms": 219.9999988079071,
+        "clearing_time_ms": 324.0104019641876,
+        "faulted_phases": [
+         "A"
+        ],
+        "after_reclose": false,
+        "reference": "first_episode_prefault",
+        "sample_rate_hz": 19195.899,
+        "nyquist_hz": 9597.95,
+        "channels": [
+         {
+          "id": "VR JEPARA 1",
+          "phase": "A",
+          "name": "VA",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 112.662956,
+          "rms": 39.135981,
+          "prefault_rms": 88.152891,
+          "cycles": [
+           {
+            "rms": 52.889021,
+            "dc_mean": 2.079917,
+            "fundamental_rms": 52.529686,
+            "fit_residual_ratio": 0.101232
+           },
+           {
+            "rms": 51.688416,
+            "dc_mean": 1.332285,
+            "fundamental_rms": 51.656858,
+            "fit_residual_ratio": 0.023587
+           },
+           {
+            "rms": 46.540592,
+            "dc_mean": 6.128765,
+            "fundamental_rms": 43.732974,
+            "fit_residual_ratio": 0.317204
+           },
+           {
+            "rms": 8.449965,
+            "dc_mean": -1.012256,
+            "fundamental_rms": 5.263863,
+            "fit_residual_ratio": 0.773039
+           },
+           {
+            "rms": 15.271933,
+            "dc_mean": 0.228016,
+            "fundamental_rms": 15.171903,
+            "fit_residual_ratio": 0.123862
+           }
+          ]
+         },
+         {
+          "id": "VS JEPARA 1",
+          "phase": "B",
+          "name": "VB",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 124.147148,
+          "rms": 82.946068,
+          "prefault_rms": 87.906786,
+          "cycles": [
+           {
+            "rms": 81.780257,
+            "dc_mean": -1.536101,
+            "fundamental_rms": 81.73317,
+            "fit_residual_ratio": 0.058251
+           },
+           {
+            "rms": 82.04817,
+            "dc_mean": 0.380743,
+            "fundamental_rms": 82.036289,
+            "fit_residual_ratio": 0.016373
+           },
+           {
+            "rms": 80.113615,
+            "dc_mean": 0.061272,
+            "fundamental_rms": 80.004197,
+            "fit_residual_ratio": 0.011225
+           },
+           {
+            "rms": 86.464756,
+            "dc_mean": 1.193465,
+            "fundamental_rms": 86.422019,
+            "fit_residual_ratio": 0.028245
+           },
+           {
+            "rms": 86.124276,
+            "dc_mean": 0.140768,
+            "fundamental_rms": 86.227871,
+            "fit_residual_ratio": 0.012122
+           }
+          ]
+         },
+         {
+          "id": "VT JEPARA 1",
+          "phase": "C",
+          "name": "VC",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 123.557556,
+          "rms": 85.489101,
+          "prefault_rms": 87.263612,
+          "cycles": [
+           {
+            "rms": 83.858425,
+            "dc_mean": -1.563758,
+            "fundamental_rms": 83.719924,
+            "fit_residual_ratio": 0.054252
+           },
+           {
+            "rms": 81.578533,
+            "dc_mean": 0.562955,
+            "fundamental_rms": 81.564427,
+            "fit_residual_ratio": 0.017267
+           },
+           {
+            "rms": 83.118279,
+            "dc_mean": 0.341512,
+            "fundamental_rms": 83.118358,
+            "fit_residual_ratio": 0.009086
+           },
+           {
+            "rms": 85.29755,
+            "dc_mean": 1.185222,
+            "fundamental_rms": 85.232198,
+            "fit_residual_ratio": 0.036588
+           },
+           {
+            "rms": 87.085178,
+            "dc_mean": 0.316082,
+            "fundamental_rms": 87.045292,
+            "fit_residual_ratio": 0.006601
+           }
+          ]
+         },
+         {
+          "id": "VN JEPARA 1",
+          "phase": "N",
+          "name": "VN",
+          "measurement": "voltage",
+          "unit": "kV",
+          "peak_abs": 0.67931,
+          "rms": 0.323407,
+          "prefault_rms": 0.326108,
+          "cycles": [
+           {
+            "rms": 0.322463,
+            "dc_mean": -0.303617,
+            "fundamental_rms": 0.102154,
+            "fit_residual_ratio": 0.103616
+           },
+           {
+            "rms": 0.315471,
+            "dc_mean": -0.297999,
+            "fundamental_rms": 0.093646,
+            "fit_residual_ratio": 0.139935
+           },
+           {
+            "rms": 0.32337,
+            "dc_mean": -0.306862,
+            "fundamental_rms": 0.098709,
+            "fit_residual_ratio": 0.092801
+           },
+           {
+            "rms": 0.316861,
+            "dc_mean": -0.303373,
+            "fundamental_rms": 0.086665,
+            "fit_residual_ratio": 0.092281
+           },
+           {
+            "rms": 0.319607,
+            "dc_mean": -0.306393,
+            "fundamental_rms": 0.087198,
+            "fit_residual_ratio": 0.066542
+           }
+          ]
+         },
+         {
+          "id": "IR JEPARA 1",
+          "phase": "A",
+          "name": "IA",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 15188.985352,
+          "rms": 6516.957625,
+          "prefault_rms": 357.80088,
+          "cycles": [
+           {
+            "rms": 8591.073402,
+            "dc_mean": 3854.872889,
+            "fundamental_rms": 7599.24055,
+            "fit_residual_ratio": 0.134754
+           },
+           {
+            "rms": 8463.834439,
+            "dc_mean": 258.144564,
+            "fundamental_rms": 8455.356901,
+            "fit_residual_ratio": 0.032741
+           },
+           {
+            "rms": 8470.943037,
+            "dc_mean": -242.881379,
+            "fundamental_rms": 8394.996524,
+            "fit_residual_ratio": 0.129374
+           },
+           {
+            "rms": 1658.221203,
+            "dc_mean": -1637.076212,
+            "fundamental_rms": 204.733353,
+            "fit_residual_ratio": 0.100483
+           },
+           {
+            "rms": 964.400436,
+            "dc_mean": -953.231604,
+            "fundamental_rms": 113.436906,
+            "fit_residual_ratio": 0.095685
+           }
+          ]
+         },
+         {
+          "id": "IS JEPARA 1",
+          "phase": "B",
+          "name": "IB",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 1370.019409,
+          "rms": 491.967714,
+          "prefault_rms": 375.407686,
+          "cycles": [
+           {
+            "rms": 352.925946,
+            "dc_mean": -80.667994,
+            "fundamental_rms": 341.440814,
+            "fit_residual_ratio": 0.117182
+           },
+           {
+            "rms": 448.388124,
+            "dc_mean": -144.66687,
+            "fundamental_rms": 423.806975,
+            "fit_residual_ratio": 0.050417
+           },
+           {
+            "rms": 447.512172,
+            "dc_mean": -127.023531,
+            "fundamental_rms": 420.223237,
+            "fit_residual_ratio": 0.189336
+           },
+           {
+            "rms": 777.595389,
+            "dc_mean": -125.964909,
+            "fundamental_rms": 728.309138,
+            "fit_residual_ratio": 0.310655
+           },
+           {
+            "rms": 323.55154,
+            "dc_mean": 15.223827,
+            "fundamental_rms": 321.518632,
+            "fit_residual_ratio": 0.113304
+           }
+          ]
+         },
+         {
+          "id": "IT JEPARA 1",
+          "phase": "C",
+          "name": "IC",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 651.864075,
+          "rms": 383.153291,
+          "prefault_rms": 354.886974,
+          "cycles": [
+           {
+            "rms": 331.185063,
+            "dc_mean": -13.710529,
+            "fundamental_rms": 330.299204,
+            "fit_residual_ratio": 0.06408
+           },
+           {
+            "rms": 351.622288,
+            "dc_mean": -36.037239,
+            "fundamental_rms": 348.821012,
+            "fit_residual_ratio": 0.073253
+           },
+           {
+            "rms": 378.465594,
+            "dc_mean": 1.857603,
+            "fundamental_rms": 378.223512,
+            "fit_residual_ratio": 0.036127
+           },
+           {
+            "rms": 409.830115,
+            "dc_mean": -7.308149,
+            "fundamental_rms": 408.434603,
+            "fit_residual_ratio": 0.080502
+           },
+           {
+            "rms": 404.578772,
+            "dc_mean": 44.585532,
+            "fundamental_rms": 401.477149,
+            "fit_residual_ratio": 0.043094
+           }
+          ]
+         },
+         {
+          "id": "IN JEPARA 1",
+          "phase": "N",
+          "name": "IN",
+          "measurement": "current",
+          "unit": "A",
+          "peak_abs": 15056.402344,
+          "rms": 6444.082455,
+          "prefault_rms": 20.582517,
+          "cycles": [
+           {
+            "rms": 8518.490122,
+            "dc_mean": -3880.385489,
+            "fundamental_rms": 7505.043964,
+            "fit_residual_ratio": 0.135269
+           },
+           {
+            "rms": 8348.333388,
+            "dc_mean": -254.159602,
+            "fundamental_rms": 8340.600541,
+            "fit_residual_ratio": 0.030411
+           },
+           {
+            "rms": 8345.538948,
+            "dc_mean": 248.513219,
+            "fundamental_rms": 8277.048628,
+            "fit_residual_ratio": 0.122457
+           },
+           {
+            "rms": 1827.704552,
+            "dc_mean": 1679.954055,
+            "fundamental_rms": 605.858826,
+            "fit_residual_ratio": 0.212746
+           },
+           {
+            "rms": 883.169099,
+            "dc_mean": 803.50576,
+            "fundamental_rms": 364.987039,
+            "fit_residual_ratio": 0.060577
+           }
+          ]
+         }
+        ],
+        "limitations": [
+         "Signature is not a confirmed physical cause.",
+         "Distortion can also arise from DC offset, CT response, switching or other arcs."
+        ],
+        "duration_ms": 104.01040315628052
+       }
+      ],
+      "comparison": [],
+      "used_by_deployed_model": false
+     },
+     "skip_reason": null
+    }
+   ],
+   "consistency": "CONSISTENT",
+   "incident_root_cause": "UNCONFIRMED"
+  },
+  "narrative": "2 COMTRADE records from the same bay were reconstructed into 1 fault episode over 0 seconds.\n\nEpisode 1 was a single-line-to-ground (A fault), lasting 78 ms. Reclose was successful. (2 records captured this episode.)\n\nThe per-record physical-cause signatures are consistent with each other.\nThe physical initiating cause remains unconfirmed from local COMTRADE evidence alone; external evidence (field inspection, lightning detection, protection engineer review) is needed to confirm it.",
+  "record_snapshot_versions": [
+   {
+    "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+    "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "status_waveform_aligned"
+   },
+   {
+    "analysis_id": "1d82c63060154d5484a1223ed5791900",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "canonical_schema_version": "stage0",
+    "model_version": null,
+    "feature_version": null,
+    "timing_source": "status_waveform_aligned"
+   }
+  ],
+  "is_latest": true,
+  "supersedes": null,
+  "created_at": "2026-10-15T06:44:22.030004+00:00",
+  "timeline": [
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-1",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2024-02-26T01:00:33.649854",
+    "relative_incident_ms": 0.0,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (tjati/ZQF.cfg+ZQF.dat)",
+    "details": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-8",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+    "episode_id": null,
+    "event_type": "RECORD_START",
+    "absolute_time_iso": "2024-02-26T01:00:33.697554",
+    "relative_incident_ms": 47.7,
+    "relative_record_ms": 0.0,
+    "source": "canonical_event_window",
+    "label": "Record start (jepara/240226,010033697,0,GI JEPARA,TANJUNG JATI 1-2,Qualitrol LLC.cfg+240226,010033697,0,GI JEPARA,TANJUNG JATI 1-2,Qualitrol LLC.dat)",
+    "details": {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558"
+    },
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-2",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2024-02-26T01:00:33.859802",
+    "relative_incident_ms": 209.9,
+    "relative_record_ms": 209.948,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-3",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2024-02-26T01:00:33.869854",
+    "relative_incident_ms": 220.0,
+    "relative_record_ms": 219.9999988079071,
+    "source": "canonical_event_window",
+    "label": "Fault inception (A)",
+    "details": {
+     "faulted_phases": [
+      "A"
+     ]
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-10",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+    "episode_id": null,
+    "event_type": "FAULT_INCEPTION",
+    "absolute_time_iso": "2024-02-26T01:00:33.869898",
+    "relative_incident_ms": 220.0,
+    "relative_record_ms": 172.34374582767487,
+    "source": "canonical_event_window",
+    "label": "Fault inception (A)",
+    "details": {
+     "faulted_phases": [
+      "A"
+     ]
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-9",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+    "episode_id": null,
+    "event_type": "RECORD_TRIGGER",
+    "absolute_time_iso": "2024-02-26T01:00:33.897554",
+    "relative_incident_ms": 247.7,
+    "relative_record_ms": 200.0,
+    "source": "canonical_event_window",
+    "label": "Recording trigger",
+    "details": {},
+    "confidence": 1.0,
+    "provenance": {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-11",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+    "episode_id": null,
+    "event_type": "FAULT_CLEARING",
+    "absolute_time_iso": "2024-02-26T01:00:33.970406",
+    "relative_incident_ms": 320.6,
+    "relative_record_ms": 272.8515565395355,
+    "source": "canonical_event_window",
+    "label": "Fault clearing",
+    "details": {
+     "fault_duration_ms": 78.47656309604645
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+     "incident_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-4",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "episode_id": null,
+    "event_type": "FAULT_CLEARING",
+    "absolute_time_iso": "2024-02-26T01:00:33.973864",
+    "relative_incident_ms": 324.0,
+    "relative_record_ms": 324.0104019641876,
+    "source": "canonical_event_window",
+    "label": "Fault clearing",
+    "details": {
+     "fault_duration_ms": 79.89582419395447
+    },
+    "confidence": 0.9,
+    "provenance": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-5",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "episode_id": null,
+    "event_type": "RECLOSE_SUCCESS",
+    "absolute_time_iso": "2024-02-26T01:00:34.956729",
+    "relative_incident_ms": 1306.9,
+    "relative_record_ms": 1306.8749904632568,
+    "source": "canonical_event_window",
+    "label": "Reclose attempt #1 (successful)",
+    "details": {
+     "success": true
+    },
+    "confidence": 0.7,
+    "provenance": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-6",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel VN JEPARA 1: voltage too low (0.9 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   },
+   {
+    "timeline_event_id": "4f7e484ed35f463296684d924dbe78a1-7",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "episode_id": null,
+    "event_type": "CLOCK_WARNING",
+    "absolute_time_iso": null,
+    "relative_incident_ms": null,
+    "relative_record_ms": null,
+    "source": "canonical_data_quality",
+    "label": "Channel VN JEPARA 2: voltage too low (0.8 kV) - check scaling",
+    "details": {},
+    "confidence": 0.5,
+    "provenance": {
+     "analysis_id": "1d82c63060154d5484a1223ed5791900",
+     "incident_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+     "canonical_schema_version": "stage0",
+     "timing_source": "status_waveform_aligned"
+    }
+   }
+  ],
+  "relationships": [
+   {
+    "relationship_id": "4f7e484ed35f463296684d924dbe78a1-12",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "left_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+    "right_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+    "relationship_type": "REMOTE_END_CAPTURE",
+    "confidence": 0.85,
+    "evidence_for": [
+     {
+      "type": "OTHER_SUBSTATION",
+      "local": "GI JEPARA",
+      "remote": "GI TANJUNGJATI",
+      "description": "Recorded at the other end of the line."
+     },
+     {
+      "type": "TIME_RANGE_OVERLAP",
+      "value": 0.8
+     },
+     {
+      "type": "CLOCK_LINED_UP_ON_SHARED_FAULT",
+      "description": "The other end's clock was lined up with this end's on a fault both recorded."
+     },
+     {
+      "type": "SAME_FAULTED_PHASES_AT_BOTH_ENDS",
+      "local": [
+       "A"
+      ],
+      "remote": [
+       "A"
+      ]
+     }
+    ],
+    "evidence_against": [],
+    "assumptions": [],
+    "warnings": [],
+    "metrics": {
+     "link": "other_recorder",
+     "overlap_seconds": 0.8,
+     "clock_offset_ms": 0.041,
+     "zone_offset_h": null,
+     "fault_start_difference_ms": 0.0
+    },
+    "overridden": false,
+    "override_operator": null,
+    "override_reason": null,
+    "override_previous_type": null,
+    "override_at_iso": null,
+    "reconstruction_version": null
+   }
+  ],
+  "episodes": [
+   {
+    "episode_id": "4f7e484ed35f463296684d924dbe78a1-13",
+    "incident_id": "dbec19546f2c48d295ee7e228361c729",
+    "member_record_ids": [
+     "6a27cc4ec55e423f9082bc8b2d5a05ef",
+     "9026cd31ef664401a67fd92a71c93f3d"
+    ],
+    "episode_index": 0,
+    "start_iso": "2024-02-26T01:00:33.897554",
+    "end_iso": "2024-02-26T01:00:33.897554",
+    "duration_ms": 78.47656309604645,
+    "faulted_phases": [
+     "A"
+    ],
+    "fault_type": "SLG",
+    "zone_operations": [],
+    "trip_types": [],
+    "reclose_outcome": "successful",
+    "electrical_summary": {},
+    "local_cause_hypotheses": [
+     {
+      "analysis_id": "4d9e1457cd864e34ad777a2a6ef6d558",
+      "top_hypothesis": "PETIR",
+      "confidence": 0.61,
+      "cause_ranking": [
+       {
+        "cause": "PETIR",
+        "label": "Petir / Lightning",
+        "confidence": 0.61
+       },
+       {
+        "cause": "BENDA_ASING",
+        "label": "Benda Asing",
+        "confidence": 0.381
+       },
+       {
+        "cause": "LAYANG",
+        "label": "Layang-Layang / Kite",
+        "confidence": 0.004
+       },
+       {
+        "cause": "POHON",
+        "label": "Pohon / Vegetasi",
+        "confidence": 0.003
+       },
+       {
+        "cause": "PERALATAN",
+        "label": "Peralatan Rusak / Anomali Proteksi",
+        "confidence": 0.002
+       },
+       {
+        "cause": "HEWAN",
+        "label": "Hewan / Binatang",
+        "confidence": 0.0
+       },
+       {
+        "cause": "KONDUKTOR",
+        "label": "Konduktor / Tower",
+        "confidence": 0.0
+       }
+      ],
+      "cause_assessment": {
+       "status": "hypothesis",
+       "confirmed": false,
+       "requires_review": true,
+       "confidence_kind": "model_score",
+       "evidence_scope": "first_episode_waveform_and_legacy_record_features",
+       "legacy_context_features_used": [
+        "fault_count",
+        "reclose_enc",
+        "trip_type_enc",
+        "zone_enc"
+       ],
+       "additional_episodes_evaluated_by_model": false
+      },
+      "event_context": {
+       "scope": "recorded_interval_only",
+       "restoration_outcome": "unknown",
+       "mechanical_close_confirmed": false,
+       "refault_after_reclose": false,
+       "sotf_after_reclose": false,
+       "episode_count": 1,
+       "timing_confidence": 0.9,
+       "outcome_is_physical_cause": false,
+       "summary": "Hasil pemulihan belum dapat ditentukan dari rekaman ini.",
+       "rule": {
+        "fired": true,
+        "scope": "context",
+        "rule_name": "explicit_failed_reclose",
+        "label": "Hasil pemulihan / urutan gangguan",
+        "confidence": 0.9,
+        "confidence_kind": "rule_heuristic",
+        "evidence": "reclose_successful=False, dur=100ms, peak_i=9889A - pemulihan gagal pada percobaan reclose yang terekam. Penyebab spesifik belum dapat ditentukan dari rekaman ini saja."
+       }
+      },
+      "episode_signatures": {
+       "schema_version": "episode_signatures_v1",
+       "episodes": [
+        {
+         "episode_index": 0,
+         "inception_time_ms": 172.34374582767487,
+         "clearing_time_ms": 272.8515565395355,
+         "faulted_phases": [
+          "A"
+         ],
+         "after_reclose": false,
+         "reference": "first_episode_prefault",
+         "sample_rate_hz": 25599.414,
+         "nyquist_hz": 12799.707,
+         "channels": [
+          {
+           "id": "VR TJ JATI 1",
+           "phase": "A",
+           "name": "VA",
+           "measurement": "voltage",
+           "unit": "kV",
+           "peak_abs": 104.187088,
+           "rms": 31.115189,
+           "prefault_rms": 86.292055,
+           "cycles": [
+            {
+             "rms": 39.354051,
+             "dc_mean": 5.700607,
+             "fundamental_rms": 37.184216,
+             "fit_residual_ratio": 0.293683
+            },
+            {
+             "rms": 34.415443,
+             "dc_mean": 0.509115,
+             "fundamental_rms": 34.395276,
+             "fit_residual_ratio": 0.030868
+            },
+            {
+             "rms": 35.264605,
+             "dc_mean": -0.985127,
+             "fundamental_rms": 35.222078,
+             "fit_residual_ratio": 0.040374
+            },
+            {
+             "rms": 25.94644,
+             "dc_mean": 3.643481,
+             "fundamental_rms": 14.742096,
+             "fit_residual_ratio": 0.810779
+            },
+            {
+             "rms": 14.70889,
+             "dc_mean": 1.581357,
+             "fundamental_rms": 14.569703,
+             "fit_residual_ratio": 0.073043
+            }
+           ]
+          },
+          {
+           "id": "VS  TJ JATI 1",
+           "phase": "B",
+           "name": "VB",
+           "measurement": "voltage",
+           "unit": "kV",
+           "peak_abs": 123.969376,
+           "rms": 85.382232,
+           "prefault_rms": 87.269893,
+           "cycles": [
+            {
+             "rms": 87.15129,
+             "dc_mean": -0.160421,
+             "fundamental_rms": 87.115916,
+             "fit_residual_ratio": 0.02843
+            },
+            {
+             "rms": 85.632103,
+             "dc_mean": -0.144003,
+             "fundamental_rms": 85.599996,
+             "fit_residual_ratio": 0.02733
+            },
+            {
+             "rms": 84.949728,
+             "dc_mean": -0.325647,
+             "fundamental_rms": 84.90907,
+             "fit_residual_ratio": 0.030697
+            },
+            {
+             "rms": 84.393447,
+             "dc_mean": 0.06168,
+             "fundamental_rms": 84.431214,
+             "fit_residual_ratio": 0.031726
+            },
+            {
+             "rms": 85.921527,
+             "dc_mean": 0.252184,
+             "fundamental_rms": 85.804893,
+             "fit_residual_ratio": 0.028241
+            }
+           ]
+          },
+          {
+           "id": "VT  TJ JATI 1",
+           "phase": "C",
+           "name": "VC",
+           "measurement": "voltage",
+           "unit": "kV",
+           "peak_abs": 121.073418,
+           "rms": 84.300447,
+           "prefault_rms": 85.396831,
+           "cycles": [
+            {
+             "rms": 84.494753,
+             "dc_mean": -0.222709,
+             "fundamental_rms": 84.477755,
+             "fit_residual_ratio": 0.019884
+            },
+            {
+             "rms": 84.332098,
+             "dc_mean": -0.062943,
+             "fundamental_rms": 84.317578,
+             "fit_residual_ratio": 0.018541
+            },
+            {
+             "rms": 83.811598,
+             "dc_mean": 0.158452,
+             "fundamental_rms": 83.793608,
+             "fit_residual_ratio": 0.020632
+            },
+            {
+             "rms": 83.706858,
+             "dc_mean": 0.575589,
+             "fundamental_rms": 83.663103,
+             "fit_residual_ratio": 0.022363
+            },
+            {
+             "rms": 84.609481,
+             "dc_mean": 0.304776,
+             "fundamental_rms": 84.623999,
+             "fit_residual_ratio": 0.016603
+            }
+           ]
+          },
+          {
+           "id": "Channel 4",
+           "phase": null,
+           "name": "Channel 4",
+           "measurement": "voltage",
+           "unit": "mV",
+           "peak_abs": 217.941299,
+           "rms": 60.40746,
+           "prefault_rms": 42.714277,
+           "cycles": [
+            {
+             "rms": 72.049541,
+             "dc_mean": 37.765235,
+             "fundamental_rms": 49.685005,
+             "fit_residual_ratio": 0.499719
+            },
+            {
+             "rms": 65.999663,
+             "dc_mean": 30.780917,
+             "fundamental_rms": 56.988253,
+             "fit_residual_ratio": 0.19215
+            },
+            {
+             "rms": 65.519192,
+             "dc_mean": 30.953707,
+             "fundamental_rms": 56.726202,
+             "fit_residual_ratio": 0.164929
+            },
+            {
+             "rms": 50.921214,
+             "dc_mean": 30.897249,
+             "fundamental_rms": 21.402019,
+             "fit_residual_ratio": 0.67546
+            },
+            {
+             "rms": 42.580331,
+             "dc_mean": 36.686041,
+             "fundamental_rms": 7.757134,
+             "fit_residual_ratio": 0.474704
+            }
+           ]
+          },
+          {
+           "id": "IR  TJ JATI 1",
+           "phase": "A",
+           "name": "IA",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 9889.357567,
+           "rms": 4269.165556,
+           "prefault_rms": 360.659897,
+           "cycles": [
+            {
+             "rms": 4982.255123,
+             "dc_mean": 2391.680536,
+             "fundamental_rms": 4342.700798,
+             "fit_residual_ratio": 0.09908
+            },
+            {
+             "rms": 4643.319464,
+             "dc_mean": 634.298119,
+             "fundamental_rms": 4598.01798,
+             "fit_residual_ratio": 0.027506
+            },
+            {
+             "rms": 4696.241739,
+             "dc_mean": 11.641712,
+             "fundamental_rms": 4685.625121,
+             "fit_residual_ratio": 0.067157
+            },
+            {
+             "rms": 4810.79115,
+             "dc_mean": -2845.251834,
+             "fundamental_rms": 3332.778117,
+             "fit_residual_ratio": 0.411925
+            },
+            {
+             "rms": 18.492716,
+             "dc_mean": -17.803343,
+             "fundamental_rms": 0.982274,
+             "fit_residual_ratio": 0.265051
+            }
+           ]
+          },
+          {
+           "id": "IS  TJ JATI 1",
+           "phase": "B",
+           "name": "IB",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 1319.886565,
+           "rms": 465.092545,
+           "prefault_rms": 366.813984,
+           "cycles": [
+            {
+             "rms": 316.111405,
+             "dc_mean": -2.546251,
+             "fundamental_rms": 314.792548,
+             "fit_residual_ratio": 0.090895
+            },
+            {
+             "rms": 379.826341,
+             "dc_mean": 55.103269,
+             "fundamental_rms": 375.247078,
+             "fit_residual_ratio": 0.05404
+            },
+            {
+             "rms": 385.402668,
+             "dc_mean": 59.603306,
+             "fundamental_rms": 370.102912,
+             "fit_residual_ratio": 0.23217
+            },
+            {
+             "rms": 752.194458,
+             "dc_mean": 123.67078,
+             "fundamental_rms": 705.891359,
+             "fit_residual_ratio": 0.306069
+            },
+            {
+             "rms": 357.558595,
+             "dc_mean": -104.500383,
+             "fundamental_rms": 340.876992,
+             "fit_residual_ratio": 0.065325
+            }
+           ]
+          },
+          {
+           "id": "IT  TJ JATI 1",
+           "phase": "C",
+           "name": "IC",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 687.906677,
+           "rms": 407.071696,
+           "prefault_rms": 358.726169,
+           "cycles": [
+            {
+             "rms": 368.510428,
+             "dc_mean": 26.192176,
+             "fundamental_rms": 367.073557,
+             "fit_residual_ratio": 0.052262
+            },
+            {
+             "rms": 404.710371,
+             "dc_mean": 61.90576,
+             "fundamental_rms": 399.339512,
+             "fit_residual_ratio": 0.054479
+            },
+            {
+             "rms": 425.129441,
+             "dc_mean": 32.168778,
+             "fundamental_rms": 423.631252,
+             "fit_residual_ratio": 0.036195
+            },
+            {
+             "rms": 434.395915,
+             "dc_mean": 42.735019,
+             "fundamental_rms": 431.69079,
+             "fit_residual_ratio": 0.055613
+            },
+            {
+             "rms": 399.101832,
+             "dc_mean": -23.378503,
+             "fundamental_rms": 398.281767,
+             "fit_residual_ratio": 0.028939
+            }
+           ]
+          },
+          {
+           "id": "IN  TJ JATI 1",
+           "phase": "N",
+           "name": "IN",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 9094.389915,
+           "rms": 4251.04021,
+           "prefault_rms": 14.996356,
+           "cycles": [
+            {
+             "rms": 5068.030868,
+             "dc_mean": -2394.732635,
+             "fundamental_rms": 4442.312904,
+             "fit_residual_ratio": 0.091714
+            },
+            {
+             "rms": 4747.931088,
+             "dc_mean": -741.42657,
+             "fundamental_rms": 4687.346446,
+             "fit_residual_ratio": 0.031182
+            },
+            {
+             "rms": 4795.639709,
+             "dc_mean": -98.285379,
+             "fundamental_rms": 4788.711614,
+             "fit_residual_ratio": 0.049671
+            },
+            {
+             "rms": 4409.958393,
+             "dc_mean": 2645.249191,
+             "fundamental_rms": 3072.672643,
+             "fit_residual_ratio": 0.392078
+            },
+            {
+             "rms": 363.451615,
+             "dc_mean": 133.769027,
+             "fundamental_rms": 337.538302,
+             "fit_residual_ratio": 0.074339
+            }
+           ]
+          },
+          {
+           "id": "Channel 13",
+           "phase": null,
+           "name": "Channel 13",
+           "measurement": "voltage",
+           "unit": "mV",
+           "peak_abs": 116.399391,
+           "rms": 42.645034,
+           "prefault_rms": 15.023544,
+           "cycles": [
+            {
+             "rms": 47.074243,
+             "dc_mean": -4.934311,
+             "fundamental_rms": 37.520907,
+             "fit_residual_ratio": 0.594736
+            },
+            {
+             "rms": 54.280379,
+             "dc_mean": -14.564992,
+             "fundamental_rms": 50.252857,
+             "fit_residual_ratio": 0.266254
+            },
+            {
+             "rms": 48.183589,
+             "dc_mean": -11.488581,
+             "fundamental_rms": 45.447022,
+             "fit_residual_ratio": 0.231329
+            },
+            {
+             "rms": 36.07387,
+             "dc_mean": -10.68785,
+             "fundamental_rms": 15.875911,
+             "fit_residual_ratio": 0.847033
+            },
+            {
+             "rms": 18.821902,
+             "dc_mean": -6.548196,
+             "fundamental_rms": 6.390539,
+             "fit_residual_ratio": 0.873635
+            }
+           ]
+          }
+         ],
+         "limitations": [
+          "Signature is not a confirmed physical cause.",
+          "Distortion can also arise from DC offset, CT response, switching or other arcs."
+         ],
+         "duration_ms": 100.50781071186066
+        }
+       ],
+       "comparison": [],
+       "used_by_deployed_model": false
+      },
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": "status_waveform_aligned",
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "inception",
+      "fault_type": "unknown",
+      "requires_review": false,
+      "skip_reason": null
+     },
+     {
+      "analysis_id": "1d82c63060154d5484a1223ed5791900",
+      "top_hypothesis": "BENDA_ASING",
+      "confidence": 0.888,
+      "cause_ranking": [
+       {
+        "cause": "BENDA_ASING",
+        "label": "Benda Asing",
+        "confidence": 0.888
+       },
+       {
+        "cause": "PETIR",
+        "label": "Petir / Lightning",
+        "confidence": 0.093
+       },
+       {
+        "cause": "PERALATAN",
+        "label": "Peralatan Rusak / Anomali Proteksi",
+        "confidence": 0.017
+       },
+       {
+        "cause": "KONDUKTOR",
+        "label": "Konduktor / Tower",
+        "confidence": 0.002
+       },
+       {
+        "cause": "HEWAN",
+        "label": "Hewan / Binatang",
+        "confidence": 0.0
+       },
+       {
+        "cause": "LAYANG",
+        "label": "Layang-Layang / Kite",
+        "confidence": 0.0
+       },
+       {
+        "cause": "POHON",
+        "label": "Pohon / Vegetasi",
+        "confidence": 0.0
+       }
+      ],
+      "cause_assessment": {
+       "status": "hypothesis",
+       "confirmed": false,
+       "requires_review": true,
+       "confidence_kind": "model_score",
+       "evidence_scope": "first_episode_waveform_and_legacy_record_features",
+       "legacy_context_features_used": [
+        "fault_count",
+        "reclose_enc",
+        "trip_type_enc",
+        "zone_enc"
+       ],
+       "additional_episodes_evaluated_by_model": false
+      },
+      "event_context": {
+       "scope": "recorded_interval_only",
+       "restoration_outcome": "successful",
+       "mechanical_close_confirmed": true,
+       "refault_after_reclose": false,
+       "sotf_after_reclose": false,
+       "episode_count": 1,
+       "timing_confidence": 0.9,
+       "outcome_is_physical_cause": false,
+       "summary": "Pemulihan bertahan sampai akhir rekaman; penyebab fisik dinilai terpisah."
+      },
+      "episode_signatures": {
+       "schema_version": "episode_signatures_v1",
+       "episodes": [
+        {
+         "episode_index": 0,
+         "inception_time_ms": 219.9999988079071,
+         "clearing_time_ms": 324.0104019641876,
+         "faulted_phases": [
+          "A"
+         ],
+         "after_reclose": false,
+         "reference": "first_episode_prefault",
+         "sample_rate_hz": 19195.899,
+         "nyquist_hz": 9597.95,
+         "channels": [
+          {
+           "id": "VR JEPARA 1",
+           "phase": "A",
+           "name": "VA",
+           "measurement": "voltage",
+           "unit": "kV",
+           "peak_abs": 112.662956,
+           "rms": 39.135981,
+           "prefault_rms": 88.152891,
+           "cycles": [
+            {
+             "rms": 52.889021,
+             "dc_mean": 2.079917,
+             "fundamental_rms": 52.529686,
+             "fit_residual_ratio": 0.101232
+            },
+            {
+             "rms": 51.688416,
+             "dc_mean": 1.332285,
+             "fundamental_rms": 51.656858,
+             "fit_residual_ratio": 0.023587
+            },
+            {
+             "rms": 46.540592,
+             "dc_mean": 6.128765,
+             "fundamental_rms": 43.732974,
+             "fit_residual_ratio": 0.317204
+            },
+            {
+             "rms": 8.449965,
+             "dc_mean": -1.012256,
+             "fundamental_rms": 5.263863,
+             "fit_residual_ratio": 0.773039
+            },
+            {
+             "rms": 15.271933,
+             "dc_mean": 0.228016,
+             "fundamental_rms": 15.171903,
+             "fit_residual_ratio": 0.123862
+            }
+           ]
+          },
+          {
+           "id": "VS JEPARA 1",
+           "phase": "B",
+           "name": "VB",
+           "measurement": "voltage",
+           "unit": "kV",
+           "peak_abs": 124.147148,
+           "rms": 82.946068,
+           "prefault_rms": 87.906786,
+           "cycles": [
+            {
+             "rms": 81.780257,
+             "dc_mean": -1.536101,
+             "fundamental_rms": 81.73317,
+             "fit_residual_ratio": 0.058251
+            },
+            {
+             "rms": 82.04817,
+             "dc_mean": 0.380743,
+             "fundamental_rms": 82.036289,
+             "fit_residual_ratio": 0.016373
+            },
+            {
+             "rms": 80.113615,
+             "dc_mean": 0.061272,
+             "fundamental_rms": 80.004197,
+             "fit_residual_ratio": 0.011225
+            },
+            {
+             "rms": 86.464756,
+             "dc_mean": 1.193465,
+             "fundamental_rms": 86.422019,
+             "fit_residual_ratio": 0.028245
+            },
+            {
+             "rms": 86.124276,
+             "dc_mean": 0.140768,
+             "fundamental_rms": 86.227871,
+             "fit_residual_ratio": 0.012122
+            }
+           ]
+          },
+          {
+           "id": "VT JEPARA 1",
+           "phase": "C",
+           "name": "VC",
+           "measurement": "voltage",
+           "unit": "kV",
+           "peak_abs": 123.557556,
+           "rms": 85.489101,
+           "prefault_rms": 87.263612,
+           "cycles": [
+            {
+             "rms": 83.858425,
+             "dc_mean": -1.563758,
+             "fundamental_rms": 83.719924,
+             "fit_residual_ratio": 0.054252
+            },
+            {
+             "rms": 81.578533,
+             "dc_mean": 0.562955,
+             "fundamental_rms": 81.564427,
+             "fit_residual_ratio": 0.017267
+            },
+            {
+             "rms": 83.118279,
+             "dc_mean": 0.341512,
+             "fundamental_rms": 83.118358,
+             "fit_residual_ratio": 0.009086
+            },
+            {
+             "rms": 85.29755,
+             "dc_mean": 1.185222,
+             "fundamental_rms": 85.232198,
+             "fit_residual_ratio": 0.036588
+            },
+            {
+             "rms": 87.085178,
+             "dc_mean": 0.316082,
+             "fundamental_rms": 87.045292,
+             "fit_residual_ratio": 0.006601
+            }
+           ]
+          },
+          {
+           "id": "VN JEPARA 1",
+           "phase": "N",
+           "name": "VN",
+           "measurement": "voltage",
+           "unit": "kV",
+           "peak_abs": 0.67931,
+           "rms": 0.323407,
+           "prefault_rms": 0.326108,
+           "cycles": [
+            {
+             "rms": 0.322463,
+             "dc_mean": -0.303617,
+             "fundamental_rms": 0.102154,
+             "fit_residual_ratio": 0.103616
+            },
+            {
+             "rms": 0.315471,
+             "dc_mean": -0.297999,
+             "fundamental_rms": 0.093646,
+             "fit_residual_ratio": 0.139935
+            },
+            {
+             "rms": 0.32337,
+             "dc_mean": -0.306862,
+             "fundamental_rms": 0.098709,
+             "fit_residual_ratio": 0.092801
+            },
+            {
+             "rms": 0.316861,
+             "dc_mean": -0.303373,
+             "fundamental_rms": 0.086665,
+             "fit_residual_ratio": 0.092281
+            },
+            {
+             "rms": 0.319607,
+             "dc_mean": -0.306393,
+             "fundamental_rms": 0.087198,
+             "fit_residual_ratio": 0.066542
+            }
+           ]
+          },
+          {
+           "id": "IR JEPARA 1",
+           "phase": "A",
+           "name": "IA",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 15188.985352,
+           "rms": 6516.957625,
+           "prefault_rms": 357.80088,
+           "cycles": [
+            {
+             "rms": 8591.073402,
+             "dc_mean": 3854.872889,
+             "fundamental_rms": 7599.24055,
+             "fit_residual_ratio": 0.134754
+            },
+            {
+             "rms": 8463.834439,
+             "dc_mean": 258.144564,
+             "fundamental_rms": 8455.356901,
+             "fit_residual_ratio": 0.032741
+            },
+            {
+             "rms": 8470.943037,
+             "dc_mean": -242.881379,
+             "fundamental_rms": 8394.996524,
+             "fit_residual_ratio": 0.129374
+            },
+            {
+             "rms": 1658.221203,
+             "dc_mean": -1637.076212,
+             "fundamental_rms": 204.733353,
+             "fit_residual_ratio": 0.100483
+            },
+            {
+             "rms": 964.400436,
+             "dc_mean": -953.231604,
+             "fundamental_rms": 113.436906,
+             "fit_residual_ratio": 0.095685
+            }
+           ]
+          },
+          {
+           "id": "IS JEPARA 1",
+           "phase": "B",
+           "name": "IB",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 1370.019409,
+           "rms": 491.967714,
+           "prefault_rms": 375.407686,
+           "cycles": [
+            {
+             "rms": 352.925946,
+             "dc_mean": -80.667994,
+             "fundamental_rms": 341.440814,
+             "fit_residual_ratio": 0.117182
+            },
+            {
+             "rms": 448.388124,
+             "dc_mean": -144.66687,
+             "fundamental_rms": 423.806975,
+             "fit_residual_ratio": 0.050417
+            },
+            {
+             "rms": 447.512172,
+             "dc_mean": -127.023531,
+             "fundamental_rms": 420.223237,
+             "fit_residual_ratio": 0.189336
+            },
+            {
+             "rms": 777.595389,
+             "dc_mean": -125.964909,
+             "fundamental_rms": 728.309138,
+             "fit_residual_ratio": 0.310655
+            },
+            {
+             "rms": 323.55154,
+             "dc_mean": 15.223827,
+             "fundamental_rms": 321.518632,
+             "fit_residual_ratio": 0.113304
+            }
+           ]
+          },
+          {
+           "id": "IT JEPARA 1",
+           "phase": "C",
+           "name": "IC",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 651.864075,
+           "rms": 383.153291,
+           "prefault_rms": 354.886974,
+           "cycles": [
+            {
+             "rms": 331.185063,
+             "dc_mean": -13.710529,
+             "fundamental_rms": 330.299204,
+             "fit_residual_ratio": 0.06408
+            },
+            {
+             "rms": 351.622288,
+             "dc_mean": -36.037239,
+             "fundamental_rms": 348.821012,
+             "fit_residual_ratio": 0.073253
+            },
+            {
+             "rms": 378.465594,
+             "dc_mean": 1.857603,
+             "fundamental_rms": 378.223512,
+             "fit_residual_ratio": 0.036127
+            },
+            {
+             "rms": 409.830115,
+             "dc_mean": -7.308149,
+             "fundamental_rms": 408.434603,
+             "fit_residual_ratio": 0.080502
+            },
+            {
+             "rms": 404.578772,
+             "dc_mean": 44.585532,
+             "fundamental_rms": 401.477149,
+             "fit_residual_ratio": 0.043094
+            }
+           ]
+          },
+          {
+           "id": "IN JEPARA 1",
+           "phase": "N",
+           "name": "IN",
+           "measurement": "current",
+           "unit": "A",
+           "peak_abs": 15056.402344,
+           "rms": 6444.082455,
+           "prefault_rms": 20.582517,
+           "cycles": [
+            {
+             "rms": 8518.490122,
+             "dc_mean": -3880.385489,
+             "fundamental_rms": 7505.043964,
+             "fit_residual_ratio": 0.135269
+            },
+            {
+             "rms": 8348.333388,
+             "dc_mean": -254.159602,
+             "fundamental_rms": 8340.600541,
+             "fit_residual_ratio": 0.030411
+            },
+            {
+             "rms": 8345.538948,
+             "dc_mean": 248.513219,
+             "fundamental_rms": 8277.048628,
+             "fit_residual_ratio": 0.122457
+            },
+            {
+             "rms": 1827.704552,
+             "dc_mean": 1679.954055,
+             "fundamental_rms": 605.858826,
+             "fit_residual_ratio": 0.212746
+            },
+            {
+             "rms": 883.169099,
+             "dc_mean": 803.50576,
+             "fundamental_rms": 364.987039,
+             "fit_residual_ratio": 0.060577
+            }
+           ]
+          }
+         ],
+         "limitations": [
+          "Signature is not a confirmed physical cause.",
+          "Distortion can also arise from DC offset, CT response, switching or other arcs."
+         ],
+         "duration_ms": 104.01040315628052
+        }
+       ],
+       "comparison": [],
+       "used_by_deployed_model": false
+      },
+      "model_version": "untrained+a6c3e8ed7b41",
+      "timing_source": "status_waveform_aligned",
+      "scope": "RECORD_LOCAL_SIGNATURE",
+      "evidence_role": "remote_end",
+      "fault_type": "transient",
+      "requires_review": false,
+      "skip_reason": null
+     }
+    ],
+    "relationship_to_previous": null,
+    "confidence": 0.9,
+    "observed_facts": {
+     "member_record_ids": [
+      "6a27cc4ec55e423f9082bc8b2d5a05ef",
+      "9026cd31ef664401a67fd92a71c93f3d"
+     ],
+     "faulted_phases": [
+      "A"
+     ],
+     "reclose_outcome": "successful",
+     "other_recorders": [
+      {
+       "recorder": "GI TANJUNGJATI | JEPARA 1 2",
+       "station": "GI TANJUNGJATI",
+       "same_station": false,
+       "member_record_ids": [
+        "9026cd31ef664401a67fd92a71c93f3d"
+       ],
+       "relationship_types": [
+        "REMOTE_END_CAPTURE"
+       ],
+       "fault_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+       "faulted_phases": [
+        "A"
+       ],
+       "fct_ms": 69.8,
+       "fault_start_difference_ms": 0.0,
+       "reclose_outcome": "successful",
+       "reclose_dead_time_s": 0.983,
+       "reclose_record_id": "9026cd31ef664401a67fd92a71c93f3d",
+       "open_at_end_phases": [],
+       "clock": {
+        "method": "fault_aligned",
+        "zone_offset_h": null,
+        "clock_offset_ms": 0.041
+       }
+      }
+     ],
+     "open_at_end_phases": [
+      "A"
+     ],
+     "reclose_outcome_source": {
+      "recorder": "GI TANJUNGJATI | JEPARA 1 2",
+      "station": "GI TANJUNGJATI",
+      "same_station": false,
+      "record_id": "9026cd31ef664401a67fd92a71c93f3d",
+      "dead_time_s": 0.983,
+      "reason": "this_end_open_at_end"
+     }
+    },
+    "interpretation": {
+     "event_classes": [
+      "FAULT_EVENT"
+     ],
+     "reasoning": {
+      "fault_record_id": "6a27cc4ec55e423f9082bc8b2d5a05ef",
+      "fault_start_ms": 172.34374582767487,
+      "rows": [
+       {
+        "key": "fault",
+        "step": 1,
+        "label": "Gangguan",
+        "title": "Ya, dengan proteksi bekerja",
+        "evidence": [
+         "Arus R naik ke 9,9 kA puncak (prefault 361 A rms).",
+         "Tegangan R turun ke 0,39 pu.",
+         "Proteksi operate: F21 TRIP TJ JATI 1 +22,1 ms."
+        ],
+        "rules": [
+         "F1.1"
+        ],
+        "confidence": "high",
+        "value": {
+         "present": true,
+         "protection_operated": true
+        },
+        "conflicts": []
+       },
+       {
+        "key": "phases",
+        "step": 4,
+        "label": "Fasa",
+        "title": "R-N, satu fasa ke tanah",
+        "evidence": [
+         "Tegangan R 0,39 pu; S 0,98 dan T 0,99 pu.",
+         "Loop R-N 3,4 Ω; loop lain ≥ 16 Ω. I0/I1 1,05."
+        ],
+        "rules": [
+         "F4.1",
+         "F4.2",
+         "F4.3"
+        ],
+        "confidence": "high",
+        "value": {
+         "phases": [
+          "A"
+         ],
+         "ground": true,
+         "label": "R-N",
+         "voltage_pu": {
+          "A": 0.392,
+          "B": 0.985,
+          "C": 0.987
+         },
+         "loops_ohm": {
+          "AB": 19.688,
+          "BC": 209.117,
+          "CA": 24.122,
+          "AN": 3.423,
+          "BN": 18.258,
+          "CN": 15.698
+         },
+         "i0_i1": 1.054,
+         "agreeing_sources": [
+          "voltage",
+          "loop"
+         ],
+         "weak_infeed": false,
+         "flags": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "clearing",
+        "step": 3,
+        "label": "Padam",
+        "title": "68 ms setelah gangguan, di bawah batas 120 ms",
+        "evidence": [
+         "Trip +22,1 ms → arus R nol ±68 ms → CB OPEN R TJ JATI 1 +58,1 ms.",
+         "Waktu interupsi PMT 46 ms (wajar 30–80 ms)."
+        ],
+        "rules": [
+         "F3.2",
+         "F3.3",
+         "F3.4",
+         "F3.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "fct_ms": 67.8,
+         "clearing_ms": 67.9,
+         "trip_ms": 22.1,
+         "interruption_ms": 45.8,
+         "nominal_kv": 150.0,
+         "limit_ms": 120.0,
+         "over_limit": false,
+         "backup_trip": false
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_path",
+        "step": 5,
+        "label": "Jalur trip",
+        "title": "Trip, elemen yang men-trip tidak terekam",
+        "evidence": [
+         "Trip +22,1 ms.",
+         "Tidak ada kanal zona yang aktif sebelum trip."
+        ],
+        "rules": [
+         "F5.1"
+        ],
+        "confidence": "low",
+        "value": {
+         "kind": "trip_without_zone",
+         "zones_on_ms": {},
+         "zones_recorded": [],
+         "receive_recorded": true,
+         "send_recorded": true,
+         "sotf_recorded": false,
+         "excluded_earth_pilot_channels": [],
+         "receive_at_trip": null,
+         "send_active": null,
+         "sotf_active": null,
+         "trip_zones": []
+        },
+        "conflicts": []
+       },
+       {
+        "key": "trip_reclose",
+        "step": 6,
+        "label": "Trip dan reclose",
+        "title": "Mode trip tidak terekam, reclose berhasil setelah 1,0 s (terlihat di GI TANJUNGJATI)",
+        "evidence": [
+         "Rekaman GI ini berakhir saat PMT fasa R masih terbuka; reclose dibaca dari rekaman GI TANJUNGJATI (ujung lain line).",
+         "AR IN PROGRESS TJ JATI 1 +30,1 ms.",
+         "AR NOT READY TJ JATI 1 +66,6 ms.",
+         "CB OPEN R TJ JATI 1 +58,1 ms.",
+         "Fasa R tetap mati sampai akhir rekaman: hasil reclose ada di rekaman berikutnya atau rekaman ujung lain."
+        ],
+        "rules": [
+         "F6.1",
+         "F6.2",
+         "F6.4",
+         "F6.5"
+        ],
+        "confidence": "high",
+        "value": {
+         "trip_mode": null,
+         "poles": [],
+         "ar_mode": null,
+         "reclose_success": null,
+         "dead_time_s": null,
+         "sequence": {
+          "episode_count": 1,
+          "mechanical_close_confirmed": false,
+          "restoration_outcome": "unknown",
+          "refault_after_reclose": false,
+          "refault_evidence": null,
+          "sotf_after_reclose": false,
+          "reclose_times_ms": [],
+          "sotf_trips": [],
+          "timeline": [
+           {
+            "kind": "fault_inception",
+            "time_ms": 172.34374582767487,
+            "episode_index": 0
+           },
+           {
+            "kind": "fault_cleared",
+            "time_ms": 272.8515565395355,
+            "episode_index": 0
+           }
+          ],
+          "interpretation": "FAULT_EVENT"
+         }
+        },
+        "conflicts": []
+       },
+       {
+        "key": "other_end",
+        "step": 7,
+        "label": "Ujung lain",
+        "title": "GI TANJUNGJATI: fasa R-N, padam 70 ms",
+        "evidence": [
+         "Fasa sama di kedua ujung.",
+         "Jalur trip di sana: Trip, elemen yang men-trip tidak terekam.",
+         "Reclose berhasil setelah dead time 1,0 s.",
+         "Jam perekam diselaraskan pada awal gangguan."
+        ],
+        "rules": [
+         "F7.3"
+        ],
+        "confidence": "high",
+        "value": {
+         "station": "GI TANJUNGJATI",
+         "record_id": "9026cd31ef664401a67fd92a71c93f3d"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "cause",
+        "step": 8,
+        "label": "Penyebab",
+        "title": "Petir 61% (bacaan AI)",
+        "evidence": [
+         "Bacaan AI per rekaman; tidak mengubah fakta di atas.",
+         "Model lama memakai waveform episode pertama dan fitur konteks rekaman; signature episode berikutnya belum menjadi input model.",
+         "Hasil reclose menjelaskan pemulihan yang terekam, bukan konfirmasi penyebab fisik.",
+         "Sub-mekanisme (SF/BFO) tidak dapat ditentukan tanpa data LDS.",
+         "Pola urutan: Satu gangguan singkat, reclose berhasil: pola transien."
+        ],
+        "rules": [
+         "F8.1",
+         "F8.2",
+         "F8.3"
+        ],
+        "confidence": "ai",
+        "value": {
+         "top_hypothesis": "PETIR"
+        },
+        "conflicts": []
+       },
+       {
+        "key": "flag_breaker_contact",
+        "step": 9,
+        "label": "Ditandai",
+        "title": "Kontak bantu PMT berubah sebelum arus padam",
+        "evidence": [
+         "CB OPEN R TJ JATI 1 +58,1 ms, arus baru padam ±68 ms.",
+         "Kontak bantu seharusnya berubah setelah PMT memutus arus; cek pemetaan kanal."
+        ],
+        "rules": [
+         "F3.4"
+        ],
+        "confidence": "flag",
+        "value": {},
+        "conflicts": []
+       }
+      ],
+      "flag_count": 1,
+      "conflict_count": 0
+     }
+    },
+    "missing_evidence": [
+     {
+      "type": "MULTIPLE_RECORDS_ONE_EPISODE",
+      "description": "This episode spans 2 records (6a27cc4ec55e423f9082bc8b2d5a05ef, 9026cd31ef664401a67fd92a71c93f3d): the fault as recorded at both line ends. Only the record holding the fault inception is cause evidence."
+     }
+    ],
+    "provenance": {
+     "member_analysis_ids": [
+      "4d9e1457cd864e34ad777a2a6ef6d558",
+      "1d82c63060154d5484a1223ed5791900"
+     ],
+     "recorder": "GI JEPARA | TANJUNG JATI 1-2"
+    }
+   }
+  ]
+ }
+}

@@ -116,6 +116,16 @@
   padding-left: 30px;
 }
 
+.note {
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .error {
   background: var(--danger-soft);
   border: 1px solid var(--danger-line);

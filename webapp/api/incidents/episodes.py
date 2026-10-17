@@ -25,6 +25,11 @@ from one end — the reference recorder's records — and what other recorders
 saw of the same episode is summarised separately in
 ``observed_facts["other_recorders"]``: a weak-infeed far end reading other
 phases, or its own breaker's dead time, must not overwrite this end's.
+
+The one exception is a reclose this end did not record — its record ended
+while the pole was still open, say. The line's reclose outcome is then read
+from another recorder that did see it (the same substation's first, then the
+far end), and ``observed_facts["reclose_outcome_source"]`` says whose it is.
 """
 
 from __future__ import annotations
@@ -58,15 +63,18 @@ def _fault_type_from_phases(phases: list[str]) -> Optional[str]:
     return "SLG"
 
 
-def _reclose_outcome(record: IncidentRecord) -> Optional[str]:
-    snapshot = record.canonical_snapshot or {}
-    observed = snapshot.get("observed_facts") or {}
+def _verified_reclose_events(record: IncidentRecord) -> list[dict]:
+    observed = (record.canonical_snapshot or {}).get("observed_facts") or {}
     # Same rule as relationships._reclose_events: an unverified waveform-only
-    # "current came back" reading is not evidence of a reclose.
-    events = [
+    # "current came back" reading (or a bare AR command) is not a reclose.
+    return [
         e for e in (observed.get("reclose_events") or [])
         if isinstance(e, dict) and e.get("cb_open_verified", True) is not False
     ]
+
+
+def _reclose_outcome(record: IncidentRecord) -> Optional[str]:
+    events = _verified_reclose_events(record)
     if not events:
         return None
     success = events[-1].get("success")
@@ -75,6 +83,19 @@ def _reclose_outcome(record: IncidentRecord) -> Optional[str]:
     if success is False:
         return "failed"
     return None
+
+
+def _in_record_dead_time_s(record: IncidentRecord) -> Optional[float]:
+    """The dead time of a reclose inside the record (trip to close)."""
+    for event in reversed(_verified_reclose_events(record)):
+        if isinstance(event.get("dead_time_ms"), (int, float)):
+            return round(float(event["dead_time_ms"]) / 1000.0, 3)
+    return None
+
+
+def _open_at_end_phases(record: IncidentRecord) -> list[str]:
+    observed = (record.canonical_snapshot or {}).get("observed_facts") or {}
+    return list(observed.get("open_at_end_phases") or [])
 
 
 def _other_recorders(
@@ -99,6 +120,8 @@ def _other_recorders(
         trace = ((fault.canonical_snapshot or {}).get("analog_trace") or {}).get("summary") or {} if fault else {}
         outcomes = [o for o in (_reclose_outcome(r) for r in members) if o is not None]
         dead_times = [rel.metrics["dead_time_s"] for rel in own if (rel.metrics or {}).get("dead_time_s") is not None]
+        dead_times += [d for d in (_in_record_dead_time_s(r) for r in members) if d is not None]
+        reclose_record = next((r for r in reversed(members) if _reclose_outcome(r) is not None), None)
         tie = next((rel for rel in ties if fault is not None and rel.right_record_id == fault.incident_record_id), None)
         placement = axis.placement(members[0])
         summaries.append({
@@ -113,6 +136,8 @@ def _other_recorders(
             "fault_start_difference_ms": (tie.metrics or {}).get("fault_start_difference_ms") if tie else None,
             "reclose_outcome": outcomes[-1] if outcomes else None,
             "reclose_dead_time_s": dead_times[-1] if dead_times else None,
+            "reclose_record_id": reclose_record.incident_record_id if reclose_record else None,
+            "open_at_end_phases": sorted({p for r in members for p in _open_at_end_phases(r)}),
             "clock": {
                 "method": placement.method if placement else None,
                 "zone_offset_h": placement.zone_offset_h if placement else None,
@@ -267,6 +292,7 @@ def group_episodes(
             # closed: whatever that reclose looked like on its own, it failed.
             reclose_outcome = "failed"
         dead_times = [m["dead_time_s"] for m in internal_metrics if m.get("dead_time_s") is not None]
+        dead_times += [d for d in (_in_record_dead_time_s(r) for r in main) if d is not None]
         sequence_facts: dict = {}
         if dead_times:
             sequence_facts["reclose_dead_time_s"] = dead_times[-1]
@@ -288,6 +314,25 @@ def group_episodes(
         other_recorders = _other_recorders(main, others, relationships, axis)
         if other_recorders:
             sequence_facts["other_recorders"] = other_recorders
+        open_at_end = sorted({p for r in main for p in _open_at_end_phases(r)})
+        if open_at_end:
+            sequence_facts["open_at_end_phases"] = open_at_end
+        if reclose_outcome is None:
+            # This end did not record the reclose (its record ended inside the
+            # dead time, or it has no breaker evidence): the line's outcome is
+            # what another recorder saw, this substation's own first.
+            seen = sorted((o for o in other_recorders if o["reclose_outcome"]), key=lambda o: not o["same_station"])
+            if seen:
+                source = seen[0]
+                reclose_outcome = source["reclose_outcome"]
+                sequence_facts["reclose_outcome_source"] = {
+                    "recorder": source["recorder"],
+                    "station": source["station"],
+                    "same_station": source["same_station"],
+                    "record_id": source["reclose_record_id"],
+                    "dead_time_s": source["reclose_dead_time_s"],
+                    "reason": "this_end_open_at_end" if open_at_end else "not_recorded_at_this_end",
+                }
 
         local_cause_hypotheses = []
         for r in group:

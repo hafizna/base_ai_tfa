@@ -456,6 +456,11 @@ def _score(results: list[EpisodeResult]) -> tuple[int, int, int]:
     return tuple(sum(r[i] for r in ranks) for i in range(3)) if ranks else (0, 0, 0)
 
 
+class NoBayCurrents(ValueError):
+    """The records hold currents, but none could be placed on a CT of the bay
+    (no bay relays among them: line relays at two substations, say)."""
+
+
 def run_case(case: dict[str, Any], root: Path) -> CaseResult:
     case = copy.deepcopy(case)
     return run_recorders(case, _load_recorders(case, root))
@@ -483,7 +488,7 @@ def run_recorders(case: dict[str, Any], recorders: list[Recorder]) -> CaseResult
         case.setdefault("align_breakers", inferred.align_breakers)
         alternatives = inferred.alternatives
     if not case.get("currents"):
-        raise ValueError("tidak ada arus yang bisa dipetakan ke CT bay ini")
+        raise NoBayCurrents("tidak ada arus yang bisa dipetakan ke CT bay ini")
     reference = next(r for r in recorders if r.id == case["reference_recorder"])
     epoch = datetime.fromisoformat(reference.comtrade[0].trigger_time_iso)
 

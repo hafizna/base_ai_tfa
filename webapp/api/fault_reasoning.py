@@ -1140,9 +1140,28 @@ def _trip_and_reclose(ctx: _Context, trip: Optional[dict[str, Any]], path: dict[
         start = opened if opened is not None else ctx.summary.get("fault_clearing_ms")
         if isinstance(start, (int, float)) and close_ms > start:
             dead_time_s = (close_ms - float(start)) / 1000.0
+        elif isinstance(reclose.get("dead_time_ms"), (int, float)):
+            dead_time_s = float(reclose["dead_time_ms"]) / 1000.0
         rules.append("F6.4")
+        if reclose.get("source") == "waveform_phase":
+            # No breaker contact: the pole was read from its own current and voltage.
+            closed = f"line bertegangan kembali {_ms(close_ms - ctx.t0)} ms"
+            command = reclose.get("command_time")
+            evidence.append(
+                f"Fasa {_pole_text(set(reclose.get('phases') or []))} mati sejak trip, "
+                + (f"perintah reclose {_ms(float(command) * 1000.0 - ctx.t0)} ms, " if isinstance(command, (int, float)) else "")
+                + f"{closed} (dari gelombang; status PMT tidak terekam)."
+            )
+            if reclose.get("load_restored") is False:
+                evidence.append(
+                    "Arus beban belum kembali sampai akhir rekaman: tegangan bisa datang dari reclose ujung lain, "
+                    "PMT di sini mungkin belum menutup."
+                )
     breaker_lines = _breaker_lines(ctx)
     evidence += breaker_lines
+    open_at_end = list(ctx.window.open_at_end_phases or []) if ctx.window is not None else []
+    if reclose and not ar_mode and reclose.get("single_pole"):
+        ar_mode = "SPAR"
     if reclose and not ar_mode and len(poles) == 1 and not three_pole:
         # One pole tripped and the breaker closed again with the others in
         # service: a single-pole auto-reclose by definition.
@@ -1160,6 +1179,13 @@ def _trip_and_reclose(ctx: _Context, trip: Optional[dict[str, Any]], path: dict[
             title += ", reclose gagal"
         else:
             title += ", reclose (hasil tidak dapat ditentukan)"
+    elif open_at_end:
+        # Not a lockout: the recording stopped inside the dead time.
+        title += f"; rekaman berakhir saat PMT {_pole_text(set(open_at_end))} masih terbuka (dead time belum selesai)"
+        evidence.append(
+            f"Fasa {_pole_text(set(open_at_end))} tetap mati sampai akhir rekaman: hasil reclose ada di rekaman "
+            "berikutnya atau rekaman ujung lain."
+        )
     else:
         title += "; reclose tidak terekam di rekaman ini"
 

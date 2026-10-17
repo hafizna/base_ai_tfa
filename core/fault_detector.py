@@ -4,7 +4,7 @@ Fault Event Detector
 Detects fault inception point and reclose events from waveform data.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, List
 import numpy as np
 import logging
@@ -71,9 +71,12 @@ def _normalize_status_name(name: str) -> str:
     if not name:
         return ""
     s = name.upper()
+    # "A/R", "A.R", "A-R": the auto-reclose abbreviation stays one word
+    # ("A/R JPARA 1" must read as an AR channel, not "A R JPARA 1").
+    s = re.sub(r"\bA\s*[./\\-]\s*R\b", "AR", s)
     # Replace separators (., _, /, -) with spaces.
     s = re.sub(r"[._/\\-]+", " ", s)
-    s = re.sub(r"\\s+", " ", s).strip()
+    s = re.sub(r"\s+", " ", s).strip()
     return s
 
 
@@ -140,6 +143,10 @@ class FaultEvent:
     # Reclose detection
     reclose_events: List[dict]   # List of {time, success: bool} for each reclose attempt
 
+    # Phases whose pole was still open when the record ended: the dead time
+    # outlasted the recording, so this record cannot show the reclose.
+    open_at_end_phases: List[str] = field(default_factory=list)
+
 
 def detect_fault(record) -> Optional[FaultEvent]:
     """
@@ -168,7 +175,13 @@ def detect_fault(record) -> Optional[FaultEvent]:
     # out-of-service neighbour's "CB OPEN" or noise can't leak into timing,
     # phases or reclose detection below. No-op for single-line records.
     record = scope_record(record)
+    fault = _detect_fault_in_scope(record)
+    if fault is not None and fault.detection_method != "dead_time_recording":
+        _settle_reclose(record, fault)
+    return fault
 
+
+def _detect_fault_in_scope(record) -> Optional[FaultEvent]:
     # Detect dead-time recordings: CB was already open when recording started.
     # In this case the fault occurred before this recording — no fault current present.
     # Skip straight to waveform reclose detection; fault duration is not measurable.
@@ -620,7 +633,7 @@ def _detect_from_status_channels(record) -> Optional[FaultEvent]:
                      if best_clearing_idx and best_clearing_idx < len(record.time) else None)
     duration_ms = (clearing_time - inception_time) * 1000 if clearing_time else 0.0
 
-    reclose_events = _detect_reclose_from_status(record, best_inception_idx)
+    reclose_events = _detect_reclose_from_status(record, best_inception_idx, best_clearing_idx)
 
     logger.debug(f"Fault detected from status channel '{best_channel_name}': "
                  f"inception={inception_time:.4f}s dur={duration_ms:.1f}ms phases={faulted_phases}")
@@ -829,7 +842,48 @@ def _detect_fault_clearing(ia, ib, ic, inception_idx, prefault_length, dt=None):
     return None
 
 
-def _detect_reclose_from_status(record, inception_idx):
+_AR_TOKENS = frozenset({"AR", "79", "RECLOSE", "RECLOSER", "RECLOSING", "AUTORECLOSE", "CLOSURE"})
+# An auto-reclose channel naming the scheme's state rather than a close: "AR
+# in progress" and "1P trip init" rise as the breaker trips, "AR not ready"
+# as it opens.
+_AR_STATE_WORDS = ("PROG", "READY", "BLOCK", "INIT", "START", "ENABL", "INHIB", "SERV", "RECLAIM", "TIMER")
+# An AR command this close before a breaker contact or the waveform shows the
+# close is that same reclose.
+_COMMAND_TO_CLOSE_S = 0.3
+
+
+def _ar_channel_role(name_upper: str) -> Optional[str]:
+    """'state' for an auto-reclose state channel, 'close' for one whose rising
+    edge marks a reclose (close command, operate, success, lockout), None for
+    any other channel."""
+    tokens = set(name_upper.split())
+    if not (tokens & _AR_TOKENS or "RECLOS" in name_upper or "INPROG" in name_upper):
+        return None
+    return "state" if any(word in name_upper for word in _AR_STATE_WORDS) else "close"
+
+
+def _fold_commands(events: list) -> list:
+    """An AR command followed shortly by a breaker that closed (contact, pole
+    dead dropping, waveform) is one reclose: keep the physical close, note the
+    command's time, and take the command's outcome when the close has none."""
+    physical = [e for e in events if e.get('source') != 'ar_status' and e.get('time') is not None]
+    out = []
+    for event in events:
+        t = event.get('time')
+        if event.get('source') == 'ar_status' and t is not None:
+            close = next((p for p in physical if t - 0.05 <= p['time'] <= t + _COMMAND_TO_CLOSE_S), None)
+            if close is not None:
+                close.setdefault('command_time', t)
+                if event.get('success') is False:
+                    close['success'] = False  # an explicit failure / lockout channel
+                elif close.get('success') is None:
+                    close['success'] = event.get('success')
+                continue
+        out.append(event)
+    return sorted(out, key=lambda e: float('inf') if e.get('time') is None else float(e['time']))
+
+
+def _detect_reclose_from_status(record, inception_idx, clearing_idx=None):
     """
     Detect reclose events and their outcome from status channels.
 
@@ -837,12 +891,18 @@ def _detect_reclose_from_status(record, inception_idx):
     - AR Succ / AR Success channel active → True
     - CB Close command issued (BO CB CLOSE) → True
     - AR Fail / AR Lockout / AR Final Trip / 79 Final Trip → False
-    - AR in progress but recording ends before completion → None (truncated)
+
+    An auto-reclose state channel ("AR in progress", "AR not ready", "1P trip
+    init") rises as the breaker trips, so its edge is not a reclose. An AR
+    close command ("A/R", "AR Close") times one but does not prove the breaker
+    closed: without a success or failure channel it stays unverified
+    (``cb_open_verified`` False) until the breaker contacts or the waveform
+    (see _settle_reclose) show the close. Nothing before the fault cleared is
+    a reclose.
     """
     reclose_events = []
+    after_idx = max(int(inception_idx), int(clearing_idx) if clearing_idx is not None else -1)
 
-    AR_ATTEMPT_KW  = ['RECLOSE', 'CLOSURE', 'A/R', 'AR ', 'AR INPROG', 'INPROGRESS',
-                      '1P TRIP INIT', '3P TRIP INIT', 'AR 1POLE', '1POLE IN PROG', 'A/R OPRT']
     AR_SUCCESS_KW  = ['AR SUCC', 'RECLOSE SUCC', 'CB CLOSE', 'BO14', 'BO13', 'SYN MEET', 'VOL MEET']
     AR_FAILURE_KW  = ['AR FAIL', 'AR LOCKOUT', 'AR FINAL', '79 FINAL', 'FINAL TRIP', 'TOR', 'TRIP ON RECLOSE']
     POLE_DEAD_KW   = ['POLE DEAD', 'ANY POLE', 'ALL POLE']
@@ -864,18 +924,18 @@ def _detect_reclose_from_status(record, inception_idx):
                 if any(k in name_upper for k in AR_FAILURE_KW):
                     failure_times.append(t)
 
-    # Detect AR attempts and assign success/failure
+    # AR close commands / operate / outcome channels, with their success or failure
     seen_reclose_times = set()
     for ch in record.status_channels:
         name_upper = _normalize_status_name(ch.name)
-        if not any(kw in name_upper for kw in AR_ATTEMPT_KW):
+        if _ar_channel_role(name_upper) != "close":
             continue
 
         transitions = np.diff(ch.samples)
         rising_edges = np.where(transitions > 0)[0]
 
         for edge_idx in rising_edges:
-            if edge_idx <= inception_idx:
+            if edge_idx <= after_idx:
                 continue
             reclose_time = record.time[edge_idx + 1] if edge_idx + 1 < len(record.time) else record.time[-1]
 
@@ -890,7 +950,10 @@ def _detect_reclose_from_status(record, inception_idx):
             elif any(st > reclose_time - 0.05 for st in success_times):
                 success = True
 
-            reclose_events.append({'time': reclose_time, 'success': success})
+            event = {'time': reclose_time, 'success': success, 'source': 'ar_status'}
+            if success is None:
+                event['cb_open_verified'] = False  # a command, not yet a closed breaker
+            reclose_events.append(event)
 
     # "Any/All Pole Dead" falling edge (1→0) after inception = CB reclosed
     for ch in record.status_channels:
@@ -915,12 +978,13 @@ def _detect_reclose_from_status(record, inception_idx):
             success = True
             if any(ft > reclose_time and ft < reclose_time + 0.3 for ft in failure_times):
                 success = False
-            reclose_events.append({'time': reclose_time, 'success': success})
+            reclose_events.append({'time': reclose_time, 'success': success, 'source': 'pole_dead'})
 
-    if not reclose_events:
-        reclose_events = _breaker_position_reclose(record, inception_idx, failure_times)
+    # The breaker contacts, unless something already proved the close.
+    if not any(e.get('cb_open_verified', True) is not False for e in reclose_events):
+        reclose_events += _breaker_position_reclose(record, inception_idx, failure_times)
 
-    return reclose_events
+    return _fold_commands(reclose_events)
 
 
 # A breaker position contact: closed-state ("CB Closed C ph", "52A") or
@@ -1125,10 +1189,196 @@ def _detect_reclose_from_waveforms(ia, ib, ic, time, clearing_idx, va=None, vb=N
                 'cb_open_verified': cb_open_verified,
                 'dead_time_ms': dead_time_ms,
                 'confidence': 0.75 if cb_open_verified else 0.35,
+                'source': 'waveform_current',
             })
             break  # Only detect first reclose
 
     return reclose_events
+
+
+# A pole reads open while its phase carries under 10% of the prefault load
+# and, where the record has the line-side voltage, that voltage is under half
+# its prefault level too. It reads closed again once the current is back over
+# half the load or the voltage over 80%.
+_POLE_OPEN_CURRENT = 0.10
+_POLE_OPEN_VOLTAGE = 0.50
+_POLE_CLOSED_CURRENT = 0.50
+_POLE_CLOSED_VOLTAGE = 0.80
+# A load this small next to the fault current cannot tell an open pole.
+_MIN_LOAD_OF_FAULT = 0.005
+# After the close, fault current again: over 3x the load and 30% of the first fault's.
+_REFAULT_OF_LOAD = 3.0
+_REFAULT_OF_FAULT = 0.3
+
+
+def _held(mask: np.ndarray, width: int) -> np.ndarray:
+    """Start indices where ``mask`` stays true for ``width`` samples in a row."""
+    if width <= 0 or len(mask) < width:
+        return np.zeros(0, dtype=int)
+    counts = np.concatenate(([0], np.cumsum(np.asarray(mask, dtype=int))))
+    return np.flatnonzero(counts[width:] - counts[:-width] == width)
+
+
+def _phase_reclose(record, fault) -> Optional[dict]:
+    """What the tripped pole(s) did after the fault, read from the line's own
+    phase envelopes (one-cycle RMS, so every sampling rate reads alike).
+
+    A pole is open while its phase current is near zero and, where the record
+    has the line-side voltage, that voltage has collapsed as well; it is
+    closed again once the current or the voltage comes back. This sees a
+    single-pole dead time, where the healthy phases stay energised and a
+    three-phase dead-window reading finds nothing.
+
+    One end's waveform cannot tell which breaker closed first: the line-side
+    voltage returns when either end recloses, the load current only once both
+    have. The event's time is the line coming alive again; ``load_restored``
+    says whether the load current came back too (both ends closed).
+
+    None when the record cannot tell (no clearing, no prefault reference, no
+    line channels). Otherwise ``state`` is:
+    - "reclosed": ``event`` is the reclose (time, outcome, dead time, phases);
+    - "open_at_end": ``phases`` were still open when the record ended;
+    - "not_opened": no pole went dead after the fault.
+    ``opened_time`` is when the pole(s) were first seen open.
+    """
+    n = _samples_per_cycle(record)
+    if n == 0 or fault.clearing_idx is None or fault.inception_idx is None:
+        return None
+    time = np.asarray(record.time, dtype=float)
+    inc, clr = int(fault.inception_idx), int(fault.clearing_idx)
+    pre = slice(max(0, inc - 4 * n), max(0, inc - n))
+    if pre.stop - pre.start < n // 2 or clr <= inc:
+        return None
+
+    volts, amps = _line_phase_channels(record)
+    i_env = [cycle_rms_envelope(ch.samples, n) if ch is not None else None for ch in amps]
+    v_env = [cycle_rms_envelope(ch.samples, n) if ch is not None else None for ch in volts]
+    lengths = [len(e) for e in i_env + v_env if e is not None]
+    if not lengths or any(e is not None and len(e) == 0 for e in i_env):
+        return None
+    end = min(lengths)
+    fault_max = max((float(np.max(e[inc:max(clr, inc + n)])) for e in i_env if e is not None), default=0.0)
+    if fault_max <= 0.0:
+        return None
+
+    open_by_phase, closed_by_phase, loads = {}, {}, {}
+    for k, letter in enumerate("ABC"):
+        i, v = i_env[k], v_env[k]
+        i_pre = float(np.median(i[pre])) if i is not None else 0.0
+        v_pre = float(np.median(v[pre])) if v is not None else 0.0
+        i_usable = i is not None and i_pre >= _MIN_LOAD_OF_FAULT * fault_max
+        v_usable = v is not None and v_pre > 0.0
+        if not (i_usable or v_usable):
+            continue
+        is_open = np.ones(end, dtype=bool)
+        is_closed = np.zeros(end, dtype=bool)
+        if i_usable:
+            is_open &= i[:end] < _POLE_OPEN_CURRENT * i_pre
+            is_closed |= i[:end] >= _POLE_CLOSED_CURRENT * i_pre
+        if v_usable:
+            is_open &= v[:end] < _POLE_OPEN_VOLTAGE * v_pre
+            is_closed |= v[:end] >= _POLE_CLOSED_VOLTAGE * v_pre
+        open_by_phase[letter], closed_by_phase[letter] = is_open, is_closed
+        loads[letter] = i_pre if i_usable else 0.0
+    if not open_by_phase:
+        return None
+
+    start = clr + n  # every window wholly after the clearing
+    hold = 2 * n
+    if start + hold >= end:
+        return None
+    any_open = np.logical_or.reduce(list(open_by_phase.values()))
+    runs = _held(any_open[start:end], hold)
+    if len(runs) == 0:
+        return {"state": "not_opened"}
+    opened = start + int(runs[0])
+    opened_time = float(time[opened])
+    # The poles of one trip open within a few cycles of each other.
+    settle_end = min(end, opened + 5 * n + hold)
+    phases = [p for p, o in open_by_phase.items() if len(_held(o[opened:settle_end], hold))]
+
+    back = np.logical_or.reduce([closed_by_phase[p] for p in phases])
+    closes = _held(back[opened:end], n)
+    if len(closes) == 0:
+        return {"state": "open_at_end", "phases": phases, "opened_time": opened_time}
+    closed = opened + int(closes[0])
+    reclose_idx = min(closed + n // 2, len(time) - 1)  # the envelope crosses half a cycle early
+    dead_s = float(time[reclose_idx] - time[clr])
+    if dead_s < _MIN_DEAD_TIME_S:
+        return {"state": "not_opened"}
+
+    single_pole = len(phases) < 3 and any(
+        closed_by_phase[p][opened:closed].mean() > 0.9 for p in closed_by_phase if p not in phases)
+    # Did it hold? Fault current again, or the pole(s) dead again for two cycles.
+    refault_at = max(_REFAULT_OF_LOAD * max(loads.values(), default=0.0), _REFAULT_OF_FAULT * fault_max)
+    after = closed + n
+    refault = any(e is not None and len(_held(e[after:end] > refault_at, max(n // 2, 1))) for e in i_env)
+    reopened = len(_held(np.logical_and.reduce([open_by_phase[p] for p in phases])[after:end], hold)) > 0
+    if refault or reopened:
+        success = False
+    elif end - after >= 5 * n:
+        success = True
+    else:
+        success = None  # the record ends before the outcome shows
+    load_restored = any(
+        loads[p] > 0.0 and len(_held(i_env["ABC".index(p)][closed:end] >= _POLE_CLOSED_CURRENT * loads[p], n))
+        for p in phases)
+    return {
+        "state": "reclosed",
+        "opened_time": opened_time,
+        "event": {
+            'time': float(time[reclose_idx]),
+            'success': success,
+            'cb_open_verified': True,
+            'dead_time_ms': round(dead_s * 1000.0, 1),
+            'source': 'waveform_phase',
+            'phases': phases,
+            'single_pole': bool(single_pole),
+            'load_restored': bool(load_restored),
+            'confidence': 0.8,
+        },
+    }
+
+
+def _settle_reclose(record, fault) -> None:
+    """Reconcile the reclose readings of a fault with what its tripped poles did.
+
+    Nothing before the fault cleared is a reclose. When the waveform shows the
+    pole(s) closing again, that close is the reclose: an AR command just before
+    it becomes its ``command_time``, breaker contacts timing the same close
+    keep their reading, and the bare "current came back" guess is dropped.
+    When the pole(s) stay open to the end of the record, the record shows no
+    reclose and says so (``open_at_end_phases``)."""
+    events = list(fault.reclose_events or [])
+    if fault.clearing_time is not None:
+        events = [e for e in events if e.get('time') is None or float(e['time']) > float(fault.clearing_time)]
+    phase = _phase_reclose(record, fault)
+    state = (phase or {}).get("state")
+    if state == "open_at_end":
+        fault.open_at_end_phases = list(phase["phases"])
+        events = [e for e in events if e.get('source') != 'waveform_current']
+    elif state == "reclosed":
+        close = phase["event"]
+        # The pole was seen open from opened_time until this close, so an
+        # unconfirmed AR edge inside that interval was not a close (an "AR
+        # operate" that stays high through the dead time rises at its start).
+        events = [e for e in events if e.get('source') != 'waveform_current' and not (
+            e.get('source') == 'ar_status' and e.get('cb_open_verified') is False and e.get('time') is not None
+            and phase["opened_time"] <= float(e['time']) < close['time'] - _COMMAND_TO_CLOSE_S)]
+        same = [e for e in events if e.get('source') != 'ar_status' and e.get('time') is not None
+                and e.get('cb_open_verified', True) is not False
+                and abs(float(e['time']) - close['time']) <= _COMMAND_TO_CLOSE_S]
+        if same:
+            # Contacts / pole-dead already time this close; the waveform adds what they lack.
+            for e in same:
+                if e.get('success') is None:
+                    e['success'] = close['success']
+                for key in ('dead_time_ms', 'phases', 'single_pole'):
+                    if e.get(key) is None:
+                        e[key] = close[key]
+        else:
+            events.append(close)
+    fault.reclose_events = _fold_commands(events)
 
 
 def extract_soe(record, fault_inception_s: float = None) -> list:
